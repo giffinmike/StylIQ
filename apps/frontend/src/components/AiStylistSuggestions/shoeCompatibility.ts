@@ -894,12 +894,20 @@ export function refineOutfitShoes(
     usedShoeIds.add(bestCandidate.id);
 
     const replacementItem = buildReplacementItem(bestCandidate);
+    const originalName = shoeItem.name;
+    const replacementName = replacementItem.name;
+
+    // Replace exact old shoe name in text fields, then run generic color correction
+    const fixText = (text: string): string => {
+      const swapped = originalName ? text.replace(originalName, replacementName) : text;
+      return correctDescription(swapped);
+    };
 
     return {
       ...outfit,
-      summary: correctDescription(outfit.summary),
+      summary: fixText(outfit.summary),
       ...(outfit.reasoning != null
-        ? {reasoning: correctDescription(outfit.reasoning)}
+        ? {reasoning: fixText(outfit.reasoning)}
         : {}),
       items: outfit.items.map((i) =>
         i.category === 'shoes' ? replacementItem : i,
