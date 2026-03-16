@@ -164,6 +164,11 @@ function resolveShoeArchetype(item: any): ShoeArchetype | null {
     if (re.test(combined)) return archetype;
   }
 
+  // Leather shoes without sneaker/boot/casual signals are most likely dress shoes
+  if (/leather/.test(combined) && !/sneaker|trainer|boot|sandal|slide|flip|casual/.test(combined)) {
+    return 'dress';
+  }
+
   return null;
 }
 
@@ -606,6 +611,16 @@ function detectMismatch(
     }
   }
 
+  // Safety net: if archetype is unresolvable but outfit context is restrictive,
+  // flag as mismatch. Replacement only occurs if a better candidate exists.
+  if (
+    !effectiveArchetype &&
+    !styleClash &&
+    (outfitCtx === 'casual' || outfitCtx === 'formal' || outfitCtx === 'athletic')
+  ) {
+    styleClash = true;
+  }
+
   if (!colorClash && !styleClash) return null;
 
   const reason: MismatchReason =
@@ -848,7 +863,8 @@ export function refineOutfitShoes(
         continue;
       }
 
-      // Candidate accent colors must not clash with outfit or bottom
+      // Candidate accent colors must not be foreign to the outfit palette
+      // (Bottom harmony for primary temp is already enforced above)
       const candAllTemps = resolveAllShoeTemps(candidate);
       let candAccentClash = false;
       for (const ct of candAllTemps) {
@@ -857,16 +873,21 @@ export function refineOutfitShoes(
           candAccentClash = true;
           break;
         }
-        if (bottomTemp && bottomTemp !== 'neutral' && ct !== bottomTemp) {
-          candAccentClash = true;
-          break;
-        }
       }
       if (candAccentClash) continue;
 
-      // Candidate must not have a style clash
-      if (candArchetype && mismatch.outfitCtx !== 'unknown') {
-        if (!STYLE_COMPAT[candArchetype][mismatch.outfitCtx]) continue;
+      // Candidate must not have a style clash — HARD GATE
+      if (mismatch.outfitCtx !== 'unknown') {
+        if (candArchetype) {
+          if (!STYLE_COMPAT[candArchetype][mismatch.outfitCtx]) continue;
+        } else if (
+          mismatch.outfitCtx === 'casual' ||
+          mismatch.outfitCtx === 'formal' ||
+          mismatch.outfitCtx === 'athletic'
+        ) {
+          // In restrictive contexts, skip unclassifiable candidates
+          continue;
+        }
       }
 
       const score = scoreCandidate(
