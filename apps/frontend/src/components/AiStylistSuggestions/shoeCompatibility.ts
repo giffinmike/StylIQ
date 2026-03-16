@@ -343,7 +343,7 @@ const STYLE_COMPAT: Record<ShoeArchetype, Record<OutfitContext, boolean>> = {
   rugged: {
     formal: false,
     'business-casual': false,
-    casual: true, // borderline but allowed
+    casual: false, // work boots / hiking boots clash with casual outfits
     rugged: true,
     athletic: false,
     unknown: false,
@@ -860,6 +860,12 @@ export function refineOutfitShoes(
         candidate, outfitCtx, bottomTemp, outfitGroups, dominant,
         hasCasualSignal, hasFormalBcSignal,
       )) {
+        continue;
+      }
+
+      // Hard guard: rugged footwear only allowed in rugged outfits
+      const candArchetype = resolveShoeArchetype(candidate);
+      if (candArchetype === 'rugged' && outfitCtx !== 'rugged') {
         continue;
       }
 
