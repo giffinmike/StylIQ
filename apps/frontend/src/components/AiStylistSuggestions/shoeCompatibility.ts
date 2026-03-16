@@ -377,6 +377,32 @@ const IDEAL_ARCHETYPES: Record<OutfitContext, ShoeArchetype[]> = {
 };
 
 // ---------------------------------------------------------------------------
+// Outfit-item ↔ wardrobe-row signal merge
+//
+// The AI response OutfitItem may carry a richer display name than the DB row
+// (e.g., "Blue Leather Dress Shoes" vs DB "Dress Shoes"). This helper builds
+// a merged evaluation object: wardrobe row is primary, outfit item text fills
+// gaps so color/archetype resolution never misses visible signals.
+// ---------------------------------------------------------------------------
+
+function mergeItemSignals(wardrobeRow: any, outfitItem: OutfitItem): any {
+  if (!wardrobeRow) return wardrobeRow;
+
+  return {
+    ...wardrobeRow,
+    // name: prefer wardrobe row, but append outfit item name if different
+    // so color words in the display name are visible to regex scanners
+    name: wardrobeRow.name
+      ? (wardrobeRow.name === outfitItem.name
+          ? wardrobeRow.name
+          : `${wardrobeRow.name} ${outfitItem.name}`)
+      : outfitItem.name,
+    // aiTitle: preserve wardrobe row, fall back to outfit item name
+    aiTitle: wardrobeRow.aiTitle ?? wardrobeRow.ai_title ?? outfitItem.name,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Color helpers (unchanged from original)
 // ---------------------------------------------------------------------------
 
@@ -734,34 +760,55 @@ export function refineOutfitShoes(
     const shoeFull = wardrobeMap.get(shoeItem.id);
     if (!shoeFull) return outfit;
 
+    // ── Merge outfit-item display text into wardrobe rows ──
+    // The AI response may carry richer names than the DB row (e.g., color
+    // words in the display name that the DB row lacks). Build merged
+    // evaluation objects so resolveTemp / classifyItemContext / archetype
+    // resolution see ALL available text.
+
+    const shoeEval = mergeItemSignals(shoeFull, shoeItem);
+
     // ── Compute ALL outfit signals in a single pass ──
 
-    const outfitCtx = resolveOutfitContext(outfit.items, wardrobeMap);
-    const dominant = outfitDominantTemp(outfit.items, wardrobeMap);
+    // Build a merged-signal map for non-shoe outfit items too, so context
+    // classification and color resolution benefit from display names.
+    const mergedNonShoeItems: {oi: OutfitItem; merged: any}[] = [];
+    for (const oi of outfit.items) {
+      if (oi.category === 'shoes') continue;
+      const full = wardrobeMap.get(oi.id);
+      if (!full) continue;
+      mergedNonShoeItems.push({oi, merged: mergeItemSignals(full, oi)});
+    }
+
+    // Build a map overlay with merged signals for context/color resolution
+    const mergedMap = new Map<string, any>(wardrobeMap);
+    for (const {oi, merged} of mergedNonShoeItems) {
+      mergedMap.set(oi.id, merged);
+    }
+
+    // Outfit context uses merged items for better classification
+    const outfitCtx = resolveOutfitContext(outfit.items, mergedMap);
+    const dominant = outfitDominantTemp(outfit.items, mergedMap);
 
     const outfitGroups = new Set<TempGroup>();
     let hasCasualSignal = false;
     let hasFormalBcSignal = false;
     let bottomTemp: TempGroup | null = null;
 
-    for (const oi of outfit.items) {
-      if (oi.category === 'shoes') continue;
-      const full = wardrobeMap.get(oi.id);
-      if (!full) continue;
-
-      const t = resolveTemp(full);
+    for (const {oi, merged} of mergedNonShoeItems) {
+      const t = resolveTemp(merged);
       if (t && t !== 'neutral') outfitGroups.add(t);
       if (oi.category === 'bottom' && t) bottomTemp = t;
 
-      const itemCtx = classifyItemContext(full);
+      const itemCtx = classifyItemContext(merged);
       if (itemCtx === 'casual') hasCasualSignal = true;
       if (itemCtx === 'formal' || itemCtx === 'business-casual') hasFormalBcSignal = true;
     }
 
-    // ── Validate current shoe through the SAME gates as candidates ──
+    // ── Validate current shoe using MERGED evaluation object ──
 
     const currentShoeOk = isShoeValid(
-      shoeFull, outfitCtx, bottomTemp, outfitGroups, dominant,
+      shoeEval, outfitCtx, bottomTemp, outfitGroups, dominant,
       hasCasualSignal, hasFormalBcSignal,
     );
 
@@ -769,7 +816,7 @@ export function refineOutfitShoes(
 
     // ── Current shoe is invalid — find the best VALID replacement ──
 
-    const originalArchetype = resolveShoeArchetype(shoeFull);
+    const originalArchetype = resolveShoeArchetype(shoeEval);
 
     let bestCandidate: any | null = null;
     let bestScore = -Infinity;
