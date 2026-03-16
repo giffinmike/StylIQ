@@ -148,7 +148,25 @@ const NAME_ARCHETYPE_RULES: [RegExp, ShoeArchetype][] = [
   [/\bboot/, 'rugged'],
 ];
 
+/**
+ * Gather all likely text fields from a shoe item into a single searchable string.
+ * Broadens archetype resolution beyond just subCategory + name.
+ */
+function gatherShoeText(item: any): string {
+  const fields: (string | undefined)[] = [
+    item?.subCategory, item?.subcategory,
+    item?.name, item?.aiTitle, item?.ai_title,
+    item?.title, item?.label, item?.displayName,
+    item?.type, item?.shoeType, item?.shoe_type,
+  ];
+  return fields
+    .filter((f): f is string => typeof f === 'string' && f.length > 0)
+    .map(f => f.toLowerCase())
+    .join(' ');
+}
+
 function resolveShoeArchetype(item: any): ShoeArchetype | null {
+  // 1. Exact subcategory match (most reliable)
   const sub = (
     (item?.subCategory ?? item?.subcategory ?? '') as string
   ).toLowerCase().trim();
@@ -157,15 +175,15 @@ function resolveShoeArchetype(item: any): ShoeArchetype | null {
     return SUBCATEGORY_TO_ARCHETYPE[sub];
   }
 
-  const name = ((item?.name ?? '') as string).toLowerCase();
-  const combined = `${sub} ${name}`;
+  // 2. Regex match across all text fields
+  const text = gatherShoeText(item);
 
   for (const [re, archetype] of NAME_ARCHETYPE_RULES) {
-    if (re.test(combined)) return archetype;
+    if (re.test(text)) return archetype;
   }
 
-  // Leather shoes without sneaker/boot/casual signals are most likely dress shoes
-  if (/leather/.test(combined) && !/sneaker|trainer|boot|sandal|slide|flip|casual/.test(combined)) {
+  // 3. Leather heuristic: leather + no casual/boot signals → dress
+  if (/leather/.test(text) && !/sneaker|trainer|boot|sandal|slide|flip|casual/.test(text)) {
     return 'dress';
   }
 
@@ -481,152 +499,90 @@ function outfitDominantTemp(
 }
 
 // ---------------------------------------------------------------------------
-// Mismatch detection
+// Centralized shoe validity check
+//
+// Used IDENTICALLY for both the current shoe and every replacement candidate.
+// Layered gates: STYLE (hard) → COLOR primary/bottom → COLOR accents/palette
+// → CLASH matrix. A shoe must pass ALL gates.
 // ---------------------------------------------------------------------------
 
-type MismatchReason = 'color' | 'style' | 'both';
-
-function detectMismatch(
+function isShoeValid(
   shoeFull: any,
-  shoeTemp: TempGroup | null,
-  shoeArchetype: ShoeArchetype | null,
-  outfitItems: OutfitItem[],
-  wardrobeMap: Map<string, any>,
-): {reason: MismatchReason; outfitCtx: OutfitContext; dominant: TempGroup | null} | null {
-  let colorClash = false;
-  let styleClash = false;
+  outfitCtx: OutfitContext,
+  bottomTemp: TempGroup | null,
+  outfitGroups: Set<TempGroup>,
+  dominant: TempGroup | null,
+  hasCasualSignal: boolean,
+  hasFormalBcSignal: boolean,
+): boolean {
+  // ── GATE 1: STYLE (hard, non-bypassable) ──
 
-  // --- Color check ---
-  // Primary: set-based foreign chromatic check. A non-neutral, non-earth shoe
-  // must match at least one chromatic group already present in the outfit.
-  const dominant = outfitDominantTemp(outfitItems, wardrobeMap);
+  let archetype = resolveShoeArchetype(shoeFull);
 
-  if (shoeTemp && shoeTemp !== 'neutral' && shoeTemp !== 'earth') {
-    const outfitGroups = new Set<TempGroup>();
-    for (const oi of outfitItems) {
-      if (oi.category === 'shoes') continue;
-      const full = wardrobeMap.get(oi.id);
-      if (!full) continue;
-      const t = resolveTemp(full);
-      if (t && t !== 'neutral') outfitGroups.add(t);
-    }
-    if (outfitGroups.size > 0 && !outfitGroups.has(shoeTemp)) {
-      colorClash = true;
-    }
-
-    // Secondary: SHOE_CLASHES matrix for known strong clashes (belt-and-suspenders)
-    if (!colorClash && dominant) {
-      const clashTargets = SHOE_CLASHES[shoeTemp];
-      if (clashTargets.includes(dominant)) {
-        colorClash = true;
-      }
-    }
-
-    // Bottom–shoe harmony: chromatic shoes must match the bottom garment's
-    // color temperature. Catches cases like brown chinos + blue dress shoes
-    // that the overall-palette check misses when the top shares the shoe color.
-    if (!colorClash) {
-      const bottomOi = outfitItems.find(i => i.category === 'bottom');
-      if (bottomOi) {
-        const bottomFull = wardrobeMap.get(bottomOi.id);
-        if (bottomFull) {
-          const bottomTemp = resolveTemp(bottomFull);
-          if (bottomTemp && bottomTemp !== 'neutral' && shoeTemp !== bottomTemp) {
-            colorClash = true;
-          }
-        }
-      }
-    }
-  }
-
-  // --- Multi-color accent check ---
-  // A shoe whose primary temp passes may still carry a chromatic accent that
-  // clashes. E.g. "white & green sneakers" resolves primary as neutral but
-  // the green accent is foreign to an earth/warm outfit.
-  if (!colorClash) {
-    const allTemps = resolveAllShoeTemps(shoeFull);
-    const outfitGroups = new Set<TempGroup>();
-    for (const oi of outfitItems) {
-      if (oi.category === 'shoes') continue;
-      const full = wardrobeMap.get(oi.id);
-      if (!full) continue;
-      const t = resolveTemp(full);
-      if (t && t !== 'neutral') outfitGroups.add(t);
-    }
-    for (const t of allTemps) {
-      if (t === 'neutral' || t === 'earth') continue;
-      if (outfitGroups.size > 0 && !outfitGroups.has(t)) {
-        colorClash = true;
-        break;
-      }
-    }
-  }
-
-  // --- Bottom–shoe harmony (expanded) ---
-  // Runs even for neutral/earth shoes. The visual proximity of shoes to
-  // the bottom garment means a chromatic mismatch there is always jarring.
-  if (!colorClash) {
-    const bottomOi = outfitItems.find(i => i.category === 'bottom');
-    if (bottomOi) {
-      const bottomFull = wardrobeMap.get(bottomOi.id);
-      if (bottomFull) {
-        const bottomTemp = resolveTemp(bottomFull);
-        const allShoeTemps = resolveAllShoeTemps(shoeFull);
-        if (bottomTemp && bottomTemp !== 'neutral') {
-          for (const st of allShoeTemps) {
-            if (st === 'neutral' || st === 'earth') continue;
-            if (st !== bottomTemp) {
-              colorClash = true;
-              break;
-            }
-          }
-        }
-      }
-    }
-  }
-
-  // --- Style check ---
-  const outfitCtx = resolveOutfitContext(outfitItems, wardrobeMap);
-
-  // Use resolved archetype, or derive from shoe's dressCode as fallback
-  let effectiveArchetype = shoeArchetype;
-  if (!effectiveArchetype) {
+  // dressCode fallback when archetype is still null
+  if (!archetype) {
     const dc: string | undefined = shoeFull?.dressCode ?? shoeFull?.dress_code;
     if (dc) {
-      const DRESS_CODE_TO_ARCHETYPE: Record<string, ShoeArchetype> = {
-        BlackTie: 'dress',
-        Business: 'dress',
-        BusinessCasual: 'smart-casual',
-        SmartCasual: 'smart-casual',
-        Casual: 'casual-sneaker',
-        UltraCasual: 'minimal',
+      const DC_TO_ARCH: Record<string, ShoeArchetype> = {
+        BlackTie: 'dress', Business: 'dress',
+        BusinessCasual: 'smart-casual', SmartCasual: 'smart-casual',
+        Casual: 'casual-sneaker', UltraCasual: 'minimal',
       };
-      effectiveArchetype = DRESS_CODE_TO_ARCHETYPE[dc] ?? null;
+      archetype = DC_TO_ARCH[dc] ?? null;
     }
   }
 
-  if (effectiveArchetype && outfitCtx !== 'unknown') {
-    if (!STYLE_COMPAT[effectiveArchetype][outfitCtx]) {
-      styleClash = true;
+  if (archetype && outfitCtx !== 'unknown') {
+    // Known archetype + known context → STYLE_COMPAT is the hard gate
+    if (!STYLE_COMPAT[archetype][outfitCtx]) return false;
+  } else if (archetype && outfitCtx === 'unknown') {
+    // Known archetype + unknown context → use item-level hints
+    if (hasCasualSignal && (archetype === 'dress' || archetype === 'rugged')) return false;
+    if (hasFormalBcSignal && (archetype === 'rugged' || archetype === 'athletic')) return false;
+  } else if (!archetype) {
+    // Null archetype → restrictive contexts reject, unknown uses text heuristics
+    if (outfitCtx === 'casual' || outfitCtx === 'formal' || outfitCtx === 'athletic') {
+      return false;
+    }
+    if (outfitCtx === 'unknown') {
+      const text = gatherShoeText(shoeFull);
+      if (hasCasualSignal && /leather|dress|oxford|derby|brogue|wingtip|pump|heel|stiletto/.test(text)) return false;
+      if (hasFormalBcSignal && /work\s*boot|hiking|combat|cowboy|tactical|rain\s*boot|lug/.test(text)) return false;
     }
   }
 
-  // Safety net: if archetype is unresolvable but outfit context is restrictive,
-  // flag as mismatch. Replacement only occurs if a better candidate exists.
-  if (
-    !effectiveArchetype &&
-    !styleClash &&
-    (outfitCtx === 'casual' || outfitCtx === 'formal' || outfitCtx === 'athletic')
-  ) {
-    styleClash = true;
+  // ── GATE 2: COLOR — primary temp vs bottom garment ──
+
+  const primaryTemp = resolveTemp(shoeFull);
+
+  if (primaryTemp && primaryTemp !== 'neutral' && primaryTemp !== 'earth') {
+    // Chromatic primary must harmonize with bottom garment
+    if (bottomTemp && bottomTemp !== 'neutral' && primaryTemp !== bottomTemp) {
+      return false;
+    }
   }
 
-  if (!colorClash && !styleClash) return null;
+  // ── GATE 3: COLOR — all temps (including accents) vs outfit palette ──
 
-  const reason: MismatchReason =
-    colorClash && styleClash ? 'both' : colorClash ? 'color' : 'style';
+  const allTemps = resolveAllShoeTemps(shoeFull);
 
-  return {reason, outfitCtx, dominant};
+  for (const t of allTemps) {
+    if (t === 'neutral' || t === 'earth') continue;
+    // Every chromatic temp must exist in the outfit palette
+    if (outfitGroups.size > 0 && !outfitGroups.has(t)) {
+      return false;
+    }
+  }
+
+  // ── GATE 4: CLASH matrix (belt-and-suspenders) ──
+
+  if (primaryTemp && primaryTemp !== 'neutral' && primaryTemp !== 'earth' && dominant) {
+    if (SHOE_CLASHES[primaryTemp]?.includes(dominant)) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -778,47 +734,42 @@ export function refineOutfitShoes(
     const shoeFull = wardrobeMap.get(shoeItem.id);
     if (!shoeFull) return outfit;
 
-    const shoeTemp = resolveTemp(shoeFull);
-    const shoeArchetype = resolveShoeArchetype(shoeFull);
+    // ── Compute ALL outfit signals in a single pass ──
 
-    // If we can't determine either signal, there's nothing to evaluate against
-    if (!shoeTemp && !shoeArchetype) {
-      // Last attempt: if the shoe has a dressCode, we can still run a style check
-      const dc: string | undefined = shoeFull?.dressCode ?? shoeFull?.dress_code;
-      if (!dc) return outfit;
-    }
+    const outfitCtx = resolveOutfitContext(outfit.items, wardrobeMap);
+    const dominant = outfitDominantTemp(outfit.items, wardrobeMap);
 
-    const mismatch = detectMismatch(
-      shoeFull,
-      shoeTemp,
-      shoeArchetype,
-      outfit.items,
-      wardrobeMap,
-    );
-
-    if (!mismatch) return outfit;
-
-    // -----------------------------------------------------------------
-    // Mismatch detected — find the best replacement
-    // -----------------------------------------------------------------
-
-    // Compute outfit chromatic groups for foreign-color candidate filtering
     const outfitGroups = new Set<TempGroup>();
+    let hasCasualSignal = false;
+    let hasFormalBcSignal = false;
+    let bottomTemp: TempGroup | null = null;
+
     for (const oi of outfit.items) {
       if (oi.category === 'shoes') continue;
       const full = wardrobeMap.get(oi.id);
       if (!full) continue;
+
       const t = resolveTemp(full);
       if (t && t !== 'neutral') outfitGroups.add(t);
+      if (oi.category === 'bottom' && t) bottomTemp = t;
+
+      const itemCtx = classifyItemContext(full);
+      if (itemCtx === 'casual') hasCasualSignal = true;
+      if (itemCtx === 'formal' || itemCtx === 'business-casual') hasFormalBcSignal = true;
     }
 
-    // Resolve bottom garment temp for candidate scoring
-    let bottomTemp: TempGroup | null = null;
-    const bottomOi = outfit.items.find(i => i.category === 'bottom');
-    if (bottomOi) {
-      const bottomFull = wardrobeMap.get(bottomOi.id);
-      if (bottomFull) bottomTemp = resolveTemp(bottomFull);
-    }
+    // ── Validate current shoe through the SAME gates as candidates ──
+
+    const currentShoeOk = isShoeValid(
+      shoeFull, outfitCtx, bottomTemp, outfitGroups, dominant,
+      hasCasualSignal, hasFormalBcSignal,
+    );
+
+    if (currentShoeOk) return outfit; // passes all gates — keep it
+
+    // ── Current shoe is invalid — find the best VALID replacement ──
+
+    const originalArchetype = resolveShoeArchetype(shoeFull);
 
     let bestCandidate: any | null = null;
     let bestScore = -Infinity;
@@ -827,75 +778,16 @@ export function refineOutfitShoes(
       if (candidate.id === shoeItem.id) continue;
       if (usedShoeIds.has(candidate.id)) continue;
 
-      const candTemp = resolveTemp(candidate);
-      const candArchetype = resolveShoeArchetype(candidate);
-
-      // Candidate must not have a color clash
-      if (
-        candTemp &&
-        candTemp !== 'neutral' &&
-        candTemp !== 'earth' &&
-        mismatch.dominant
-      ) {
-        if (SHOE_CLASHES[candTemp]?.includes(mismatch.dominant)) continue;
-      }
-
-      // Candidate must not introduce a foreign chromatic color
-      if (
-        candTemp &&
-        candTemp !== 'neutral' &&
-        candTemp !== 'earth' &&
-        outfitGroups.size > 0 &&
-        !outfitGroups.has(candTemp)
-      ) {
+      // Candidate must pass the IDENTICAL validation gates
+      if (!isShoeValid(
+        candidate, outfitCtx, bottomTemp, outfitGroups, dominant,
+        hasCasualSignal, hasFormalBcSignal,
+      )) {
         continue;
-      }
-
-      // Candidate must not clash with the bottom garment
-      if (
-        candTemp &&
-        candTemp !== 'neutral' &&
-        candTemp !== 'earth' &&
-        bottomTemp &&
-        bottomTemp !== 'neutral' &&
-        candTemp !== bottomTemp
-      ) {
-        continue;
-      }
-
-      // Candidate accent colors must not be foreign to the outfit palette
-      // (Bottom harmony for primary temp is already enforced above)
-      const candAllTemps = resolveAllShoeTemps(candidate);
-      let candAccentClash = false;
-      for (const ct of candAllTemps) {
-        if (ct === 'neutral' || ct === 'earth') continue;
-        if (outfitGroups.size > 0 && !outfitGroups.has(ct)) {
-          candAccentClash = true;
-          break;
-        }
-      }
-      if (candAccentClash) continue;
-
-      // Candidate must not have a style clash — HARD GATE
-      if (mismatch.outfitCtx !== 'unknown') {
-        if (candArchetype) {
-          if (!STYLE_COMPAT[candArchetype][mismatch.outfitCtx]) continue;
-        } else if (
-          mismatch.outfitCtx === 'casual' ||
-          mismatch.outfitCtx === 'formal' ||
-          mismatch.outfitCtx === 'athletic'
-        ) {
-          // In restrictive contexts, skip unclassifiable candidates
-          continue;
-        }
       }
 
       const score = scoreCandidate(
-        candidate,
-        mismatch.outfitCtx,
-        mismatch.dominant,
-        shoeArchetype,
-        bottomTemp,
+        candidate, outfitCtx, dominant, originalArchetype, bottomTemp,
       );
 
       if (score > bestScore) {
