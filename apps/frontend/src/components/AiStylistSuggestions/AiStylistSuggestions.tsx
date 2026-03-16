@@ -39,6 +39,7 @@ import {useQueryClient} from '@tanstack/react-query';
 import WardrobePickerModal from '../WardrobePickerModal/WardrobePickerModal';
 import ViewShot from 'react-native-view-shot';
 import FastImage from 'react-native-fast-image';
+import {refineOutfitShoes} from './shoeCompatibility';
 
 type Props = {
   weather: any;
@@ -277,7 +278,13 @@ const AiStylistSuggestions: React.FC<Props> = ({
   // Get current outfit from visual format
   const getCurrentOutfit = (): OutfitSuggestion | null => {
     if (!aiData || !isVisualFormat(aiData)) return null;
-    return aiData.outfits[activeOutfitIndex] || null;
+    const outfit = aiData.outfits[activeOutfitIndex] || null;
+    console.log('[AIStylist] RENDERING_OUTFITS', {
+      totalOutfits: aiData.outfits.length,
+      activeIndex: activeOutfitIndex,
+      shoeItem: outfit?.items?.find(i => i.category === 'shoes'),
+    });
+    return outfit;
   };
 
   // Emit a learning signal from home actions (fire-and-forget)
@@ -431,7 +438,7 @@ const AiStylistSuggestions: React.FC<Props> = ({
       3: '3rd Pick',
     };
     const colors: Record<1 | 2 | 3, string> = {
-      1: theme.colors.background,
+      1: theme.colors.button1,
       2: theme.colors.foreground2,
       3: theme.colors.muted,
     };
@@ -491,7 +498,13 @@ const AiStylistSuggestions: React.FC<Props> = ({
       };
     });
 
-    const updatedAiData = {...aiData, outfits: updatedOutfits};
+    let updatedAiData: AiSuggestionData = {...aiData, outfits: updatedOutfits};
+
+    // Re-refine after manual swap to catch any new shoe incompatibility
+    if ('outfits' in updatedAiData && Array.isArray(updatedAiData.outfits) && wardrobe.length > 0) {
+      updatedAiData = refineOutfitShoes(updatedAiData as any, wardrobe) as AiSuggestionData;
+    }
+
     setAiData(updatedAiData);
 
     // Persist the updated data to cache so it survives navigation
@@ -636,13 +649,14 @@ const AiStylistSuggestions: React.FC<Props> = ({
             paddingVertical: moderateScale(tokens.spacing.sm),
             borderRadius: tokens.borderRadius.sm,
             alignItems: 'center',
-            borderWidth: theme.borderWidth.hairline,
-            borderColor: theme.colors.muted,
+            // borderWidth: theme.borderWidth.hairline,
+            // borderColor: theme.colors.muted,
           }}>
           <Text
             style={{
-              color: theme.colors.foreground,
+              color: theme.colors.buttonText1,
               fontSize: fontScale(tokens.fontSize.sm),
+              fontWeight: tokens.fontWeight.semiBold,
             }}>
             Next
           </Text>
@@ -657,10 +671,10 @@ const AiStylistSuggestions: React.FC<Props> = ({
             borderRadius: tokens.borderRadius.sm,
             alignItems: 'center',
             backgroundColor: theme.colors.button1,
-            borderWidth: theme.borderWidth.hairline,
-            borderColor: theme.colors.muted,
+            // borderWidth: theme.borderWidth.hairline,
+            // borderColor: theme.colors.muted,
           }}>
-          <Icon name="tune" size={20} color={theme.colors.foreground2} />
+          <Icon name="tune" size={20} color={theme.colors.buttonText1} />
         </TouchableOpacity>
       </View>
     );
@@ -812,7 +826,7 @@ const AiStylistSuggestions: React.FC<Props> = ({
                   borderWidth: theme.borderWidth.hairline,
                   borderColor: theme.colors.muted,
                 }}>
-                <Text style={{color: theme.colors.foreground}}>{c.label}</Text>
+                <Text style={{color: theme.colors.buttonText1, fontWeight: '500'}}>{c.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -880,7 +894,13 @@ const AiStylistSuggestions: React.FC<Props> = ({
       });
 
       if (!res.ok) throw new Error('Failed to fetch suggestion');
-      const data: AiSuggestionData = normalizeStylistData(await res.json());
+      let data: AiSuggestionData = normalizeStylistData(await res.json());
+
+      // Refine shoe selections for color compatibility (Home Screen only)
+      if ('outfits' in data && Array.isArray(data.outfits)) {
+        data = refineOutfitShoes(data as any, wardrobe) as AiSuggestionData;
+        console.log('[AIStylist] REFINED_OUTFITS', (data as any)?.outfits);
+      }
 
       // 1️⃣ Update UI immediately
       setAiData(data);
@@ -1011,7 +1031,13 @@ const AiStylistSuggestions: React.FC<Props> = ({
       });
 
       if (!res.ok) throw new Error('Failed to swap item');
-      const data: AiSuggestionData = normalizeStylistData(await res.json());
+      let data: AiSuggestionData = normalizeStylistData(await res.json());
+
+      // Refine shoe selections for color compatibility (Home Screen only)
+      if ('outfits' in data && Array.isArray(data.outfits)) {
+        data = refineOutfitShoes(data as any, wardrobe) as AiSuggestionData;
+        console.log('[AIStylist] REFINED_OUTFITS_SWAP', (data as any)?.outfits);
+      }
 
       // Emit learning signal for tweak/constraint
       emitHomeSignal('STYLE_CONSTRAINT_SIGNAL', undefined, {
@@ -1126,7 +1152,12 @@ const AiStylistSuggestions: React.FC<Props> = ({
           const isStaleWeather = currentTemp != null && cachedTemp != null && Math.abs(currentTemp - cachedTemp) > 15;
 
           if (!isStaleDate && !isStaleWeather) {
-            setAiData(normalizeStylistData(parsed));
+            let restored: AiSuggestionData = normalizeStylistData(parsed);
+            // Re-refine cached data with current wardrobe (cache may predate latest rules)
+            if ('outfits' in restored && Array.isArray((restored as any).outfits) && wardrobe.length > 0) {
+              restored = refineOutfitShoes(restored as any, wardrobe) as AiSuggestionData;
+            }
+            setAiData(restored);
 
             // restore refs for cooldown checks
             if (parsed?.suggestion) {
@@ -1236,9 +1267,14 @@ const AiStylistSuggestions: React.FC<Props> = ({
           fetchSuggestion('initial');
           lastFetchTimeRef.current = now;
         } else {
-          setAiData(normalizeStylistData(parsed));
+          let restored: AiSuggestionData = normalizeStylistData(parsed);
+          // Re-refine cached data with current wardrobe (cache may predate latest rules)
+          if ('outfits' in restored && Array.isArray((restored as any).outfits) && wardrobe.length > 0) {
+            restored = refineOutfitShoes(restored as any, wardrobe) as AiSuggestionData;
+          }
+          setAiData(restored);
           // Update ref with summary text for both formats
-          const summaryText = isVisualFormat(parsed)
+          const summaryText = isVisualFormat(restored)
             ? parsed.outfits[0]?.summary
             : parsed.suggestion;
           if (summaryText) {
@@ -1685,7 +1721,7 @@ const AiStylistSuggestions: React.FC<Props> = ({
                     borderRadius: 20,
                     marginBottom: 12,
                   }}>
-                  <Text style={{color: __fsRank === 1 ? '#fff' : theme.colors.foreground, fontSize: 16, fontWeight: '600'}}>
+                  <Text style={{color: __fsRank === 1 ? '#fff' : theme.colors.buttonText1, fontSize: 16, fontWeight: '600'}}>
                     {rankLabels[__fsRank]}
                   </Text>
                 </View>

@@ -736,6 +736,11 @@ export function refineOutfitShoes(
   data: VisualResponse,
   wardrobe: any[],
 ): VisualResponse {
+  console.log('[shoeRefine] START', {
+    outfitCount: data?.outfits?.length,
+    wardrobeCount: wardrobe?.length,
+  });
+
   if (!data?.outfits?.length || !wardrobe?.length) return data;
 
   const wardrobeMap = new Map<string, any>();
@@ -752,6 +757,15 @@ export function refineOutfitShoes(
   const usedShoeIds = new Set<string>();
 
   const refinedOutfits = data.outfits.map((outfit) => {
+    console.log('[shoeRefine] OUTFIT', {
+      outfitId: outfit.id,
+      items: outfit.items?.map(i => ({
+        id: i.id,
+        name: i.name,
+        category: i.category,
+      })),
+    });
+
     const shoeItem = outfit.items.find((i) => i.category === 'shoes');
     if (!shoeItem) return outfit;
 
@@ -759,6 +773,14 @@ export function refineOutfitShoes(
 
     const shoeFull = wardrobeMap.get(shoeItem.id);
     if (!shoeFull) return outfit;
+
+    console.log('[shoeRefine] SHOE_LOOKUP', {
+      shoeItemId: shoeItem?.id,
+      shoeItemName: shoeItem?.name,
+      wardrobeRowName: shoeFull?.name,
+      wardrobeColorFamily: shoeFull?.colorFamily,
+      wardrobeColor: shoeFull?.color,
+    });
 
     // ── Merge outfit-item display text into wardrobe rows ──
     // The AI response may carry richer names than the DB row (e.g., color
@@ -812,6 +834,14 @@ export function refineOutfitShoes(
       hasCasualSignal, hasFormalBcSignal,
     );
 
+    console.log('[shoeRefine] VALIDATION', {
+      shoe: shoeItem?.name,
+      isValid: currentShoeOk,
+      context: outfitCtx,
+      bottomTemp,
+      dominantTemp: dominant,
+    });
+
     if (currentShoeOk) return outfit; // passes all gates — keep it
 
     // ── Current shoe is invalid — find the best VALID replacement ──
@@ -840,8 +870,18 @@ export function refineOutfitShoes(
       if (score > bestScore) {
         bestScore = score;
         bestCandidate = candidate;
+        console.log('[shoeRefine] BEST_CANDIDATE', {
+          candidate: candidate.name,
+          score,
+        });
       }
     }
+
+    console.log('[shoeRefine] FINAL_DECISION', {
+      original: shoeItem?.name,
+      replacement: bestCandidate?.name ?? null,
+      bestScore,
+    });
 
     if (!bestCandidate || bestScore < 5) return outfit;
 
