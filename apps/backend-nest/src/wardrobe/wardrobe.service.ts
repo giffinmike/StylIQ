@@ -3764,473 +3764,20 @@ ${slotLines}
         itemCounts: outfits.map((o: any) => o.items?.length ?? 0),
       });
 
-      // ── Taste Validation + Deterministic Repair (fast path) ──
-      let _validatorRanFast = false;
-      let _numHardFailedFast = 0;
-      let _numRepairedViaSwapFast = 0;
-      let vCtx: ValidatorContext;
-      {
-        const _isOpenFoot = (it: any): boolean => {
-          const text =
-            `${it?.subcategory ?? ''} ${it?.name ?? it?.label ?? ''}`.toLowerCase();
-          return /\b(sandals?|flip[- ]?flops?|slides?|thongs?)\b/.test(text);
-        };
-        const _toVI = (it: any): ValidatorItem => ({
-          id: it?.id ?? '',
-          slot:
-            (mapMainCategoryToSlot(it?.main_category) as ValidatorSlot) ||
-            ('accessories' as ValidatorSlot),
-          name: it?.name ?? it?.label,
-          subcategory: it?.subcategory,
-          color: it?.color,
-          material: it?.material,
-          fit: it?.fit ?? it?.fit_type,
-          dress_code: it?.dress_code,
-          formality_score: it?.formality_score,
-          style_descriptors: it?.style_descriptors,
-          presentation_code: it?.presentation_code,
-        });
-        const _tempToZone = (tempF?: number | null) => {
-          if (tempF == null) return undefined;
-          if (tempF < 32) return 'freezing' as const;
-          if (tempF < 45) return 'cold' as const;
-          if (tempF < 55) return 'cool' as const;
-          if (tempF < 65) return 'mild' as const;
-          if (tempF < 85) return 'warm' as const;
-          return 'hot' as const;
-        };
-        const _bpFast = (eliteStyleContext as any)?._brainStyleProfile;
-        const _requestedDressCodeFast: string | undefined = (() => {
-          if (!query) return undefined;
-          const c = query.toLowerCase();
-          if (c.includes('formal') || c.includes('business')) return 'formal';
-          if (c.includes('church') || c.includes('wedding') || c.includes('funeral') || c.includes('interview')) return 'formal';
-          return undefined;
-        })();
-        vCtx = {
-          userPresentation:
-            userPresentation === 'masculine' || userPresentation === 'feminine'
-              ? userPresentation
-              : undefined,
-          climateZone: _tempToZone(opts?.weather?.tempF),
-          requestedDressCode: _requestedDressCodeFast,
-          styleProfile: {
-            ...(eliteStyleContext?.styleProfile ?? {}),
-            coverage_no_go: _bpFast?.coverage_no_go,
-            avoid_colors: _bpFast?.avoid_colors,
-            avoid_materials: _bpFast?.avoid_materials,
-            formality_floor: _bpFast?.formality_floor,
-            walkability_requirement: _bpFast?.walkability_requirement,
-            avoid_patterns: _bpFast?.avoid_patterns,
-            silhouette_preference: _bpFast?.silhouette_preference,
-          },
-        };
-        // Build slot pools from all fetched items
-        const fastPool = Array.from(itemsMap.values());
-        const slotPools = new Map<string, any[]>();
-        for (const item of fastPool) {
-          const slot = mapMainCategoryToSlot(item?.main_category);
-          if (!slotPools.has(slot)) slotPools.set(slot, []);
-          slotPools.get(slot)!.push(item);
-        }
-
-        const repaired: typeof outfits = [];
-        for (const outfit of outfits) {
-          const items = outfit.items ?? [];
-          const vItems = items.map(_toVI);
-          const result = tasteValidateOutfit(vItems, vCtx);
-          if (result.valid) {
-            repaired.push(outfit);
-            continue;
-          }
-          let fixedItems = [...items];
-          const usedIds = new Set(fixedItems.map((it: any) => it?.id));
-          for (const fail of result.hardFails) {
-            if (
-              fail.startsWith('EXTREME_WEATHER_CONTRADICTION') &&
-              fail.includes('footwear')
-            ) {
-              const shoePool = (slotPools.get('shoes') ?? []).filter(
-                (s: any) => !_isOpenFoot(s) && !usedIds.has(s?.id),
-              );
-              if (shoePool.length > 0) {
-                fixedItems = fixedItems.filter(
-                  (it: any) =>
-                    mapMainCategoryToSlot(it?.main_category) !== 'shoes',
-                );
-                fixedItems.push(shoePool[0]);
-                usedIds.add(shoePool[0].id);
-              }
-            } else if (fail.startsWith('CROSS_PRESENTATION')) {
-              const idMatch = fail.match(/item (\S+)/);
-              if (idMatch) {
-                const badItem = fixedItems.find(
-                  (it: any) => it?.id === idMatch[1],
-                );
-                if (badItem) {
-                  const slot = mapMainCategoryToSlot(badItem?.main_category);
-                  const pool = (slotPools.get(slot) ?? []).filter((c: any) => {
-                    if (usedIds.has(c?.id)) return false;
-                    const pc = c?.presentation_code;
-                    if (!pc) return true;
-                    if (vCtx.userPresentation === 'masculine')
-                      return pc !== 'feminine';
-                    if (vCtx.userPresentation === 'feminine')
-                      return pc !== 'masculine';
-                    return true;
-                  });
-                  if (pool.length > 0) {
-                    fixedItems = fixedItems.filter(
-                      (it: any) => it?.id !== idMatch[1],
-                    );
-                    fixedItems.push(pool[0]);
-                    usedIds.add(pool[0].id);
-                  }
-                }
-              }
-            } else if (fail.startsWith('AVOID_COLOR')) {
-              const idMatch = fail.match(/item (\S+)/);
-              if (idMatch) {
-                const badItem = fixedItems.find(
-                  (it: any) => it?.id === idMatch[1],
-                );
-                if (badItem) {
-                  const slot = mapMainCategoryToSlot(badItem?.main_category);
-                  const _avoidExp = expandAvoidColors(
-                    vCtx?.styleProfile?.avoid_colors ?? [],
-                  );
-                  const pool = (slotPools.get(slot) ?? []).filter((c: any) => {
-                    if (usedIds.has(c?.id)) return false;
-                    const cColors = extractItemColors(c as any);
-                    if (c.color_family) cColors.push(c.color_family.trim().toLowerCase());
-                    if (c.name ?? c.label) cColors.push((c.name ?? c.label).trim().toLowerCase());
-                    for (const ic of cColors) {
-                      for (const ac of _avoidExp) {
-                        if (colorMatchesSafe(ic, ac)) return false;
-                      }
-                    }
-                    return true;
-                  });
-                  if (pool.length > 0) {
-                    fixedItems = fixedItems.filter(
-                      (it: any) => it?.id !== idMatch[1],
-                    );
-                    fixedItems.push(pool[0]);
-                    usedIds.add(pool[0].id);
-                  }
-                }
-              }
-            } else if (fail.startsWith('DRESS_CODE_MISMATCH')) {
-              const idMatch = fail.match(/item (\S+)/);
-              if (idMatch) {
-                const badItem = fixedItems.find(
-                  (it: any) => it?.id === idMatch[1],
-                );
-                if (badItem) {
-                  const slot = mapMainCategoryToSlot(badItem?.main_category);
-                  const casualCodes = [
-                    'ultracasual',
-                    'ultra casual',
-                    'athletic',
-                  ];
-                  const pool = (slotPools.get(slot) ?? []).filter((c: any) => {
-                    if (usedIds.has(c?.id)) return false;
-                    const dc = (c?.dress_code ?? '').toLowerCase();
-                    if (!dc) return true;
-                    return !casualCodes.some((cc) => dc.includes(cc));
-                  });
-                  if (pool.length > 0) {
-                    fixedItems = fixedItems.filter(
-                      (it: any) => it?.id !== idMatch[1],
-                    );
-                    fixedItems.push(pool[0]);
-                    usedIds.add(pool[0].id);
-                  }
-                }
-              }
-            } else if (fail.startsWith('MISSING_REQUIRED_SLOTS')) {
-              const slots = new Set(
-                fixedItems.map((it: any) =>
-                  mapMainCategoryToSlot(it?.main_category),
-                ),
-              );
-              const hasDressLike =
-                slots.has('dresses') ||
-                slots.has('activewear') ||
-                slots.has('swimwear');
-              if (!hasDressLike) {
-                for (const ms of ['tops', 'bottoms', 'shoes'] as const) {
-                  if (!slots.has(ms)) {
-                    const pool = (slotPools.get(ms) ?? []).filter(
-                      (c: any) => !usedIds.has(c?.id),
-                    );
-                    if (pool.length > 0) {
-                      fixedItems.push(pool[0]);
-                      usedIds.add(pool[0].id);
-                    }
-                  }
-                }
-              } else if (!slots.has('shoes') && !slots.has('swimwear')) {
-                const pool = (slotPools.get('shoes') ?? []).filter(
-                  (c: any) => !usedIds.has(c?.id),
-                );
-                if (pool.length > 0) {
-                  fixedItems.push(pool[0]);
-                  usedIds.add(pool[0].id);
-                }
-              }
-            }
-          }
-          const recheck = tasteValidateOutfit(fixedItems.map(_toVI), vCtx);
-          repaired.push(
-            recheck.valid ? { ...outfit, items: fixedItems } : outfit,
-          );
-        }
-        const scored = repaired.map((o: any, idx: number) => {
-          const r = tasteValidateOutfit((o.items ?? []).map(_toVI), vCtx);
-          const wasRepaired =
-            !tasteValidateOutfit((outfits[idx]?.items ?? []).map(_toVI), vCtx)
-              .valid && r.valid;
-          return { o, valid: r.valid, cs: r.coherenceScore, wasRepaired };
-        });
-        scored.sort((a: any, b: any) =>
-          a.valid === b.valid ? b.cs - a.cs : a.valid ? -1 : 1,
-        );
-        outfits = scored.filter((s: any) => s.valid).map((s: any) => s.o);
-        _validatorRanFast = true;
-        _numHardFailedFast = scored.filter((s: any) => !s.valid).length;
-        _numRepairedViaSwapFast = scored.filter(
-          (s: any) => s.wasRepaired,
-        ).length;
-      }
-
-      // ── Executive Coherence Gate (pre-score rejection filter) ──────
-      // Lightweight deterministic filter that rejects outfits violating
-      // executive formality constraints. Only activates for executive queries.
-      const _isExecutiveQuery =
-        /\b(executive|business\s*formal|board\s*room|boardroom|corporate\s*formal)\b/i.test(query);
-
-      if (_isExecutiveQuery && outfits.length > 0) {
-        // 5-rank formality scale mapping
-        const formalityRank = (score: number | undefined): number => {
-          if (score == null) return 3; // default to Business Casual
-          if (score <= 2) return 1; // Casual
-          if (score <= 4) return 2; // Smart Casual
-          if (score <= 6) return 3; // Business Casual
-          if (score <= 8) return 4; // Business Formal
-          return 5; // Black Tie
-        };
-
-        const NON_TAILORED_OUTERWEAR =
-          /\b(puffer|windbreaker|anorak|parka|field\s*jacket|bomber|hoodie|fleece|rain\s*coat|raincoat|track\s*jacket)\b/i;
-
-        // Hard deterministic reject for casual tops by name/subcategory (not metadata-dependent)
-        const EXECUTIVE_CASUAL_TOP_REGEX =
-          /\b(hoodie|sweatshirt|t-?shirt|tee|pullover|graphic|athletic)\b/i;
-
-        const coherent = outfits.filter((outfit: any) => {
-          const items: CatalogItem[] = outfit.items ?? [];
-          if (items.length === 0) return true;
-
-          // Rule 1: Formality deviation > 1 level (exclude accessories)
-          const FORMALITY_SLOTS = new Set(['tops', 'bottoms', 'outerwear', 'shoes']);
-          const coreItems = items.filter((it) =>
-            FORMALITY_SLOTS.has(mapMainCategoryToSlot(it.main_category)),
-          );
-          if (coreItems.length > 0) {
-            const ranks = coreItems.map((it) => formalityRank(it.formality_score));
-            const formalitySpread = Math.max(...ranks) - Math.min(...ranks);
-            if (formalitySpread > 1) {
-              // console.log(
-              //   `⚡ [FAST] EXECUTIVE_COHERENCE_FAIL: "${outfit.title}" formality spread=${formalitySpread}`,
-              // );
-              return false;
-            }
-          }
-
-          // Rule 2: Casual piece in executive mode
-          const hasCasual = items.some((it) => {
-            const dc = (it.dress_code ?? '').toLowerCase();
-            return (
-              dc === 'ultracasual' ||
-              dc === 'ultra casual' ||
-              dc === 'casual' ||
-              (it.formality_score != null && it.formality_score < 4)
-            );
-          });
-          if (hasCasual) {
-            // console.log(
-            //   `⚡ [FAST] EXECUTIVE_COHERENCE_FAIL: "${outfit.title}" contains casual piece in executive context`,
-            // );
-            return false;
-          }
-
-          // Rule 3: Color family coherence (executive neutral-aware)
-          // Executive neutrals are expected in formal outfits and don't count
-          // toward the accent limit. Allow unlimited neutrals + at most 1 accent.
-          const EXEC_NEUTRALS = new Set([
-            'white', 'gray', 'grey', 'charcoal', 'black',
-            'navy', 'midnight', 'slate', 'stone',
-            'brown', 'tan', 'beige', 'ecru',
-          ]);
-          const normalizeExecColor = (raw: string): string => {
-            const t = raw.trim().toLowerCase();
-            if (t === 'grey') return 'gray';
-            if (t === 'navy blue') return 'navy';
-            if (t === 'midnight blue') return 'midnight';
-            if (t === 'dark blue' || t === 'ink') return 'navy';
-            return t;
-          };
-          const families = new Set(
-            items
-              .map((it) => normalizeExecColor(it.color_family ?? ''))
-              .filter(Boolean),
-          );
-          const neutralFamilies: string[] = [];
-          const nonNeutralFamilies: string[] = [];
-          for (const f of families) {
-            if (EXEC_NEUTRALS.has(f)) {
-              neutralFamilies.push(f);
-            } else {
-              nonNeutralFamilies.push(f);
-            }
-          }
-          if (nonNeutralFamilies.length > 1) {
-            // console.log(
-            //   `⚡ [FAST] EXECUTIVE_COHERENCE_FAIL: "${outfit.title}" accents=${nonNeutralFamilies.length} neutrals=[${neutralFamilies.join(', ')}] accents=[${nonNeutralFamilies.join(', ')}]`,
-            // );
-            return false;
-          }
-
-          // Rule 4: Non-tailored outerwear in executive context
-          const hasNonTailored = items.some((it) => {
-            const slot = mapMainCategoryToSlot(it.main_category);
-            if (slot !== 'outerwear') return false;
-            const text = `${it.subcategory ?? ''} ${it.name ?? it.label ?? ''}`;
-            return NON_TAILORED_OUTERWEAR.test(text);
-          });
-          if (hasNonTailored) {
-            // console.log(
-            //   `⚡ [FAST] EXECUTIVE_COHERENCE_FAIL: "${outfit.title}" has non-tailored outerwear in executive context`,
-            // );
-            return false;
-          }
-
-          // Rule 5: Hard reject casual tops by name/subcategory string match
-          const hasCasualTop = items.some((it) => {
-            const slot = mapMainCategoryToSlot(it.main_category);
-            if (slot !== 'tops') return false;
-            const combined = `${it.name ?? ''} ${it.subcategory ?? ''}`.toLowerCase();
-            return EXECUTIVE_CASUAL_TOP_REGEX.test(combined);
-          });
-          if (hasCasualTop) {
-            // console.log(
-            //   `⚡ [FAST] EXECUTIVE_COHERENCE_FAIL: "${outfit.title}" reason: CASUAL_TOP_HARD_REJECT`,
-            // );
-            return false;
-          }
-
-          return true;
-        });
-
-        // Fail-open: if all outfits rejected, keep original set
-        if (coherent.length > 0) {
-          // console.log(
-          //   `⚡ [FAST] Executive coherence gate: ${outfits.length} → ${coherent.length} outfits`,
-          // );
-          outfits = coherent;
-        } else {
-          // console.log(
-          //   '⚡ [FAST] Executive coherence gate would reject all — keeping originals (fail-open)',
-          // );
-        }
-      }
-
       // Elite Scoring hook — Phase 2: rerank when V2 flag on
-      // ONE-FLAG: ELITE_ENABLED in feature-flags.ts:42 force-enables STUDIO + STUDIO_V2
       const demoEliteFast = isEliteDemoUser(userId);
-      const _usedV2Fast = ELITE_FLAGS.STUDIO_V2 || demoEliteFast;
-      const _shadowOnlyFast =
-        demoEliteFast &&
-        LEARNING_FLAGS.SHADOW_MODE &&
-        !ELITE_FLAGS.STUDIO &&
-        !ELITE_FLAGS.STUDIO_V2;
-      let _eliteRerankRanFast = false;
       let eliteOutfits = outfits;
       if (ELITE_FLAGS.STUDIO || ELITE_FLAGS.STUDIO_V2 || demoEliteFast) {
         const canonical = outfits.map(normalizeStudioOutfit);
-        // Merge FAST learning signals into elite context (without mutating original)
-        const _fastMergedCtx: StyleContext = fastSignals
-          ? { ...eliteStyleContext, fashionState: fastSignals.summary }
-          : eliteStyleContext;
-        const result = elitePostProcessOutfits(canonical, _fastMergedCtx, {
+        const result = elitePostProcessOutfits(canonical, eliteStyleContext, {
           mode: 'studio',
           requestId: reqId,
-          rerank: _usedV2Fast,
+          rerank: ELITE_FLAGS.STUDIO_V2 || demoEliteFast,
           debug: true,
         });
-        if (_shadowOnlyFast) {
-          const eliteIds = (result.outfits as any[]).map((o) => o.id);
-          const baseIds = canonical.map((o) => o.id);
-          console.log(
-            JSON.stringify({
-              _tag: 'ELITE_SHADOW_COMPARE',
-              mode: 'fast',
-              baseOrder: baseIds,
-              eliteOrder: eliteIds,
-              orderChanged:
-                JSON.stringify(baseIds) !== JSON.stringify(eliteIds),
-              scores: result.debug?.scores,
-            }),
-          );
-          // Shadow: keep original order
-        } else {
-          eliteOutfits = result.outfits.map(denormalizeStudioOutfit);
-          _eliteRerankRanFast = _usedV2Fast;
-          // Safety: fall back if count unexpectedly reduced
-          if (eliteOutfits.length < outfits.length) {
-            console.log(
-              JSON.stringify({
-                _tag: 'ELITE_RERANK_FALLBACK',
-                mode: 'fast',
-                preCount: outfits.length,
-                postCount: eliteOutfits.length,
-              }),
-            );
-            eliteOutfits = outfits;
-          }
-        }
-      }
-      // ── FAST-local learning boost (after elite rerank, before final return) ──
-      if (fastSignals) {
-        const { outfits: boosted, boostLog } = applyFastLearningBoost(
-          eliteOutfits,
-          fastSignals,
-        );
-        eliteOutfits = boosted;
-        if (boostLog.length > 0) {
-          // console.log(
-          //   JSON.stringify({ _tag: 'FAST_LEARNING_BOOST', boosts: boostLog }),
-          // );
-        }
+        eliteOutfits = result.outfits.map(denormalizeStudioOutfit);
       }
 
-      if (demoEliteFast) {
-        console.log(
-          JSON.stringify({
-            _tag: 'ELITE_ACTIVATION_STATUS',
-            mode: 'fast',
-            shadowMode: _shadowOnlyFast,
-            demoElite: true,
-            stateLoaded: !!fastSignals || !!eliteStyleContext?.fashionState,
-            signalCount:
-              fastSignals?.signalCount ??
-              (eliteStyleContext?.fashionState
-                ? Object.keys(eliteStyleContext.fashionState).length
-                : 0),
-          }),
-        );
-      }
       // ── Elite Scoring: log exposure event (fire-and-forget) ──
       // NOT gated by ELITE_FLAGS — gated by LEARNING_FLAGS + consent + circuit breaker
       {
@@ -4247,94 +3794,53 @@ ${slotLines}
         this.learningEventsService.logEvent(exposureEvent).catch(() => {});
       }
 
-      // ── Avoided-color return guard (mirrors suggestVisualOutfits) ──
-      const _avoid = vCtx?.styleProfile?.avoid_colors ?? [];
-      if (_avoid.length > 0) {
-        const _expandedFast = expandAvoidColors(_avoid);
-        const _hasAvoided = (outfit: any): boolean => {
-          for (const it of outfit.items ?? []) {
-            for (const ic of extractItemColors(it as any)) {
-              for (const ac of _expandedFast) {
-                if (colorMatchesSafe(ic, ac)) return true;
-              }
-            }
-          }
+      // ── Local quality gate: drop outfits with obvious stylistic conflicts ──
+      {
+        const _txt = (it: any): string =>
+          `${it?.name ?? ''} ${it?.label ?? ''} ${it?.subcategory ?? ''}`.toLowerCase();
+
+        const _hasConflict = (outfit: any): boolean => {
+          const items: any[] = outfit.items ?? [];
+          if (items.length === 0) return true;
+
+          const bySlot = (s: string) =>
+            items.filter((it: any) => mapMainCategoryToSlot(it.main_category) === s);
+
+          const tops = bySlot('tops');
+          const bottoms = bySlot('bottoms');
+          const shoes = bySlot('shoes');
+          const dresses = bySlot('dresses');
+
+          const TAILORED_TOP = /\b(blazer|sport\s*coat|suit\s*jacket|dress\s*shirt)\b/i;
+          const ATHLETIC_BOTTOM = /\b(jogger|sweatpant|track\s*pant|gym\s*short|athletic\s*short)\b/i;
+          const FORMAL_SHOE = /\b(oxford|derby|loafer|dress\s*shoe|brogue|monk\s*strap)\b/i;
+          const ATHLETIC_WEAR = /\b(hoodie|sweatshirt|jogger|sweatpant|track|gym|athletic)\b/i;
+          const TAILORED = /\b(blazer|sport\s*coat|suit)\b/i;
+          const CASUAL_FOOT = /\b(flip[- ]?flop|slides?|crocs?)\b/i;
+          const FORMAL_DRESS = /\b(gown|evening\s*dress|cocktail\s*dress|formal\s*dress)\b/i;
+          const ATHLETIC_SHOE = /\b(sneaker|trainer|running\s*shoe|athletic\s*shoe)\b/i;
+
+          // Rule 1: Tailored upper + athletic lower
+          if (tops.some((t: any) => TAILORED_TOP.test(_txt(t))) &&
+              bottoms.some((b: any) => ATHLETIC_BOTTOM.test(_txt(b)))) return true;
+
+          // Rule 2: Formal shoes + athletic wear
+          if (shoes.some((s: any) => FORMAL_SHOE.test(_txt(s))) &&
+              [...tops, ...bottoms].some((i: any) => ATHLETIC_WEAR.test(_txt(i)))) return true;
+
+          // Rule 3: Blazer/suit + flip-flops/slides
+          if ([...tops, ...bySlot('outerwear')].some((i: any) => TAILORED.test(_txt(i))) &&
+              shoes.some((s: any) => CASUAL_FOOT.test(_txt(s)))) return true;
+
+          // Rule 4: Formal dress + sneakers
+          if (dresses.some((d: any) => FORMAL_DRESS.test(_txt(d))) &&
+              shoes.some((s: any) => ATHLETIC_SHOE.test(_txt(s)))) return true;
+
           return false;
         };
-        eliteOutfits = eliteOutfits.filter((o: any) => !_hasAvoided(o));
-      }
 
-      // ── Style Veto: remove structurally incoherent outfits ──
-      {
-        const _vetoCtxFast = { query };
-        const _beforeVetoFast = eliteOutfits.length;
-        const _coherentFast = eliteOutfits.filter((o: any) => {
-          const v = isStylisticallyIncoherent(o, _vetoCtxFast);
-          if (v.invalid) {
-            // console.log(
-            //   JSON.stringify({
-            //     _tag: 'STYLIST_VETO_REJECTED',
-            //     mode: 'fast',
-            //     reason: v.reason,
-            //     outfitSummary: (o.items ?? []).map((it: any) =>
-            //       `${it.name ?? it.label ?? '?'} (${it.subcategory ?? it.main_category ?? '?'})`
-            //     ),
-            //   }),
-            // );
-          }
-          return !v.invalid;
-        });
-        if (_coherentFast.length < _beforeVetoFast && _coherentFast.length < 3) {
-          // console.log(
-          //   JSON.stringify({
-          //     _tag: 'STYLIST_VETO_INSUFFICIENT',
-          //     mode: 'fast',
-          //     remainingCount: _coherentFast.length,
-          //   }),
-          // );
-        }
-        eliteOutfits = _coherentFast;
-      }
-
-      // ── Style Judge: curate best outfits by holistic taste scoring ──
-      const _judgeCtxFast = {
-        requestedDressCode: vCtx?.requestedDressCode,
-        query,
-      };
-      const _candidateCountFast = eliteOutfits.length;
-      eliteOutfits = selectTopOutfits(eliteOutfits, _judgeCtxFast);
-      // console.log(
-      //   JSON.stringify({
-      //     _tag: 'STUDIO_FINAL_CURATION_PROOF',
-      //     mode: 'fast',
-      //     candidateCount: _candidateCountFast,
-      //     returnedCount: eliteOutfits.length,
-      //     topScores: eliteOutfits.map((o: any) =>
-      //       scoreOutfit(o, _judgeCtxFast).total,
-      //     ),
-      //   }),
-      // );
-
-      // ── FINAL DEDUP PASS (Tier 4 Presentation Guarantee) ──
-      {
-        const seenSignatures = new Set<string>();
-        const beforeDedup = eliteOutfits.length;
-        eliteOutfits = eliteOutfits.filter((outfit: any) => {
-          const allItemIds = Object.values(outfit.slots || {})
-            .flat()
-            .map((item: any) => item?.id)
-            .filter(Boolean)
-            .sort();
-          const signature = allItemIds.join('|');
-          if (seenSignatures.has(signature)) return false;
-          seenSignatures.add(signature);
-          return true;
-        });
-        if (eliteOutfits.length < beforeDedup) {
-          // console.log(
-          //   `⚡ [FAST] FINAL_DEDUP: ${beforeDedup} → ${eliteOutfits.length} outfits`,
-          // );
-        }
+        const _filtered = eliteOutfits.filter((o: any) => !_hasConflict(o));
+        eliteOutfits = _filtered.length > 0 ? _filtered : [eliteOutfits[0]];
       }
 
       return {

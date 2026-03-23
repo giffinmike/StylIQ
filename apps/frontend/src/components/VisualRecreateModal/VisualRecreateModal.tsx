@@ -479,7 +479,7 @@ export default function VisualRecreateModal({
             }}>
             <View style={{flex: 1}}>
               <Text style={[globalStyles.sectionTitle, {marginTop: 8}]}>
-                RECREATED STYLE
+                SAVED RECREATED STYLE
               </Text>
             </View>
 

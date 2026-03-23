@@ -629,11 +629,11 @@ function scoreCandidate(
   if (candArchetype) {
     const ideals = IDEAL_ARCHETYPES[outfitCtx];
     if (ideals.length > 0 && ideals[0] === candArchetype) {
-      score += 40; // ideal match
+      score += 70; // ideal match
     } else if (ideals.includes(candArchetype)) {
-      score += 30; // good match
+      score += 55; // good match
     } else if (STYLE_COMPAT[candArchetype][outfitCtx]) {
-      score += 15; // compatible (pass or borderline)
+      score += 25; // compatible (pass or borderline)
     }
   }
 
@@ -648,12 +648,12 @@ function scoreCandidate(
   // --- Bottom–shoe harmony scoring (dominant signal) ---
   if (bottomTemp && candTemp) {
     if (candTemp === bottomTemp) {
-      score += 45; // strong harmony (e.g., brown loafer + brown chinos)
+      score += 20; // strong harmony (e.g., brown loafer + brown chinos)
     } else if (
       (candTemp === 'neutral' || candTemp === 'earth') &&
       (bottomTemp === 'earth' || bottomTemp === 'neutral')
     ) {
-      score += 25; // acceptable harmony (e.g., black shoe + tan chinos)
+      score += 10; // acceptable harmony (e.g., black shoe + tan chinos)
     } else if (
       candTemp !== 'neutral' &&
       candTemp !== 'earth' &&
@@ -880,6 +880,34 @@ export function refineOutfitShoes(
           candidate: candidate.name,
           score,
         });
+      }
+    }
+
+    // --- Neutral fallback when no scored candidate survived ---
+    if (!bestCandidate || bestScore === -Infinity) {
+      const fallback = allShoes
+        .filter(s => {
+          if (s.id === shoeItem.id) return false;
+          if (usedShoeIds.has(s.id)) return false;
+          const arch = resolveShoeArchetype(s);
+          if (arch === 'rugged') return false;
+          const form = s.formality_score ?? s.formalityScore ?? 5; // default mid-range
+          if (form < 4 || form > 7) return false;
+          const cf = (s.colorFamily ?? s.color_family ?? '').toLowerCase();
+          return cf === 'black' || cf === 'brown';
+        })
+        .sort((a, b) =>
+          (b.formality_score ?? b.formalityScore ?? 5) -
+          (a.formality_score ?? a.formalityScore ?? 5),
+        );
+      console.log('[shoeRefine] FALLBACK_POOL', {
+        count: fallback.length,
+        names: fallback.map(s => s.name),
+      });
+      if (fallback.length > 0) {
+        bestCandidate = fallback[0];
+        bestScore = 5; // meets threshold — fallback must not be blocked
+        console.log('[shoeRefine] NEUTRAL_FALLBACK', { name: bestCandidate.name });
       }
     }
 

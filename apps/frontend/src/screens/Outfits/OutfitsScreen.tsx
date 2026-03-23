@@ -81,7 +81,7 @@ const OutfitsScreen = ({navigate}: Props) => {
             <View style={styles.cardTextContainer}>
               <Text style={styles.cardTitle}>AI Outfit Studio</Text>
               <Text style={styles.cardSubtitle}>
-                Let AI generate outfits based on your style
+                Let Styla AI generate outfits based on your style, prompts or mood
               </Text>
             </View>
             <Icon name="chevron-right" size={24} color={theme.colors.muted} />
@@ -103,7 +103,7 @@ const OutfitsScreen = ({navigate}: Props) => {
             <View style={styles.cardTextContainer}>
               <Text style={styles.cardTitle}>Manually Build Outfit</Text>
               <Text style={styles.cardSubtitle}>
-                Drag and drop items from your wardrobe to build an outfit
+                Drag and drop items from your wardrobe to build the perfect customized outfit
               </Text>
             </View>
             <Icon name="chevron-right" size={24} color={theme.colors.muted} />
