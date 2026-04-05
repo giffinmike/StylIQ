@@ -331,6 +331,36 @@ export default function BudgetAndBrandsScreen({navigate}: Props) {
             style={[globalStyles.sectionTitle4, {color: colors.foreground}]}>
             Your Favorite Brands:
           </Text>
+
+          <AppleTouchFeedback
+            hapticStyle="impactLight"
+            onPress={() =>
+              navigate('AllBrandsPicker', {selected: selectedBrands})
+            }>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                paddingVertical: 12,
+                paddingHorizontal: 16,
+                borderRadius: 10,
+                borderWidth: tokens.borderWidth.hairline,
+                borderColor: theme.colors.primary,
+                marginTop: 12,
+                marginBottom: 8,
+              }}>
+              <Text
+                style={{
+                  color: theme.colors.primary,
+                  fontWeight: '600',
+                  fontSize: 15,
+                }}>
+                Browse All Brands
+              </Text>
+            </View>
+          </AppleTouchFeedback>
+
           <Text
             style={[
               globalStyles.subLabel,
