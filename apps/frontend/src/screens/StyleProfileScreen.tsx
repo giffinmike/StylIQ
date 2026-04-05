@@ -254,6 +254,11 @@ export default function StyleProfileScreen({navigate}: Props) {
           <Text style={styles.progressLabel}>
             Style Profile {progress}% complete
           </Text>
+          {__DEV__ && (
+            <Text style={{color: '#e94560', fontSize: 10, marginTop: 2}}>
+              DEV preferred_brands: type={typeof styleProfile?.preferred_brands}, isArray={String(Array.isArray(styleProfile?.preferred_brands))}, len={styleProfile?.preferred_brands?.length ?? null}, progress={progress}, value={JSON.stringify(styleProfile?.preferred_brands)}
+            </Text>
+          )}
 
           <View style={styles.progressBar}>
             <View style={[styles.progressFill, {width: `${progress}%`}]} />

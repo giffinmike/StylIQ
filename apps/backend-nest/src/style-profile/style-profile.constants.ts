@@ -116,3 +116,26 @@ export const ALLOWED_COLUMNS = new Set([
   'footwear_comfort',
   'foot_width',
 ]);
+
+// Columns that are TEXT[] in Postgres — need explicit cast for empty arrays
+export const TEXT_ARRAY_COLUMNS = new Set([
+  'favorite_colors',
+  'color_preferences',
+  'disliked_styles',
+  'style_keywords',
+  'style_preferences',
+  'fit_preferences',
+  'preferred_brands',
+  'daily_activities',
+  'shopping_habits',
+  'personality_traits',
+  'fabric_preferences',
+  'occasions',
+  'style_icons',
+  'goals',
+  'coverage_no_go',
+  'avoid_colors',
+  'avoid_materials',
+  'pattern_preferences',
+  'avoid_patterns',
+]);

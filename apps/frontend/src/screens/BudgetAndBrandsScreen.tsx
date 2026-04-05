@@ -11,14 +11,15 @@ import {useAppTheme} from '../context/ThemeContext';
 import {Chip} from '../components/Chip/Chip';
 import BackHeader from '../components/Backheader/Backheader';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {useAuth0} from 'react-native-auth0';
 import {useStyleProfile} from '../hooks/useStyleProfile';
+import {useUUID} from '../context/UUIDContext';
 import currency from 'currency.js';
 import {useGlobalStyles} from '../styles/useGlobalStyles';
 import {tokens} from '../styles/tokens/tokens';
 import AppleTouchFeedback from '../components/AppleTouchFeedback/AppleTouchFeedback';
 import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
 import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
+import {useShoppingStore} from '../../../../store/shoppingStore';
 
 type Props = {navigate: (screen: string) => void};
 
@@ -70,16 +71,16 @@ export default function BudgetAndBrandsScreen({navigate}: Props) {
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [newBrand, setNewBrand] = useState('');
 
-  const {user} = useAuth0();
-  const userId = user?.sub || '';
-  const {styleProfile, updateProfile, refetch} = useStyleProfile(userId);
+  const uuid = useUUID();
+  const {styleProfile, updateProfile, updateProfileAsync, refetch} = useStyleProfile(uuid || '');
+  const quickShopSites = useShoppingStore(s => s.quickShopSites);
 
   // ─────────────────────────────────────────────
   // Initial load from DB + local fallback
   // ─────────────────────────────────────────────
   useEffect(() => {
-    if (userId) refetch();
-  }, [userId, refetch]);
+    if (uuid) refetch();
+  }, [uuid, refetch]);
 
   useEffect(() => {
     (async () => {
@@ -97,8 +98,9 @@ export default function BudgetAndBrandsScreen({navigate}: Props) {
         all = JSON.parse(stored);
       }
 
-      // Merge DB + cached to ensure chips never disappear
-      const merged = Array.from(new Set([...all, ...dbBrands]));
+      // Merge defaults + DB + cached to ensure chips never disappear
+      const defaultBrandNames = quickShopSites.map(s => s.name);
+      const merged = Array.from(new Set([...defaultBrandNames, ...all, ...dbBrands]));
       setAllBrands(merged);
 
       // Save merged vocab back to cache
@@ -145,14 +147,14 @@ export default function BudgetAndBrandsScreen({navigate}: Props) {
 
   const commitBudgetMin = async () => {
     if (parsedBudgetMin !== null && !isNaN(parsedBudgetMin)) {
-      await updateProfile('budget_min', parsedBudgetMin);
+      await updateProfileAsync('budget_min', parsedBudgetMin);
       await refetch();
     }
   };
 
   const commitBudgetMax = async () => {
     if (parsedBudgetMax !== null && !isNaN(parsedBudgetMax)) {
-      await updateProfile('budget_max', parsedBudgetMax);
+      await updateProfileAsync('budget_max', parsedBudgetMax);
       await refetch();
     }
   };
@@ -171,8 +173,8 @@ export default function BudgetAndBrandsScreen({navigate}: Props) {
     setSelectedBrands(next);
 
     try {
-      // ✅ Only save ON brands to DB
-      await updateProfile('preferred_brands', next);
+      // ✅ Only save ON brands to DB, then refetch fresh server state
+      await updateProfileAsync('preferred_brands', next);
       await refetch();
     } catch (e) {
       // rollback if failed
@@ -205,7 +207,7 @@ export default function BudgetAndBrandsScreen({navigate}: Props) {
 
     try {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newAll));
-      await updateProfile('preferred_brands', newSelected);
+      await updateProfileAsync('preferred_brands', newSelected);
       await refetch();
       setNewBrand('');
       Keyboard.dismiss();

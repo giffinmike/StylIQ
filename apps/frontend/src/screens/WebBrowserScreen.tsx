@@ -2728,7 +2728,7 @@ Respond with JSON array of exactly 5 objects with SPECIFIC recommendations:
             lastNavScrollY.current = y;
           }}
           showsVerticalScrollIndicator={false}>
-          <Text style={styles.landingTitle}>Quick Sites Shortcuts</Text>
+          <Text style={styles.landingTitle}>Quick Brands Shortcuts</Text>
           <View style={styles.shoppingGrid}>
             {quickShopSites.map(site => (
               <TouchableOpacity
