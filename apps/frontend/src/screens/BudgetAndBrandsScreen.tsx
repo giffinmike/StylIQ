@@ -327,7 +327,38 @@ export default function BudgetAndBrandsScreen({navigate}: Props) {
           </View>
 
           {/* Brands Section */}
-          <Text
+     
+
+          {/* <Text
+            style={[
+              globalStyles.subLabel,
+              {color: colors.foreground, marginTop: 12},
+            ]}>
+            Enter 1 brand name at a time and hit Enter or Return
+          </Text> */}
+          <View
+            style={[
+              globalStyles.styleContainer1,
+              {borderWidth: tokens.borderWidth.md},
+            ]}>
+            <View style={globalStyles.pillContainer}>
+              {allBrands.length === 0 && (
+                <Text style={{color: colors.muted, marginBottom: 8}}>
+                  No brands yet — add one below.
+                </Text>
+              )}
+
+              {allBrands.map(brand => (
+                <Chip
+                  key={brand}
+                  label={brand}
+                  selected={selectedBrands.includes(brand)}
+                  onPress={() => toggleBrand(brand)}
+                />
+              ))}
+            </View>
+
+                 <Text
             style={[globalStyles.sectionTitle4, {color: colors.foreground}]}>
             Your Favorite Brands:
           </Text>
@@ -360,35 +391,6 @@ export default function BudgetAndBrandsScreen({navigate}: Props) {
               </Text>
             </View>
           </AppleTouchFeedback>
-
-          <Text
-            style={[
-              globalStyles.subLabel,
-              {color: colors.foreground, marginTop: 12},
-            ]}>
-            Enter 1 brand name at a time and hit Enter or Return
-          </Text>
-          <View
-            style={[
-              globalStyles.styleContainer1,
-              {borderWidth: tokens.borderWidth.md},
-            ]}>
-            <View style={globalStyles.pillContainer}>
-              {allBrands.length === 0 && (
-                <Text style={{color: colors.muted, marginBottom: 8}}>
-                  No brands yet — add one below.
-                </Text>
-              )}
-
-              {allBrands.map(brand => (
-                <Chip
-                  key={brand}
-                  label={brand}
-                  selected={selectedBrands.includes(brand)}
-                  onPress={() => toggleBrand(brand)}
-                />
-              ))}
-            </View>
 
             {/* Add new brand input */}
             <TextInput
