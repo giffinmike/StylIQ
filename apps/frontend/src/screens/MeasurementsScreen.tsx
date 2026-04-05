@@ -343,32 +343,52 @@ export default function MeasurementsScreen({navigate}: Props) {
                 />
               )}
 
-              {Object.keys(fieldMap).map(label => (
-                <TextInput
-                  key={label}
-                  placeholder={`${label} ${
-                    label === 'Shoe Size'
-                      ? ''
-                      : unitPreference === 'metric'
-                      ? '(cm)'
-                      : '(in)'
-                  }`}
-                  placeholderTextColor={colors.muted}
-                  style={[
-                    styles.input,
-                    {
-                      borderColor: theme.colors.inputBorder,
-                      color: colors.foreground,
-                    },
-                  ]}
-                  keyboardType={
-                    label === 'Shoe Size' ? 'decimal-pad' : 'number-pad'
-                  }
-                  value={values[label] || ''}
-                  onChangeText={val => handleChange(label, val)}
-                  onBlur={() => commitChange(label)}
-                />
-              ))}
+              {Object.keys(fieldMap).map(label => {
+                const unit =
+                  label === 'Shoe Size'
+                    ? ''
+                    : label === 'Weight'
+                    ? unitPreference === 'metric'
+                      ? ' (kg)'
+                      : ' (lbs)'
+                    : unitPreference === 'metric'
+                    ? ' (cm)'
+                    : ' (in)';
+                return (
+                  <View key={label}>
+                    <Text
+                      style={[
+                        globalStyles.title,
+                        {
+                          color: colors.foreground,
+                          fontSize: 16,
+                          fontWeight: '600',
+                          marginBottom: 10,
+                        },
+                      ]}>
+                      {label}
+                      {unit}
+                    </Text>
+                    <TextInput
+                      placeholder={label}
+                      placeholderTextColor={colors.muted}
+                      style={[
+                        styles.input,
+                        {
+                          borderColor: theme.colors.inputBorder,
+                          color: colors.foreground,
+                        },
+                      ]}
+                      keyboardType={
+                        label === 'Shoe Size' ? 'decimal-pad' : 'number-pad'
+                      }
+                      value={values[label] || ''}
+                      onChangeText={val => handleChange(label, val)}
+                      onBlur={() => commitChange(label)}
+                    />
+                  </View>
+                );
+              })}
             </View>
           </View>
         </View>
