@@ -18,6 +18,7 @@ import {
   LayoutChangeEvent,
   Alert,
   KeyboardAvoidingView,
+  SectionList,
 } from 'react-native';
 import {WebView} from 'react-native-webview';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -41,6 +42,7 @@ import ImageSaverModule from '../native/ImageSaverModule';
 import {API_BASE_URL} from '../config/api';
 import {getAccessToken} from '../utils/auth';
 import AppleTouchFeedback from '../components/AppleTouchFeedback/AppleTouchFeedback';
+import brandsData from '../data/brands.json';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import TrackingConsentModal from '../components/TrackingConsentModal/TrackingConsentModal';
 import SwipeableCard from '../components/SwipeableCard/SwipeableCard';
@@ -262,6 +264,39 @@ Respond with JSON array of exactly 5 objects with SPECIFIC recommendations:
   const [showAddSiteModal, setShowAddSiteModal] = useState(false);
   const [newSiteName, setNewSiteName] = useState('');
   const [newSiteUrl, setNewSiteUrl] = useState('');
+  // Browse All Brands picker modal state
+  const [showBrandPickerModal, setShowBrandPickerModal] = useState(false);
+  const [brandSearchQuery, setBrandSearchQuery] = useState('');
+
+  // Build a name→url lookup from existing quickShopSites (the only real URL source)
+  const quickShopUrlMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const site of quickShopSites) {
+      map.set(site.name.toLowerCase(), site.url);
+    }
+    return map;
+  }, [quickShopSites]);
+
+  // Full brand list filtered by search, grouped into alphabetical sections
+  const brandPickerSections = useMemo(() => {
+    const q = brandSearchQuery.trim().toLowerCase();
+    const filtered = q
+      ? (brandsData as {id: string; name: string}[]).filter(b =>
+          b.name.toLowerCase().includes(q),
+        )
+      : (brandsData as {id: string; name: string}[]);
+    const buckets = new Map<string, {id: string; name: string}[]>();
+    for (const b of filtered) {
+      const first = b.name.charAt(0);
+      const key = /[a-zA-Z]/.test(first) ? first.toUpperCase() : '#';
+      if (!buckets.has(key)) buckets.set(key, []);
+      buckets.get(key)!.push(b);
+    }
+    const keys = [...buckets.keys()].sort((a, b) =>
+      a === '#' ? -1 : b === '#' ? 1 : a.localeCompare(b),
+    );
+    return keys.map(k => ({title: k, data: buckets.get(k)!}));
+  }, [brandSearchQuery]);
 
   // Drag and drop state for tabs
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
@@ -2758,6 +2793,19 @@ Respond with JSON array of exactly 5 objects with SPECIFIC recommendations:
                 <Text style={styles.shoppingButtonText}>{site.name}</Text>
               </TouchableOpacity>
             ))}
+               <TouchableOpacity
+              style={[styles.shoppingButton, styles.addSiteTile]}
+              onPress={() => {
+                triggerHaptic('impactLight');
+                setShowBrandPickerModal(true);
+              }}>
+              <MaterialIcons
+                name="search"
+                size={28}
+                color={theme.colors.primary}
+              />
+              <Text style={styles.shoppingButtonText}>Browse All Brands</Text>
+            </TouchableOpacity>
             <TouchableOpacity
               style={[styles.shoppingButton, styles.addSiteTile]}
               onPress={() => {
@@ -2769,8 +2817,9 @@ Respond with JSON array of exactly 5 objects with SPECIFIC recommendations:
                 size={28}
                 color={theme.colors.primary}
               />
-              <Text style={styles.shoppingButtonText}>Add Site</Text>
+              <Text style={styles.shoppingButtonText}>Add A new Brand</Text>
             </TouchableOpacity>
+         
           </View>
         </ScrollView>
       ) : (
@@ -4209,6 +4258,154 @@ Respond with JSON array of exactly 5 objects with SPECIFIC recommendations:
           onDismiss={dismissBrowserOnboarding}
         />
       )}
+
+      {/* Browse All Brands Picker Modal */}
+      <Modal
+        visible={showBrandPickerModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => {
+          setShowBrandPickerModal(false);
+          setBrandSearchQuery('');
+        }}>
+        <View style={{flex: 1, backgroundColor: theme.colors.background}}>
+          {/* Header */}
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingHorizontal: 16,
+              paddingTop: insets.top + 12,
+              paddingBottom: 12,
+            }}>
+            <TouchableOpacity
+              onPress={() => {
+                setShowBrandPickerModal(false);
+                setBrandSearchQuery('');
+              }}
+              style={{flexDirection: 'row', alignItems: 'center'}}>
+              <Icon name="close" size={24} color={theme.colors.foreground} />
+            </TouchableOpacity>
+            <Text
+              style={{
+                fontSize: 17,
+                fontWeight: '600',
+                color: theme.colors.foreground,
+              }}>
+              Browse All Brands
+            </Text>
+            <View style={{width: 24}} />
+          </View>
+
+          {/* Search */}
+          <View style={{paddingHorizontal: 16, paddingBottom: 8}}>
+            <TextInput
+              placeholder="Search brands..."
+              placeholderTextColor={theme.colors.muted}
+              style={{
+                borderWidth: tokens.borderWidth.hairline,
+                borderRadius: 10,
+                borderColor: theme.colors.inputBorder,
+                backgroundColor: theme.colors.input2,
+                color: theme.colors.foreground,
+                padding: 10,
+                fontSize: 16,
+              }}
+              value={brandSearchQuery}
+              onChangeText={setBrandSearchQuery}
+              autoCorrect={false}
+              autoCapitalize="none"
+              clearButtonMode="while-editing"
+            />
+          </View>
+
+          {/* Brand List */}
+          <SectionList
+            sections={brandPickerSections}
+            keyExtractor={item => item.id}
+            renderSectionHeader={({section}) => (
+              <View
+                style={{
+                  backgroundColor: theme.colors.background,
+                  paddingHorizontal: 16,
+                  paddingVertical: 6,
+                }}>
+                <Text
+                  style={{
+                    fontSize: 14,
+                    fontWeight: '700',
+                    color: theme.colors.muted,
+                  }}>
+                  {section.title}
+                </Text>
+              </View>
+            )}
+            renderItem={({item}) => {
+              const knownUrl = quickShopUrlMap.get(item.name.toLowerCase());
+              return (
+                <TouchableOpacity
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    paddingHorizontal: 16,
+                    paddingVertical: 13,
+                  }}
+                  onPress={() => {
+                    triggerHaptic('impactLight');
+                    setShowBrandPickerModal(false);
+                    setBrandSearchQuery('');
+                    if (knownUrl) {
+                      addQuickShopSite(item.name, knownUrl);
+                      triggerHaptic('notificationSuccess');
+                    } else {
+                      setNewSiteName(item.name);
+                      setNewSiteUrl('');
+                      setShowAddSiteModal(true);
+                    }
+                  }}
+                  activeOpacity={0.6}>
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      color: theme.colors.foreground,
+                      flex: 1,
+                    }}>
+                    {item.name}
+                  </Text>
+                  {knownUrl ? (
+                    <Icon
+                      name="add-circle-outline"
+                      size={20}
+                      color={theme.colors.primary}
+                    />
+                  ) : (
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        color: theme.colors.muted,
+                      }}>
+                      URL required
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              );
+            }}
+            ItemSeparatorComponent={() => (
+              <View
+                style={{
+                  height: StyleSheet.hairlineWidth,
+                  backgroundColor: theme.colors.inputBorder,
+                  marginLeft: 16,
+                }}
+              />
+            )}
+            stickySectionHeadersEnabled
+            keyboardShouldPersistTaps="handled"
+          />
+        </View>
+      </Modal>
 
       {/* Add Quick Shop Site Modal */}
       <Modal
