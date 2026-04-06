@@ -14,6 +14,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { Throttle } from '@nestjs/throttler';
 import { FastifyRequest } from 'fastify';
 import { AiService } from './ai.service';
+import { DatabaseService } from '../db/database.service';
 import { ChatDto } from './dto/chat.dto';
 import { Readable } from 'stream';
 import { getSecret } from '../config/secrets';
@@ -23,7 +24,10 @@ import { getSecret } from '../config/secrets';
 @Controller('ai')
 export class AiController {
   aiService: any;
-  constructor(private readonly service: AiService) {}
+  constructor(
+    private readonly service: AiService,
+    private readonly db: DatabaseService,
+  ) {}
 
   @Post('chat')
   async chat(
@@ -216,18 +220,42 @@ export class AiController {
    * and searches Google Shopping for matching items for each piece
    */
   @Post('recreate-outfit')
-  async recreateOutfit(@Body() body: { imageUrl: string; gender?: string }) {
+  async recreateOutfit(
+    @Req() req: FastifyRequest & { user: { userId: string } },
+    @Body() body: { imageUrl: string; gender?: string },
+  ) {
     const { imageUrl, gender } = body;
     // console.log('👗 [recreate-outfit] Starting outfit recreation for:', imageUrl);
 
     if (!imageUrl) throw new BadRequestException('Missing imageUrl');
 
     const genderLower = (gender || '').toLowerCase();
-    const targetPresentation = genderLower.includes('male') || genderLower.includes('masc') || genderLower.includes('man')
+    let targetPresentation = genderLower.includes('male') || genderLower.includes('masc') || genderLower.includes('man')
       ? 'masculine'
       : genderLower.includes('female') || genderLower.includes('fem') || genderLower.includes('woman')
         ? 'feminine'
         : 'neutral';
+
+    if (targetPresentation === 'neutral') {
+      try {
+        const userId = req.user?.userId;
+        if (userId) {
+          const { rows } = await this.db.query<{ gender_presentation: string }>(
+            'SELECT gender_presentation FROM users WHERE id=$1 LIMIT 1',
+            [userId],
+          );
+          const dbGender = (rows[0]?.gender_presentation || '').toLowerCase();
+          if (dbGender.includes('male') || dbGender.includes('masc') || dbGender.includes('man')) {
+            targetPresentation = 'masculine';
+          } else if (dbGender.includes('female') || dbGender.includes('fem') || dbGender.includes('woman')) {
+            targetPresentation = 'feminine';
+          }
+        }
+      } catch (_) {
+        // DB lookup failed — fall through with neutral
+      }
+    }
+
     const mismatchRe =
       targetPresentation === 'masculine'
         ? /(women|woman|female|ladies|girls|womens|women's|womenswear)/i
