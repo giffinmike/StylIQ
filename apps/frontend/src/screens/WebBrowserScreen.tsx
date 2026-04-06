@@ -43,6 +43,7 @@ import {API_BASE_URL} from '../config/api';
 import {getAccessToken} from '../utils/auth';
 import AppleTouchFeedback from '../components/AppleTouchFeedback/AppleTouchFeedback';
 import brandsData from '../data/brands.json';
+import brandUrlsMap from '../data/brandUrls.json';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import TrackingConsentModal from '../components/TrackingConsentModal/TrackingConsentModal';
 import SwipeableCard from '../components/SwipeableCard/SwipeableCard';
@@ -268,7 +269,7 @@ Respond with JSON array of exactly 5 objects with SPECIFIC recommendations:
   const [showBrandPickerModal, setShowBrandPickerModal] = useState(false);
   const [brandSearchQuery, setBrandSearchQuery] = useState('');
 
-  // Build a name→url lookup from existing quickShopSites (the only real URL source)
+  // Build a name→url lookup from user's quickShopSites (defaults + user-added)
   const quickShopUrlMap = useMemo(() => {
     const map = new Map<string, string>();
     for (const site of quickShopSites) {
@@ -276,6 +277,24 @@ Respond with JSON array of exactly 5 objects with SPECIFIC recommendations:
     }
     return map;
   }, [quickShopSites]);
+
+  // Resolve brand URL: brandUrls.json (by id) → quickShopSites (by name) → undefined
+  const resolveBrandUrl = useCallback(
+    (brand: {id: string; name: string}): string | undefined => {
+      // Priority 1: curated brandUrls.json keyed by id
+      const mapped = (brandUrlsMap as Record<string, string>)[brand.id];
+      if (mapped && (mapped.startsWith('https://') || mapped.startsWith('http://'))) {
+        return mapped;
+      }
+      // Priority 2: existing quickShopSites (defaults + user-added) keyed by name
+      const fromShop = quickShopUrlMap.get(brand.name.toLowerCase());
+      if (fromShop) {
+        return fromShop;
+      }
+      return undefined;
+    },
+    [quickShopUrlMap],
+  );
 
   // Full brand list filtered by search, grouped into alphabetical sections
   const brandPickerSections = useMemo(() => {
@@ -4342,7 +4361,7 @@ Respond with JSON array of exactly 5 objects with SPECIFIC recommendations:
               </View>
             )}
             renderItem={({item}) => {
-              const knownUrl = quickShopUrlMap.get(item.name.toLowerCase());
+              const resolvedUrl = resolveBrandUrl(item);
               return (
                 <TouchableOpacity
                   style={{
@@ -4351,30 +4370,27 @@ Respond with JSON array of exactly 5 objects with SPECIFIC recommendations:
                     justifyContent: 'space-between',
                     paddingHorizontal: 16,
                     paddingVertical: 13,
+                    opacity: resolvedUrl ? 1 : 0.4,
                   }}
+                  disabled={!resolvedUrl}
                   onPress={() => {
+                    if (!resolvedUrl) return;
                     triggerHaptic('impactLight');
+                    addQuickShopSite(item.name, resolvedUrl);
+                    triggerHaptic('notificationSuccess');
                     setShowBrandPickerModal(false);
                     setBrandSearchQuery('');
-                    if (knownUrl) {
-                      addQuickShopSite(item.name, knownUrl);
-                      triggerHaptic('notificationSuccess');
-                    } else {
-                      setNewSiteName(item.name);
-                      setNewSiteUrl('');
-                      setShowAddSiteModal(true);
-                    }
                   }}
                   activeOpacity={0.6}>
                   <Text
                     style={{
                       fontSize: 16,
-                      color: theme.colors.foreground,
+                      color: resolvedUrl ? theme.colors.foreground : theme.colors.muted,
                       flex: 1,
                     }}>
                     {item.name}
                   </Text>
-                  {knownUrl ? (
+                  {resolvedUrl ? (
                     <Icon
                       name="add-circle-outline"
                       size={20}
@@ -4386,7 +4402,7 @@ Respond with JSON array of exactly 5 objects with SPECIFIC recommendations:
                         fontSize: 12,
                         color: theme.colors.muted,
                       }}>
-                      URL required
+                      No site
                     </Text>
                   )}
                 </TouchableOpacity>
