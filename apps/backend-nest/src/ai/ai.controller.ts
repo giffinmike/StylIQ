@@ -222,6 +222,19 @@ export class AiController {
 
     if (!imageUrl) throw new BadRequestException('Missing imageUrl');
 
+    const genderLower = (gender || '').toLowerCase();
+    const targetPresentation = genderLower.includes('male') || genderLower.includes('masc') || genderLower.includes('man')
+      ? 'masculine'
+      : genderLower.includes('female') || genderLower.includes('fem') || genderLower.includes('woman')
+        ? 'feminine'
+        : 'neutral';
+    const mismatchRe =
+      targetPresentation === 'masculine'
+        ? /(women|woman|female|ladies|girls|womens|women's|womenswear)/i
+        : targetPresentation === 'feminine'
+          ? /(\bmen\b|\bmale\b|mens|men's|menswear|gentleman)/i
+          : null;
+
     try {
       // Step 1: Use AI to analyze the image and identify each clothing piece
       // console.log('👗 [recreate-outfit] Step 1: Analyzing outfit with AI...');
@@ -250,6 +263,13 @@ export class AiController {
               searchQuery,
               gender,
             );
+            const filteredProducts = mismatchRe
+              ? products.filter((p: any) => {
+                  const text = `${p.title ?? ''} ${p.name ?? ''} ${p.product_title ?? ''} ${p.link ?? ''} ${p.shopUrl ?? ''} ${p.image ?? ''} ${p.thumbnail ?? ''}`.toLowerCase();
+                  return !mismatchRe.test(text);
+                })
+              : products;
+
             return {
               category: piece.category,
               item: piece.item,
@@ -258,7 +278,7 @@ export class AiController {
               style: piece.style,
               brand: piece.brand,
               searchQuery,
-              products: products.slice(0, 6), // Top 6 matches per piece
+              products: filteredProducts.slice(0, 6),
             };
           } catch (err) {
             console.error(
