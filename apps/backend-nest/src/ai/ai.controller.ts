@@ -229,37 +229,12 @@ export class AiController {
 
     if (!imageUrl) throw new BadRequestException('Missing imageUrl');
 
-    const genderLower = (gender || '').toLowerCase();
-    let targetPresentation = genderLower.includes('male') || genderLower.includes('masc') || genderLower.includes('man')
-      ? 'masculine'
-      : genderLower.includes('female') || genderLower.includes('fem') || genderLower.includes('woman')
-        ? 'feminine'
-        : 'neutral';
-
-    if (targetPresentation === 'neutral') {
-      try {
-        const userId = req.user?.userId;
-        if (userId) {
-          const { rows } = await this.db.query<{ gender_presentation: string }>(
-            'SELECT gender_presentation FROM users WHERE id=$1 LIMIT 1',
-            [userId],
-          );
-          const dbGender = (rows[0]?.gender_presentation || '').toLowerCase();
-          if (dbGender.includes('male') || dbGender.includes('masc') || dbGender.includes('man')) {
-            targetPresentation = 'masculine';
-          } else if (dbGender.includes('female') || dbGender.includes('fem') || dbGender.includes('woman')) {
-            targetPresentation = 'feminine';
-          }
-        }
-      } catch (_) {
-        // DB lookup failed — fall through with neutral
-      }
+    let targetPresentation: 'masculine' | 'feminine' | 'neutral' = 'neutral';
+    const detectedPresentation =
+      await this.service.classifyProductPresentation(imageUrl);
+    if (detectedPresentation === 'masculine' || detectedPresentation === 'feminine') {
+      targetPresentation = detectedPresentation;
     }
-
-    const effectiveGender =
-      targetPresentation === 'masculine' ? 'men'
-      : targetPresentation === 'feminine' ? 'women'
-      : undefined;
 
     const mismatchRe =
       targetPresentation === 'masculine'
@@ -273,7 +248,7 @@ export class AiController {
       // console.log('👗 [recreate-outfit] Step 1: Analyzing outfit with AI...');
       const outfitPieces = await this.service.analyzeOutfitPieces(
         imageUrl,
-        effectiveGender,
+        undefined,
       );
       // console.log('👗 [recreate-outfit] Identified pieces:', outfitPieces);
 
@@ -294,7 +269,7 @@ export class AiController {
           try {
             let products = await this.searchGoogleShopping(
               searchQuery,
-              effectiveGender,
+              undefined,
             );
             if (targetPresentation === 'masculine' || targetPresentation === 'feminine') {
               const classified = await Promise.all(
@@ -307,7 +282,17 @@ export class AiController {
               );
 
               products = classified
-                .filter(p => p.presentation === targetPresentation)
+                .filter(p => {
+                  if (targetPresentation === 'masculine') {
+                    return p.presentation !== 'feminine';
+                  }
+
+                  if (targetPresentation === 'feminine') {
+                    return p.presentation !== 'masculine';
+                  }
+
+                  return true;
+                })
                 .map(p => p.product);
             }
             const filteredProducts = mismatchRe
