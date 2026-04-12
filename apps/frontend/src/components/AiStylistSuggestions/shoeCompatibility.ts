@@ -1,15 +1,14 @@
 /**
- * Shoe compatibility refinement for Home Screen AI Suggestions.
+ * AESTHETIC DOCTRINE (NON-NEGOTIABLE RULES)
  *
- * Runs after the API response is received, before outfits are set into
- * component state. Pure synchronous function with no side effects.
+ * 1. Shoes must match outfit formality (hard gate).
+ * 2. Shoes must harmonize with bottom garment temperature (hard gate).
+ * 3. High-saturation cool colors (Blue, Cobalt, Royal, etc.)
+ *    are rejected for earth-dominant bottoms.
+ * 4. Sneakers are never allowed in business-casual or formal contexts.
+ * 5. Ranking only occurs AFTER invalid shoes are removed.
  *
- * Two independent passes:
- *   1. Color temperature — blocks shoes whose color clashes with outfit palette
- *   2. Style/formality  — blocks shoes whose archetype clashes with outfit context
- *
- * Only replaces a shoe when a clear mismatch is found AND a better alternative
- * exists in the user's wardrobe.
+ * No penalties. Only gates.
  */
 
 // ---------------------------------------------------------------------------
@@ -412,8 +411,7 @@ function resolveOutfitContext(
 // ---------------------------------------------------------------------------
 // Style compatibility matrix
 //
-// BLOCK = clear mismatch → attempt replacement
-// true  = allowed (PASS or borderline pass*)
+// false = hard reject, true = allowed
 // ---------------------------------------------------------------------------
 
 const STYLE_COMPAT: Record<ShoeArchetype, Record<OutfitContext, boolean>> = {
@@ -426,10 +424,10 @@ const STYLE_COMPAT: Record<ShoeArchetype, Record<OutfitContext, boolean>> = {
     unknown: true,
   },
   'smart-casual': {
-    formal: true, // borderline but allowed
+    formal: true,
     'business-casual': true,
     casual: true,
-    rugged: true, // borderline but allowed
+    rugged: true,
     athletic: false,
     unknown: true,
   },
@@ -438,13 +436,13 @@ const STYLE_COMPAT: Record<ShoeArchetype, Record<OutfitContext, boolean>> = {
     'business-casual': false,
     casual: true,
     rugged: true,
-    athletic: true, // borderline but allowed
+    athletic: true,
     unknown: true,
   },
   rugged: {
     formal: false,
     'business-casual': false,
-    casual: false, // work boots / hiking boots clash with casual outfits
+    casual: false,
     rugged: true,
     athletic: false,
     unknown: false,
@@ -452,7 +450,7 @@ const STYLE_COMPAT: Record<ShoeArchetype, Record<OutfitContext, boolean>> = {
   athletic: {
     formal: false,
     'business-casual': false,
-    casual: true, // borderline but allowed
+    casual: true,
     rugged: false,
     athletic: true,
     unknown: false,
@@ -462,7 +460,7 @@ const STYLE_COMPAT: Record<ShoeArchetype, Record<OutfitContext, boolean>> = {
     'business-casual': false,
     casual: true,
     rugged: false,
-    athletic: true, // borderline but allowed
+    athletic: true,
     unknown: true,
   },
 };
@@ -1002,7 +1000,7 @@ export function refineOutfitShoes(
 
     // Outfit context uses merged items for better classification
     const outfitCtx = resolveOutfitContext(outfit.items, mergedMap);
-    const dominant = outfitDominantTemp(outfit.items, mergedMap);
+    const rawDominant = outfitDominantTemp(outfit.items, mergedMap);
 
     const outfitGroups = new Set<TempGroup>();
     let coolCount = 0;
@@ -1024,6 +1022,8 @@ export function refineOutfitShoes(
       if (itemCtx === 'casual') hasCasualSignal = true;
       if (itemCtx === 'formal' || itemCtx === 'business-casual') hasFormalBcSignal = true;
     }
+
+    const dominant: TempGroup | null = rawDominant ?? bottomTemp ?? null;
 
     // ── Validate current shoe using MERGED evaluation object ──
 
@@ -1055,19 +1055,17 @@ export function refineOutfitShoes(
 
     type Ranked = { item: any; tiers: ShoeTiers; score: number };
 
-    const buildPool = (gateStrict: boolean): Ranked[] => {
+    const buildPool = (): Ranked[] => {
       const result: Ranked[] = [];
       for (const candidate of allShoes) {
         if (candidate.id === shoeItem.id) continue;
         if (usedShoeIds.has(candidate.id)) continue;
 
-        if (gateStrict) {
-          if (!isShoeValid(
-            candidate, outfitCtx, bottomTemp, outfitGroups, dominant,
-            hasCasualSignal, hasFormalBcSignal,
-          )) {
-            continue;
-          }
+        if (!isShoeValid(
+          candidate, outfitCtx, bottomTemp, outfitGroups, dominant,
+          hasCasualSignal, hasFormalBcSignal,
+        )) {
+          continue;
         }
 
         const candArchetype = resolveShoeArchetype(candidate);
@@ -1086,25 +1084,23 @@ export function refineOutfitShoes(
       return result;
     };
 
-    let pool = buildPool(true);
-    if (pool.length === 0) {
-      pool = buildPool(false);
-    }
+    const pool = buildPool();
 
-    if (pool.length === 0 && !currentShoeOk) {
-      pool = allShoes
-        .filter(s => s.id !== shoeItem.id && !usedShoeIds.has(s.id))
-        .map(s => {
-          const tiers = applyWarmDominancePenalty(
-            applyTonalAuthorityPenalty(
-              computeTiers(s, outfitCtx, bottomTemp, dominant, warmCount, earthCount),
-              s, outfitCtx, dominant, coolCount,
-            ),
-            s, outfitCtx, dominant, warmCount, earthCount,
-          );
-          return { item: s, tiers, score: compositeScore(tiers) } as Ranked;
-        })
-        .sort((a, b) => b.score - a.score);
+    if (__DEV__) {
+      const invalidInPool = pool.some(c =>
+        !isShoeValid(
+          c.item,
+          outfitCtx,
+          bottomTemp,
+          outfitGroups,
+          dominant,
+          hasCasualSignal,
+          hasFormalBcSignal,
+        ),
+      );
+      if (invalidInPool) {
+        throw new Error('Invariant violation: invalid shoe entered pool');
+      }
     }
 
     console.log('[shoeRefine] DEBUG_POOL_FULL', {
