@@ -83,12 +83,92 @@ const COLOR_TEXT_RULES: [RegExp, string][] = [
 // ---------------------------------------------------------------------------
 
 const SHOE_CLASHES: Record<TempGroup, TempGroup[]> = {
-  cool: ['earth', 'warm'],
+  cool: ['warm'],
   warm: ['cool'],
   earth: [],
   neutral: [],
   green: [],
 };
+
+// ---------------------------------------------------------------------------
+// Authority tier (shoe craft / polish level, independent of occasion)
+// ---------------------------------------------------------------------------
+
+const AUTHORITY_BY_ARCHETYPE: Record<ShoeArchetype, number> = {
+  dress: 5,
+  'smart-casual': 4,
+  minimal: 3,
+  'casual-sneaker': 2,
+  rugged: 2,
+  athletic: 1,
+};
+
+const CONTEXT_FORMALITY_TARGET: Record<OutfitContext, number> = {
+  formal: 4,
+  'business-casual': 3,
+  unknown: 2,
+  casual: 1,
+  rugged: 1,
+  athletic: 0,
+};
+
+const ARCHETYPE_FORMALITY_LEVEL: Record<ShoeArchetype, number> = {
+  dress: 4,
+  'smart-casual': 3,
+  minimal: 1,
+  'casual-sneaker': 1,
+  rugged: 1,
+  athletic: 0,
+};
+
+// ---------------------------------------------------------------------------
+// Tiered evaluation
+// ---------------------------------------------------------------------------
+
+type ShoeTiers = {
+  occasionMatch: number;
+  authority: number;
+  formalityDist: number;
+  climate: number;
+  profile: number;
+  harmony: number;
+  tonalPenalty: number;
+};
+
+function compositeScore(t: ShoeTiers): number {
+  return (
+    t.occasionMatch * 1e8 +
+    t.authority * 1e6 -
+    t.formalityDist * 1e4 +
+    t.tonalPenalty * 1e3 +
+    t.climate * 1e2 +
+    t.profile * 10 +
+    t.harmony
+  );
+}
+
+function isStrictlyBetter(
+  cand: ShoeTiers,
+  curr: ShoeTiers,
+  outfitCtx: OutfitContext,
+): boolean {
+  if (cand.occasionMatch !== curr.occasionMatch) {
+    return cand.occasionMatch > curr.occasionMatch;
+  }
+  if (
+    (outfitCtx === 'formal' || outfitCtx === 'business-casual') &&
+    cand.authority < curr.authority
+  ) {
+    return false;
+  }
+  if (cand.authority !== curr.authority) {
+    return cand.authority > curr.authority;
+  }
+  if (cand.formalityDist !== curr.formalityDist) {
+    return cand.formalityDist < curr.formalityDist;
+  }
+  return compositeScore(cand) > compositeScore(curr);
+}
 
 // ---------------------------------------------------------------------------
 // Shoe archetype system
@@ -226,32 +306,44 @@ const DRESS_CODE_TO_CONTEXT: Record<string, OutfitContext> = {
 };
 
 function classifyItemContext(item: any): OutfitContext | null {
-  // Primary: dressCode field (authoritative when present)
-  const dc: string | undefined = item?.dressCode ?? item?.dress_code;
-  if (dc && DRESS_CODE_TO_CONTEXT[dc]) {
-    return DRESS_CODE_TO_CONTEXT[dc];
-  }
-
-  // Fallback: subcategory + name regex matching
   const sub = (
     (item?.subCategory ?? item?.subcategory ?? '') as string
   ).toLowerCase();
   const name = ((item?.name ?? '') as string).toLowerCase();
   const combined = `${sub} ${name}`;
+  const dc: string | undefined = item?.dressCode ?? item?.dress_code;
 
+  let regexResult: OutfitContext | null = null;
+  let matchedRule: string | null = null;
   for (const [re, ctx] of ITEM_CONTEXT_RULES) {
-    if (re.test(combined)) return ctx;
+    if (re.test(combined)) {
+      regexResult = ctx;
+      matchedRule = re.source;
+      break;
+    }
   }
 
-  return null;
+  const result = regexResult ?? (dc && DRESS_CODE_TO_CONTEXT[dc]) ?? null;
+
+  console.log('[shoeRefine] CLASSIFY_ITEM', {
+    name: item?.name,
+    subCategory: item?.subCategory ?? item?.subcategory,
+    combined,
+    dressCode: dc ?? null,
+    regexResult,
+    matchedRule,
+    finalResult: result,
+  });
+
+  return result;
 }
 
 // Adjacency: contexts that are "close enough" merge to the more permissive one
 const CONTEXT_ADJACENCY: Record<string, OutfitContext> = {
   'formal+business-casual': 'business-casual',
   'business-casual+formal': 'business-casual',
-  'business-casual+casual': 'casual',
-  'casual+business-casual': 'casual',
+  'business-casual+casual': 'business-casual',
+  'casual+business-casual': 'business-casual',
 };
 
 function resolveOutfitContext(
@@ -281,6 +373,8 @@ function resolveOutfitContext(
     classified++;
   }
 
+  console.log('[shoeRefine] CONTEXT_COUNTS', { counts, classified });
+
   if (classified < 1) return 'unknown';
 
   // Find top two contexts
@@ -296,15 +390,22 @@ function resolveOutfitContext(
   if (first.count === 0) return 'unknown';
 
   // Clear majority
-  if (first.count > classified - first.count) return first.ctx;
+  if (first.count > classified - first.count) {
+    console.log('[shoeRefine] CONTEXT_RESOLVED', { path: 'majority', result: first.ctx, first, second });
+    return first.ctx;
+  }
 
   // Tie or close — check adjacency
   if (second.count > 0) {
     const key = `${first.ctx}+${second.ctx}`;
-    if (CONTEXT_ADJACENCY[key]) return CONTEXT_ADJACENCY[key];
+    if (CONTEXT_ADJACENCY[key]) {
+      console.log('[shoeRefine] CONTEXT_RESOLVED', { path: 'adjacency', key, result: CONTEXT_ADJACENCY[key] });
+      return CONTEXT_ADJACENCY[key];
+    }
   }
 
   // Mixed non-adjacent → unknown (conservative)
+  console.log('[shoeRefine] CONTEXT_RESOLVED', { path: 'unknown-fallback', first, second });
   return 'unknown';
 }
 
@@ -334,7 +435,7 @@ const STYLE_COMPAT: Record<ShoeArchetype, Record<OutfitContext, boolean>> = {
   },
   'casual-sneaker': {
     formal: false,
-    'business-casual': true, // borderline but allowed
+    'business-casual': false,
     casual: true,
     rugged: true,
     athletic: true, // borderline but allowed
@@ -419,6 +520,38 @@ const COLOR_TEMP_MAP: Record<string, TempGroup> = {
   Cool: 'cool',
   Neutral: 'neutral',
 };
+
+const HIGH_SAT_COOL_FAMILIES: ReadonlySet<string> = new Set([
+  'Blue',
+  'Royal Blue',
+  'Cobalt',
+  'Sky Blue',
+  'Purple',
+  'Magenta',
+]);
+
+function resolveColorFamily(item: any): string | null {
+  const family: string | undefined = item?.colorFamily ?? item?.color_family;
+  if (family && FAMILY_TO_TEMP[family]) return family;
+
+  const raw: string | undefined = item?.color;
+  if (raw) {
+    const lc = raw.toLowerCase();
+    for (const [re, fam] of COLOR_TEXT_RULES) {
+      if (re.test(lc)) return fam;
+    }
+  }
+
+  const name: string | undefined = item?.name ?? item?.aiTitle ?? item?.ai_title;
+  if (name) {
+    const lc = name.toLowerCase();
+    for (const [re, fam] of COLOR_TEXT_RULES) {
+      if (re.test(lc)) return fam;
+    }
+  }
+
+  return null;
+}
 
 function resolveTemp(item: any): TempGroup | null {
   // 1. Explicit colorFamily (most precise)
@@ -577,33 +710,20 @@ function isShoeValid(
     }
   }
 
-  // ── GATE 2: COLOR — primary temp vs bottom garment ──
+  // ── EXTREME CHROMATIC CLASH (cool<->warm only) ──
 
   const primaryTemp = resolveTemp(shoeFull);
 
-  if (primaryTemp && primaryTemp !== 'neutral' && primaryTemp !== 'earth') {
-    // Chromatic primary must harmonize with bottom garment
-    if (bottomTemp && bottomTemp !== 'neutral' && primaryTemp !== bottomTemp) {
-      return false;
-    }
-  }
-
-  // ── GATE 3: COLOR — all temps (including accents) vs outfit palette ──
-
-  const allTemps = resolveAllShoeTemps(shoeFull);
-
-  for (const t of allTemps) {
-    if (t === 'neutral' || t === 'earth') continue;
-    // Every chromatic temp must exist in the outfit palette
-    if (outfitGroups.size > 0 && !outfitGroups.has(t)) {
-      return false;
-    }
-  }
-
-  // ── GATE 4: CLASH matrix (belt-and-suspenders) ──
-
   if (primaryTemp && primaryTemp !== 'neutral' && primaryTemp !== 'earth' && dominant) {
     if (SHOE_CLASHES[primaryTemp]?.includes(dominant)) {
+      return false;
+    }
+  }
+
+  // ── HIGH-SATURATION COOL vs WARM/EARTH REJECTION ──
+  if (dominant === 'warm' || dominant === 'earth') {
+    const family = resolveColorFamily(shoeFull);
+    if (family && HIGH_SAT_COOL_FAMILIES.has(family)) {
       return false;
     }
   }
@@ -612,74 +732,146 @@ function isShoeValid(
 }
 
 // ---------------------------------------------------------------------------
-// Replacement scoring
+// Tiered candidate evaluation
 // ---------------------------------------------------------------------------
 
-function scoreCandidate(
-  candidate: any,
+function resolveAuthorityTier(item: any): number {
+  const arch = resolveShoeArchetype(item);
+  if (!arch) return 2;
+  return AUTHORITY_BY_ARCHETYPE[arch] ?? 2;
+}
+
+function resolveOccasionMatch(item: any, outfitCtx: OutfitContext): number {
+  if (outfitCtx === 'unknown') return 1;
+  const arch = resolveShoeArchetype(item);
+  if (!arch) return 0;
+  const ideals = IDEAL_ARCHETYPES[outfitCtx];
+  if (ideals.includes(arch)) return 2;
+  if (STYLE_COMPAT[arch][outfitCtx]) return 1;
+  return 0;
+}
+
+function resolveFormalityDistance(item: any, outfitCtx: OutfitContext): number {
+  const arch = resolveShoeArchetype(item);
+  if (!arch) return 3;
+  return Math.abs(
+    (ARCHETYPE_FORMALITY_LEVEL[arch] ?? 1) -
+    (CONTEXT_FORMALITY_TARGET[outfitCtx] ?? 2),
+  );
+}
+
+function resolveClimateScore(item: any): number {
+  const raw = item?.weatherScore ?? item?.weather_score ?? item?.climateScore ?? item?.climate_score;
+  if (typeof raw !== 'number' || !Number.isFinite(raw)) return 0;
+  return Math.max(-5, Math.min(5, raw));
+}
+
+function resolveProfileScore(item: any): number {
+  const raw = item?.profileScore ?? item?.profile_score ?? item?.styleProfileScore ?? item?.style_profile_score;
+  if (typeof raw !== 'number' || !Number.isFinite(raw)) return 0;
+  return Math.max(-5, Math.min(5, raw));
+}
+
+function resolveHarmonyAdjustment(
+  item: any,
+  bottomTemp: TempGroup | null,
+  dominant: TempGroup | null,
+): number {
+  const shoeTemp = resolveTemp(item);
+  if (!shoeTemp) return 0;
+  let h = 0;
+  if (shoeTemp === 'neutral') h += 1;
+  if (bottomTemp && shoeTemp === bottomTemp) h += 2;
+  if (
+    dominant &&
+    shoeTemp !== 'neutral' &&
+    shoeTemp !== 'earth' &&
+    SHOE_CLASHES[shoeTemp]?.includes(dominant)
+  ) {
+    h -= 3;
+  }
+  return Math.max(-5, Math.min(5, h));
+}
+
+function computeTiers(
+  item: any,
+  outfitCtx: OutfitContext,
+  bottomTemp: TempGroup | null,
+  dominant: TempGroup | null,
+  warmCount?: number,
+  earthCount?: number,
+): ShoeTiers {
+  let tonalPenalty = 0;
+  const shoeTemp = resolveTemp(item);
+  if (
+    (warmCount ?? 0) + (earthCount ?? 0) >= 2 &&
+    shoeTemp === 'cool'
+  ) {
+    tonalPenalty = -3;
+  }
+
+  return {
+    occasionMatch: resolveOccasionMatch(item, outfitCtx),
+    authority: resolveAuthorityTier(item),
+    formalityDist: resolveFormalityDistance(item, outfitCtx),
+    climate: resolveClimateScore(item),
+    profile: resolveProfileScore(item),
+    harmony: resolveHarmonyAdjustment(item, bottomTemp, dominant),
+    tonalPenalty,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Tonal-authority penalty
+// ---------------------------------------------------------------------------
+
+function applyTonalAuthorityPenalty(
+  tiers: ShoeTiers,
+  item: any,
   outfitCtx: OutfitContext,
   dominant: TempGroup | null,
-  originalArchetype: ShoeArchetype | null,
-  bottomTemp: TempGroup | null,
-): number {
-  let score = 0;
-
-  // --- Style scoring ---
-  const candArchetype = resolveShoeArchetype(candidate);
-  if (candArchetype) {
-    const ideals = IDEAL_ARCHETYPES[outfitCtx];
-    if (ideals.length > 0 && ideals[0] === candArchetype) {
-      score += 70; // ideal match
-    } else if (ideals.includes(candArchetype)) {
-      score += 55; // good match
-    } else if (STYLE_COMPAT[candArchetype][outfitCtx]) {
-      score += 25; // compatible (pass or borderline)
-    }
-  }
-
-  // --- Color scoring ---
-  const candTemp = resolveTemp(candidate);
-  if (candTemp) {
-    if (candTemp === 'neutral') score += 15;
-    else if (dominant && candTemp === dominant) score += 12;
-    else if (candTemp === 'earth') score += 8;
-  }
-
-  // --- Bottom–shoe harmony scoring (dominant signal) ---
-  if (bottomTemp && candTemp) {
-    if (candTemp === bottomTemp) {
-      score += 20; // strong harmony (e.g., brown loafer + brown chinos)
-    } else if (
-      (candTemp === 'neutral' || candTemp === 'earth') &&
-      (bottomTemp === 'earth' || bottomTemp === 'neutral')
-    ) {
-      score += 10; // acceptable harmony (e.g., black shoe + tan chinos)
-    } else if (
-      candTemp !== 'neutral' &&
-      candTemp !== 'earth' &&
-      candTemp !== bottomTemp
-    ) {
-      score -= 35; // mismatch (e.g., blue shoe + brown chinos)
-    }
-  }
-
-  // --- Formality proximity to original shoe ---
-  if (originalArchetype && candArchetype) {
-    const ARCHETYPE_FORMALITY: Record<ShoeArchetype, number> = {
-      athletic: 0,
-      minimal: 0,
-      'casual-sneaker': 1,
-      rugged: 1,
-      'smart-casual': 2,
-      dress: 3,
+  coolCount: number,
+): ShoeTiers {
+  if (
+    (outfitCtx === 'formal' || outfitCtx === 'business-casual') &&
+    dominant === 'cool' &&
+    coolCount >= 2 &&
+    resolveTemp(item) === 'earth' &&
+    resolveAuthorityTier(item) < 5
+  ) {
+    return {
+      ...tiers,
+      authority: Math.max(1, tiers.authority - 2),
+      formalityDist: tiers.formalityDist + 1,
     };
-    const gap = Math.abs(
-      ARCHETYPE_FORMALITY[candArchetype] - ARCHETYPE_FORMALITY[originalArchetype],
-    );
-    score -= gap * 1;
   }
+  return tiers;
+}
 
-  return score;
+// ---------------------------------------------------------------------------
+// Warm-dominance penalty
+// ---------------------------------------------------------------------------
+
+function applyWarmDominancePenalty(
+  tiers: ShoeTiers,
+  item: any,
+  outfitCtx: OutfitContext,
+  dominant: TempGroup | null,
+  warmCount: number,
+  earthCount: number,
+): ShoeTiers {
+  if (
+    (dominant === 'warm' || dominant === 'earth') &&
+    warmCount + earthCount >= 2 &&
+    resolveTemp(item) === 'cool'
+  ) {
+    return {
+      ...tiers,
+      authority: Math.max(1, tiers.authority - 2),
+      formalityDist: tiers.formalityDist + 1,
+    };
+  }
+  return tiers;
 }
 
 // ---------------------------------------------------------------------------
@@ -813,6 +1005,9 @@ export function refineOutfitShoes(
     const dominant = outfitDominantTemp(outfit.items, mergedMap);
 
     const outfitGroups = new Set<TempGroup>();
+    let coolCount = 0;
+    let warmCount = 0;
+    let earthCount = 0;
     let hasCasualSignal = false;
     let hasFormalBcSignal = false;
     let bottomTemp: TempGroup | null = null;
@@ -820,6 +1015,9 @@ export function refineOutfitShoes(
     for (const {oi, merged} of mergedNonShoeItems) {
       const t = resolveTemp(merged);
       if (t && t !== 'neutral') outfitGroups.add(t);
+      if (t === 'cool') coolCount++;
+      if (t === 'warm') warmCount++;
+      if (t === 'earth') earthCount++;
       if (oi.category === 'bottom' && t) bottomTemp = t;
 
       const itemCtx = classifyItemContext(merged);
@@ -834,90 +1032,117 @@ export function refineOutfitShoes(
       hasCasualSignal, hasFormalBcSignal,
     );
 
+    // ── Tier-based replacement decision ──
+
+    const currentTiers = computeTiers(shoeEval, outfitCtx, bottomTemp, dominant, warmCount, earthCount);
+    const adjustedCurrentTiers = applyWarmDominancePenalty(
+      applyTonalAuthorityPenalty(
+        !currentShoeOk ? { ...currentTiers, occasionMatch: 0 } : currentTiers,
+        shoeEval, outfitCtx, dominant, coolCount,
+      ),
+      shoeEval, outfitCtx, dominant, warmCount, earthCount,
+    );
+
     console.log('[shoeRefine] VALIDATION', {
       shoe: shoeItem?.name,
       isValid: currentShoeOk,
       context: outfitCtx,
       bottomTemp,
       dominantTemp: dominant,
+      coolCount,
+      currentTiers: adjustedCurrentTiers,
     });
 
-    if (currentShoeOk) return outfit; // passes all gates — keep it
+    type Ranked = { item: any; tiers: ShoeTiers; score: number };
 
-    // ── Current shoe is invalid — find the best VALID replacement ──
+    const buildPool = (gateStrict: boolean): Ranked[] => {
+      const result: Ranked[] = [];
+      for (const candidate of allShoes) {
+        if (candidate.id === shoeItem.id) continue;
+        if (usedShoeIds.has(candidate.id)) continue;
 
-    const originalArchetype = resolveShoeArchetype(shoeEval);
+        if (gateStrict) {
+          if (!isShoeValid(
+            candidate, outfitCtx, bottomTemp, outfitGroups, dominant,
+            hasCasualSignal, hasFormalBcSignal,
+          )) {
+            continue;
+          }
+        }
 
-    let bestCandidate: any | null = null;
-    let bestScore = -Infinity;
+        const candArchetype = resolveShoeArchetype(candidate);
+        if (candArchetype === 'rugged' && outfitCtx !== 'rugged') continue;
 
-    for (const candidate of allShoes) {
-      if (candidate.id === shoeItem.id) continue;
-      if (usedShoeIds.has(candidate.id)) continue;
-
-      // Candidate must pass the IDENTICAL validation gates
-      if (!isShoeValid(
-        candidate, outfitCtx, bottomTemp, outfitGroups, dominant,
-        hasCasualSignal, hasFormalBcSignal,
-      )) {
-        continue;
+        const tiers = applyWarmDominancePenalty(
+          applyTonalAuthorityPenalty(
+            computeTiers(candidate, outfitCtx, bottomTemp, dominant, warmCount, earthCount),
+            candidate, outfitCtx, dominant, coolCount,
+          ),
+          candidate, outfitCtx, dominant, warmCount, earthCount,
+        );
+        result.push({ item: candidate, tiers, score: compositeScore(tiers) });
       }
+      result.sort((a, b) => b.score - a.score);
+      return result;
+    };
 
-      // Hard guard: rugged footwear only allowed in rugged outfits
-      const candArchetype = resolveShoeArchetype(candidate);
-      if (candArchetype === 'rugged' && outfitCtx !== 'rugged') {
-        continue;
-      }
-
-      const score = scoreCandidate(
-        candidate, outfitCtx, dominant, originalArchetype, bottomTemp,
-      );
-
-      if (score > bestScore) {
-        bestScore = score;
-        bestCandidate = candidate;
-        console.log('[shoeRefine] BEST_CANDIDATE', {
-          candidate: candidate.name,
-          score,
-        });
-      }
+    let pool = buildPool(true);
+    if (pool.length === 0) {
+      pool = buildPool(false);
     }
 
-    // --- Neutral fallback when no scored candidate survived ---
-    if (!bestCandidate || bestScore === -Infinity) {
-      const fallback = allShoes
-        .filter(s => {
-          if (s.id === shoeItem.id) return false;
-          if (usedShoeIds.has(s.id)) return false;
-          const arch = resolveShoeArchetype(s);
-          if (arch === 'rugged') return false;
-          const form = s.formality_score ?? s.formalityScore ?? 5; // default mid-range
-          if (form < 4 || form > 7) return false;
-          const cf = (s.colorFamily ?? s.color_family ?? '').toLowerCase();
-          return cf === 'black' || cf === 'brown';
+    if (pool.length === 0 && !currentShoeOk) {
+      pool = allShoes
+        .filter(s => s.id !== shoeItem.id && !usedShoeIds.has(s.id))
+        .map(s => {
+          const tiers = applyWarmDominancePenalty(
+            applyTonalAuthorityPenalty(
+              computeTiers(s, outfitCtx, bottomTemp, dominant, warmCount, earthCount),
+              s, outfitCtx, dominant, coolCount,
+            ),
+            s, outfitCtx, dominant, warmCount, earthCount,
+          );
+          return { item: s, tiers, score: compositeScore(tiers) } as Ranked;
         })
-        .sort((a, b) =>
-          (b.formality_score ?? b.formalityScore ?? 5) -
-          (a.formality_score ?? a.formalityScore ?? 5),
-        );
-      console.log('[shoeRefine] FALLBACK_POOL', {
-        count: fallback.length,
-        names: fallback.map(s => s.name),
-      });
-      if (fallback.length > 0) {
-        bestCandidate = fallback[0];
-        bestScore = 5; // meets threshold — fallback must not be blocked
-        console.log('[shoeRefine] NEUTRAL_FALLBACK', { name: bestCandidate.name });
+        .sort((a, b) => b.score - a.score);
+    }
+
+    console.log('[shoeRefine] DEBUG_POOL_FULL', {
+      outfitId: outfit.id,
+      poolSize: pool.length,
+      candidates: pool.map(p => ({
+        name: p.item.name,
+        score: p.score,
+        tiers: p.tiers,
+      })),
+    });
+
+    let bestCandidate: any | null = null;
+    let bestTiers: ShoeTiers | null = null;
+    for (const ranked of pool) {
+      if (isStrictlyBetter(ranked.tiers, adjustedCurrentTiers, outfitCtx)) {
+        bestCandidate = ranked.item;
+        bestTiers = ranked.tiers;
+        break;
       }
     }
 
     console.log('[shoeRefine] FINAL_DECISION', {
       original: shoeItem?.name,
       replacement: bestCandidate?.name ?? null,
-      bestScore,
+      poolSize: pool.length,
+      currentTiers: adjustedCurrentTiers,
+      bestTiers,
     });
 
-    if (!bestCandidate || bestScore < 5) return outfit;
+    if (!bestCandidate) {
+      console.log('[shoeRefine] REFINED_OUTFIT', {
+        outfitId: outfit.id,
+        originalShoe: shoeItem?.name,
+        finalShoe: shoeItem?.name,
+      });
+      return outfit;
+    }
 
     usedShoeIds.add(bestCandidate.id);
 
@@ -930,6 +1155,12 @@ export function refineOutfitShoes(
       const swapped = originalName ? text.replace(originalName, replacementName) : text;
       return correctDescription(swapped);
     };
+
+    console.log('[shoeRefine] REFINED_OUTFIT', {
+      outfitId: outfit.id,
+      originalShoe: shoeItem?.name,
+      finalShoe: bestCandidate?.name,
+    });
 
     return {
       ...outfit,
