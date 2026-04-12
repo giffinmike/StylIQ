@@ -225,27 +225,36 @@ export class AiController {
     @Body() body: { imageUrl: string; gender?: string },
   ) {
     const { imageUrl, gender } = body;
+    console.log('[recreate-outfit] RECEIVED imageUrl:', imageUrl);
     // console.log('👗 [recreate-outfit] Starting outfit recreation for:', imageUrl);
 
     if (!imageUrl) throw new BadRequestException('Missing imageUrl');
 
-    let targetPresentation: 'masculine' | 'feminine' | 'neutral' = 'neutral';
     const detectedPresentation =
       await this.service.classifyProductPresentation(imageUrl);
-    if (detectedPresentation === 'masculine' || detectedPresentation === 'feminine') {
-      targetPresentation = detectedPresentation;
-    }
 
-    const mismatchRe =
-      targetPresentation === 'masculine'
-        ? /(women|woman|female|ladies|girls|womens|women's|womenswear)/i
-        : targetPresentation === 'feminine'
-          ? /(\bmen\b|\bmale\b|mens|men's|menswear|gentleman)/i
-          : null;
+    let targetPresentation: 'masculine' | 'feminine';
+
+    if (detectedPresentation === 'masculine') {
+      targetPresentation = 'masculine';
+    } else if (detectedPresentation === 'feminine') {
+      targetPresentation = 'feminine';
+    } else {
+      // HARD FAIL CLOSED
+      throw new BadRequestException('Unable to determine gender from image');
+    }
 
     try {
       // Step 1: Use AI to analyze the image and identify each clothing piece
       // console.log('👗 [recreate-outfit] Step 1: Analyzing outfit with AI...');
+      if (
+        typeof imageUrl !== 'string' ||
+        !imageUrl.startsWith('http') ||
+        imageUrl.includes('farfetch-contents.com')
+      ) {
+        throw new BadRequestException('Invalid recreate imageUrl');
+      }
+
       const outfitPieces = await this.service.analyzeOutfitPieces(
         imageUrl,
         undefined,
@@ -271,36 +280,71 @@ export class AiController {
               searchQuery,
               undefined,
             );
+
+            const textFiltered = products.filter((p: any) => {
+              const text = `${p.title ?? ''} ${p.name ?? ''} ${p.product_title ?? ''}`
+                .toLowerCase();
+
+              if (targetPresentation === 'masculine') {
+                return !/(women|woman|female|ladies|girls|girl|womens|women's|junior|juniors|kids|kid|toddler|youth)/i.test(text);
+              }
+
+              if (targetPresentation === 'feminine') {
+                return !/(men|man|male|mens|men's|boys|boy|youth|junior|juniors|kids|kid|toddler)/i.test(text);
+              }
+
+              return true;
+            });
+
+            let filteredProducts: any[] = textFiltered;
+
             if (targetPresentation === 'masculine' || targetPresentation === 'feminine') {
               const classified = await Promise.all(
-                products.map(async product => ({
-                  product,
-                  presentation: await this.service.classifyProductPresentation(
-                    product.image ?? product.thumbnail ?? ''
-                  ),
-                }))
+                textFiltered.map(async (product: any) => {
+                  const candidate =
+                    typeof product.image === 'string' && product.image.startsWith('http')
+                      ? product.image
+                      : typeof product.thumbnail === 'string' && product.thumbnail.startsWith('http')
+                      ? product.thumbnail
+                      : null;
+
+                  if (!candidate) {
+                    return { product, keep: false };
+                  }
+
+                  try {
+                    const presentation =
+                      await this.service.classifyProductPresentation(candidate);
+
+                    if (presentation === 'unknown') {
+                      return { product, keep: false };
+                    }
+
+                    if (
+                      targetPresentation === 'masculine' &&
+                      presentation === 'feminine'
+                    ) {
+                      return { product, keep: false };
+                    }
+
+                    if (
+                      targetPresentation === 'feminine' &&
+                      presentation === 'masculine'
+                    ) {
+                      return { product, keep: false };
+                    }
+
+                    return { product, keep: true };
+                  } catch {
+                    return { product, keep: false };
+                  }
+                }),
               );
 
-              products = classified
-                .filter(p => {
-                  if (targetPresentation === 'masculine') {
-                    return p.presentation !== 'feminine';
-                  }
-
-                  if (targetPresentation === 'feminine') {
-                    return p.presentation !== 'masculine';
-                  }
-
-                  return true;
-                })
-                .map(p => p.product);
+              filteredProducts = classified
+                .filter(c => c.keep)
+                .map(c => c.product);
             }
-            const filteredProducts = mismatchRe
-              ? products.filter((p: any) => {
-                  const text = `${p.title ?? ''} ${p.name ?? ''} ${p.product_title ?? ''} ${p.link ?? ''} ${p.shopUrl ?? ''} ${p.image ?? ''} ${p.thumbnail ?? ''}`.toLowerCase();
-                  return !mismatchRe.test(text);
-                })
-              : products;
 
             return {
               category: piece.category,
