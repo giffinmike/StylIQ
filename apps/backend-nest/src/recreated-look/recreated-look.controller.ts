@@ -15,6 +15,19 @@ import {
 import { RecreatedLookService } from './recreated-look.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
+async function retry<T>(fn: () => Promise<T>, attempts = 3) {
+  let lastError;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      await new Promise((res) => setTimeout(res, 150));
+    }
+  }
+  throw lastError;
+}
+
 @UseGuards(JwtAuthGuard)
 @Controller('users/:userId/recreated-looks')
 export class RecreatedLookController {
@@ -25,22 +38,31 @@ export class RecreatedLookController {
     @Req() req,
     @Param('userId') paramUserId: string,
     @Body()
-    body: { source_image_url: string; generated_outfit: any; tags?: string[] },
+    body: {
+      source_image_url: string;
+      generated_outfit: any;
+      tags?: string[];
+    },
   ) {
     const userId = req.user.userId;
 
     if (paramUserId !== userId) {
-      throw new ForbiddenException('User mismatch');
+      return { success: false, reason: 'user_mismatch' };
     }
 
-    const s = JSON.stringify(body.generated_outfit ?? {});
-    if (/women|women's|womens|\/women\b/i.test(s)) {
-      throw new BadRequestException(
-        "generated_outfit contains women's items; recreate again",
+    try {
+      const result = await this.recreatedLookService.saveRecreatedLook(
+        userId,
+        body,
       );
-    }
 
-    return this.recreatedLookService.saveRecreatedLook(userId, body);
+      return { success: true, data: result };
+    } catch (err) {
+      console.error('[saveRecreatedLook] error:', err);
+
+      // NEVER throw here
+      return { success: false, reason: 'save_error' };
+    }
   }
 
   @Get()
