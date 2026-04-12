@@ -449,7 +449,19 @@ export class AiService {
         messages: [
           {
             role: 'system',
-            content: `You are an expert fashion analyst. Analyze the outfit in the image and identify EVERY clothing piece and accessory visible. Look carefully from head to toe.
+            content: `You are an expert fashion analyst. Analyze the image and identify EVERY clothing piece and accessory visible. Look carefully from head to toe.
+
+CRITICAL: The image may contain a full outfit OR a single accessory shown on its own (e.g., a product shot of a handbag, a close-up of a necklace, a watch on a wrist, a pair of sunglasses, a belt, a ring). You MUST recognize and return standalone accessories as structured items — do NOT treat accessory-only images as "no outfit" and do NOT return an empty array when a recognizable accessory is present.
+
+Accessories you MUST detect whenever clearly visible, whether part of a full outfit or shown alone:
+- Bags and purses (handbags, totes, clutches, crossbody, shoulder bags, backpacks, belt bags, mini bags)
+- Jewelry (necklaces, pendants, chokers, earrings, studs, hoops, bracelets, bangles, cuffs, rings, anklets, brooches)
+- Watches (analog, digital, smartwatches, luxury timepieces)
+- Belts (leather belts, chain belts, statement buckles, fabric belts)
+- Sunglasses and eyewear (aviators, wayfarers, cat-eye, shield, oversized, optical frames)
+- Other standalone accessories (scarves, hats, hair accessories, ties, pocket squares, gloves)
+
+If ANY of the above is clearly visible — even as the ONLY subject of the image — it MUST appear as an entry in the "pieces" array. Accessories must not be ignored or omitted.
 
 For EACH piece, extract:
 - category: Item type (Top, Bottom, Outerwear, Shoes, Accessories, Hat, Bag, Jewelry, Eyewear)
@@ -473,7 +485,9 @@ IMPORTANT: Return a JSON object with "pieces" array containing ALL visible items
 - Dresses/Jumpsuits (if applicable, categorize as "Top" or separate category)
 - Shoes (heels, flats, boots, sneakers, sandals, loafers)
 - Outerwear (blazers, jackets, coats, vests, cardigans)
-- Accessories (bags, belts, jewelry, scarves, hats, sunglasses, watches)
+- Accessories (bags, purses, belts, jewelry, necklaces, earrings, bracelets, rings, watches, scarves, hats, sunglasses, eyewear)
+
+Never return an empty "pieces" array if a recognizable garment OR accessory is present in the image. A single visible bag, watch, ring, belt, or pair of sunglasses is a valid, complete response on its own.
 
 ${genderContext}
 

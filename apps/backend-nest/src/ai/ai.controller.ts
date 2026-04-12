@@ -233,15 +233,16 @@ export class AiController {
     const detectedPresentation =
       await this.service.classifyProductPresentation(imageUrl);
 
-    let targetPresentation: 'masculine' | 'feminine';
+    let targetPresentation: 'masculine' | 'feminine' | null = null;
 
     if (detectedPresentation === 'masculine') {
       targetPresentation = 'masculine';
     } else if (detectedPresentation === 'feminine') {
       targetPresentation = 'feminine';
     } else {
-      // HARD FAIL CLOSED
-      throw new BadRequestException('Unable to determine gender from image');
+      // No visible person in image (accessory-only, product shot, etc.)
+      // Skip gender enforcement entirely for this request.
+      targetPresentation = null;
     }
 
     try {
@@ -298,7 +299,7 @@ export class AiController {
 
             let filteredProducts: any[] = textFiltered;
 
-            if (targetPresentation === 'masculine' || targetPresentation === 'feminine') {
+            if (targetPresentation) {
               const classified = await Promise.all(
                 textFiltered.map(async (product: any) => {
                   const candidate =
