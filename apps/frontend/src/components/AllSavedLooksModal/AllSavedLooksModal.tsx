@@ -726,8 +726,8 @@ export default function AllSavedLooksModal({
                   marginTop: 20,
                 }}>
                 {loading
-                  ? 'Recreating the vibe. Hang tight...'
-                  : 'Shopping the vibe. Hang tight...'}
+                  ? 'Recreating the style. Hang tight...'
+                  : 'Shopping the style. Hang tight...'}
               </Text>
             </Animatable.View>
           )}

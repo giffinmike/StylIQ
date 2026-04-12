@@ -256,6 +256,11 @@ export class AiController {
       }
     }
 
+    const effectiveGender =
+      targetPresentation === 'masculine' ? 'men'
+      : targetPresentation === 'feminine' ? 'women'
+      : undefined;
+
     const mismatchRe =
       targetPresentation === 'masculine'
         ? /(women|woman|female|ladies|girls|womens|women's|womenswear)/i
@@ -268,7 +273,7 @@ export class AiController {
       // console.log('👗 [recreate-outfit] Step 1: Analyzing outfit with AI...');
       const outfitPieces = await this.service.analyzeOutfitPieces(
         imageUrl,
-        gender,
+        effectiveGender,
       );
       // console.log('👗 [recreate-outfit] Identified pieces:', outfitPieces);
 
@@ -287,10 +292,24 @@ export class AiController {
           // console.log(`👗 [recreate-outfit] Searching for: "${searchQuery}" (brand: ${piece.brand || 'none'})`);
 
           try {
-            const products = await this.searchGoogleShopping(
+            let products = await this.searchGoogleShopping(
               searchQuery,
-              gender,
+              effectiveGender,
             );
+            if (targetPresentation === 'masculine' || targetPresentation === 'feminine') {
+              const classified = await Promise.all(
+                products.map(async product => ({
+                  product,
+                  presentation: await this.service.classifyProductPresentation(
+                    product.image ?? product.thumbnail ?? ''
+                  ),
+                }))
+              );
+
+              products = classified
+                .filter(p => p.presentation === targetPresentation)
+                .map(p => p.product);
+            }
             const filteredProducts = mismatchRe
               ? products.filter((p: any) => {
                   const text = `${p.title ?? ''} ${p.name ?? ''} ${p.product_title ?? ''} ${p.link ?? ''} ${p.shopUrl ?? ''} ${p.image ?? ''} ${p.thumbnail ?? ''}`.toLowerCase();

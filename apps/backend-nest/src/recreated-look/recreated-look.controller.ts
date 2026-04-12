@@ -9,6 +9,8 @@ import {
   Query,
   UseGuards,
   Req,
+  ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { RecreatedLookService } from './recreated-look.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -21,10 +23,23 @@ export class RecreatedLookController {
   @Post()
   async saveRecreatedLook(
     @Req() req,
+    @Param('userId') paramUserId: string,
     @Body()
     body: { source_image_url: string; generated_outfit: any; tags?: string[] },
   ) {
     const userId = req.user.userId;
+
+    if (paramUserId !== userId) {
+      throw new ForbiddenException('User mismatch');
+    }
+
+    const s = JSON.stringify(body.generated_outfit ?? {});
+    if (/women|women's|womens|\/women\b/i.test(s)) {
+      throw new BadRequestException(
+        "generated_outfit contains women's items; recreate again",
+      );
+    }
+
     return this.recreatedLookService.saveRecreatedLook(userId, body);
   }
 

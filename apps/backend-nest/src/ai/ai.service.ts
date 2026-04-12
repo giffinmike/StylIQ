@@ -549,7 +549,7 @@ Return format:
    * 🔍 Classify product image presentation as masculine/feminine/neutral/unknown.
    * Used ONLY by recreate() vision guard. Fail-open: returns 'unknown' on any error.
    */
-  private async classifyProductPresentation(
+  public async classifyProductPresentation(
     imageUrl: string,
   ): Promise<'masculine' | 'feminine' | 'neutral' | 'unknown'> {
     const ALLOWED = new Set(['masculine', 'feminine', 'neutral', 'unknown']);
