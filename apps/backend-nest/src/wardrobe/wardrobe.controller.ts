@@ -169,6 +169,7 @@ export class WardrobeController {
     // console.log('🚀 [OUTFITS] original query:', body.query);
 
     const requestId = randomUUID();
+    console.log(`🔥 ROUTE DECISION: useFastMode=${body.useFastMode} aaaaMode=${body.aaaaMode}`);
 
     if (process.env.DEBUG_STUDIO === 'true') {
       const mode = body.useFastMode && !body.aaaaMode ? 'FAST' : 'SLOW';

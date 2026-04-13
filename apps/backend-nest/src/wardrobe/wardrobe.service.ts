@@ -120,6 +120,9 @@ import {
   applyFastLearningBoost,
 } from './fast-learning-loader';
 
+// FAST-scoped outfit cohesion scorer
+import { scoreFastOutfitCohesion } from './fast-cohesion';
+
 // Structured audit logging (gated behind OUTFIT_AI_DEBUG env var)
 import {
   logInput,
@@ -128,6 +131,8 @@ import {
   logParsed,
   logFilter,
   logOutput,
+  logContext,
+  logTrace,
 } from './logging/outfitAI.logger';
 
 /**
@@ -931,6 +936,7 @@ export class WardrobeService {
     const reqId = opts?.requestId || randomUUID();
     const stdStartTime = Date.now();
     const aaaaMode = opts?.aaaaMode ?? false;
+    console.log('🔥 LEGACY generateOutfits() PATH EXECUTED');
     try {
       let lockedIds =
         (opts as any)?.lockedItemIds ?? (opts as any)?.locked_item_ids ?? [];
@@ -2482,6 +2488,7 @@ ${lockedLines}
   ) {
     const startTime = Date.now();
     const reqId = opts?.requestId || randomUUID();
+    console.log('🔥 FAST PATH EXECUTED');
     // console.log('⚡ [FAST] Starting generateOutfitsFast for user:', userId);
     // console.log('⚡ [FAST] Full query:', query);
 
@@ -2542,6 +2549,90 @@ ${lockedLines}
         // );
       }
       // console.log('⚡ [FAST] Available item types:', availableItems.join(', '));
+
+      // ── 0–P3) Studio Context — inverse contextual enforcement signals ──
+      const _q = query.toLowerCase();
+      const _studioContext = {
+        formality: /\b(formal|business|interview|wedding|gala|black.?tie)\b/.test(_q) ? 9
+          : /\b(smart.?casual|business.?casual|dinner|date|upscale)\b/.test(_q) ? 7
+          : /\b(casual|everyday|relaxed|weekend|brunch)\b/.test(_q) ? 4
+          : /\b(gym|workout|athletic|exercise|training)\b/.test(_q) ? 2
+          : /\b(lounge|home|sleep|pajama)\b/.test(_q) ? 1 : 5,
+        isOutdoor: /\b(beach|pool|park|hike|hiking|camping|outdoor|picnic|lake|garden|trail|barbecue|festival|resort|patio|rooftop)\b/i.test(_q),
+        activityLevel: (
+          /\b(hike|hiking|run|running|gym|workout|cycling|climbing|sports?|training|dance|dancing)\b/i.test(_q) ? 'active'
+          : /\b(walk|walking|shopping|sightseeing|travel|stroll|explore|touring)\b/i.test(_q) ? 'moderate'
+          : 'sedentary'
+        ) as 'active' | 'moderate' | 'sedentary',
+        tempBand: (
+          weather?.tempF != null
+            ? (weather.tempF > 85 ? 'hot' : weather.tempF > 72 ? 'warm' : weather.tempF > 58 ? 'mild' : weather.tempF > 40 ? 'cool' : 'cold')
+            : /\b(hot|scorching|sweltering)\b/i.test(_q) ? 'hot'
+            : /\b(sunny|warm|tropical|humid)\b/i.test(_q) ? 'warm'
+            : /\b(cold|freezing|chilly)\b/i.test(_q) ? 'cold'
+            : null
+        ) as 'hot' | 'warm' | 'mild' | 'cool' | 'cold' | null,
+        season: (
+          /\b(winter|cold|freezing|snow)\b/.test(_q) ? 'winter'
+          : /\b(summer|hot|warm|beach)\b/.test(_q) ? 'summer'
+          : /\b(spring|mild)\b/.test(_q) ? 'spring'
+          : /\b(fall|autumn|cool)\b/.test(_q) ? 'fall'
+          : weather?.tempF != null
+            ? (weather.tempF < 40 ? 'winter' : weather.tempF < 60 ? 'fall' : weather.tempF < 75 ? 'spring' : 'summer')
+            : null
+        ) as 'summer' | 'spring' | 'fall' | 'winter' | null,
+      };
+
+      logContext(reqId, { ..._studioContext, sourceQuery: query });
+
+      const HEAVY_FABRIC = /\b(wool|cashmere|fleece|corduroy|tweed|shearling|fur|sherpa|flannel)\b/i;
+      const HIGH_COVERAGE = /\b(parka|puffer|peacoat|trench|overcoat|wool\s*coat|down\s*jacket|heavy\s*jacket|turtleneck|mock\s*neck|thermal)\b/i;
+      const STRUCTURED = /\b(blazer|suit\s*jacket|sport\s*coat|tuxedo|pencil\s*skirt|dress\s*pant|formal\s*dress|evening\s*gown)\b/i;
+      const OPEN_FOOTWEAR = /\b(sandal|flip[- ]?flop|slide|espadrille|open[- ]?toe)\b/i;
+
+      const _contextAppropriate = (item: any): { appropriate: boolean; reason?: string } => {
+        const mat = (item.material ?? '').toLowerCase();
+        const sub = (item.subcategory ?? '').toLowerCase();
+        const name = (item.name ?? '').toLowerCase();
+        const itemText = `${sub} ${name}`;
+        const slot = mapMainCategoryToSlot(item.main_category);
+
+        // Fail-open: if no context signals, approve everything
+        if (!_studioContext.tempBand && !_studioContext.isOutdoor && _studioContext.activityLevel === 'sedentary') {
+          return { appropriate: true };
+        }
+
+        // Signal 1: heavy fabric in hot/warm temps
+        if ((_studioContext.tempBand === 'hot' || _studioContext.tempBand === 'warm') && HEAVY_FABRIC.test(mat)) {
+          if (!OPEN_FOOTWEAR.test(itemText)) {
+            return { appropriate: false, reason: `HEAVY_FABRIC_IN_HEAT: "${mat}" in tempBand=${_studioContext.tempBand}` };
+          }
+        }
+
+        // Signal 2: high-coverage outerwear in outdoor heat
+        if (_studioContext.isOutdoor && (_studioContext.tempBand === 'hot' || _studioContext.tempBand === 'warm')) {
+          if (slot === 'outerwear' && HIGH_COVERAGE.test(itemText)) {
+            return { appropriate: false, reason: `HIGH_COVERAGE_OUTDOOR_HEAT: "${itemText.trim()}" outdoor+${_studioContext.tempBand}` };
+          }
+        }
+
+        // Signal 3: structured items in active/moderate-outdoor contexts (unless high formality)
+        if (_studioContext.formality < 7 && STRUCTURED.test(itemText)) {
+          if (_studioContext.activityLevel === 'active') {
+            return { appropriate: false, reason: `STRUCTURED_IN_ACTIVE: "${itemText.trim()}" activity=${_studioContext.activityLevel}` };
+          }
+          if (_studioContext.activityLevel === 'moderate' && _studioContext.isOutdoor) {
+            return { appropriate: false, reason: `STRUCTURED_IN_OUTDOOR_MODERATE: "${itemText.trim()}" outdoor+moderate` };
+          }
+        }
+
+        // Signal 4: formality ceiling — extreme formal items in very casual contexts
+        if (_studioContext.formality <= 3 && typeof item.formality_score === 'number' && item.formality_score >= 8) {
+          return { appropriate: false, reason: `FORMALITY_CEILING: item_formality=${item.formality_score} context_formality=${_studioContext.formality}` };
+        }
+
+        return { appropriate: true };
+      };
 
       // ── 0a) Inventory-Aware Color Shaping ─────────────────────────
       // Extract color intent from query and build a per-slot color map
@@ -2938,12 +3029,12 @@ ${lockedLines}
         });
       }
 
-      // ── Oversize candidate pool: request 9 so valid-only gate still yields 3 ──
+      // ── Oversize candidate pool: request 12 so cohesion + structure gates still yield 3 ──
       planPrompt = planPrompt
-        .replace(/exactly 3 ranked outfits/gi, 'exactly 9 ranked outfits')
-        .replace(/Exactly 3 outfits/g, 'Exactly 9 outfits')
-        .replace(/ALL 3 outfits/g, 'ALL 9 outfits')
-        .replace(/All 3 outfits/g, 'All 9 outfits');
+        .replace(/exactly 3 ranked outfits/gi, 'exactly 12 ranked outfits')
+        .replace(/Exactly 3 outfits/g, 'Exactly 12 outfits')
+        .replace(/ALL 3 outfits/g, 'ALL 12 outfits')
+        .replace(/All 3 outfits/g, 'All 12 outfits');
 
       // ── JSON safety constraints to reduce malformed output ──
       planPrompt += `\n\nJSON SAFETY RULES (MANDATORY):
@@ -3069,7 +3160,7 @@ ${slotLines}
         // Match each outfit block: "title" + "slots" array
         const outfitRe = /"title"\s*:\s*"([^"]*)"[\s\S]*?"slots"\s*:\s*\[([\s\S]*?)\]/g;
         let regexMatch: RegExpExecArray | null;
-        while ((regexMatch = outfitRe.exec(planText)) !== null && salvaged.length < 9) {
+        while ((regexMatch = outfitRe.exec(planText)) !== null && salvaged.length < 12) {
           const title = regexMatch[1];
           const slotsRaw = regexMatch[2];
           // Extract individual slot objects
@@ -3101,6 +3192,11 @@ ${slotLines}
           outfits: [],
         };
       }
+
+      logTrace(reqId, {
+        stage: 'post_llm_parse_slot_counts',
+        counts: outfitsArray.map((o: any) => o.slots?.length ?? 0),
+      });
 
       // ── 2) Flatten all slots, embed in parallel, then query Pinecone ──
       const embedStartTime = Date.now();
@@ -3380,6 +3476,13 @@ ${slotLines}
             const item = itemsMap.get(itemId);
             if (!item) continue;
 
+            // P-0: masculine presentation — reject feminine items at candidate level (not post-hoc splice)
+            if (userPresentation === 'masculine' && isFeminineItem(
+              item.main_category || '',
+              item.subcategory || '',
+              item.name || '',
+            )) continue;
+
             // P-1: occasion appropriateness — reject items inappropriate for formal contexts
             if (!isOccasionAppropriate(item, { query })) {
               // console.log(
@@ -3406,6 +3509,9 @@ ${slotLines}
               continue;
             }
 
+            // Capture first hard-gate survivor as fallback before soft gates can reject
+            if (!_pickedFallback) _pickedFallback = item;
+
             // P2: unified drift gate — replaces inline P0 (avoid colors) + P2 (color intent) + P3 (garment intent)
             const _driftCheck = validateItemAgainstIntent({
               slotDescription: sr.slot.description,
@@ -3416,10 +3522,67 @@ ${slotLines}
               // console.log(
               //   `⚡ [FAST] DRIFT_REJECTED | slot: "${sr.slot.description}" | candidate: "${item.name}" | ${_driftCheck.reason}`,
               // );
-              if (!_pickedFallback) _pickedFallback = item;
               continue;
             }
 
+            // P3: inverse contextual gate — reject heavy/structured/formal items in casual/outdoor/active contexts
+            const _ctxCheck = _contextAppropriate(item);
+            logTrace(reqId, {
+              stage: `context_eval:${targetSlot}`,
+              itemId: item.id,
+              itemName: item.name,
+              material: item.material ?? null,
+              dressCode: item.dress_code ?? null,
+              formalityScore: item.formality_score ?? null,
+              context: {
+                formality: _studioContext.formality,
+                isOutdoor: _studioContext.isOutdoor,
+                activityLevel: _studioContext.activityLevel,
+                tempBand: _studioContext.tempBand,
+                season: _studioContext.season,
+              },
+              appropriate: _ctxCheck.appropriate,
+              reason: _ctxCheck.reason ?? null,
+            });
+            if (!_ctxCheck.appropriate) {
+              logFilter(reqId, {
+                stage: `context_gate:${targetSlot}`,
+                reason: _ctxCheck.reason,
+                catalogBefore: sr.matches.length,
+                catalogAfter: sr.matches.length,
+              });
+              continue;
+            }
+
+            // FAST-only: reject structured business footwear in outdoor warm/hot casual contexts
+            if (
+              _studioContext.isOutdoor &&
+              (_studioContext.tempBand === 'warm' || _studioContext.tempBand === 'hot') &&
+              _studioContext.formality <= 7 &&
+              typeof item.formality_score === 'number' &&
+              item.formality_score >= 8
+            ) {
+              const _dc = (item.dress_code ?? '').toLowerCase();
+              const _sub = (item.subcategory ?? '').toLowerCase();
+              const _nm = (item.name ?? '').toLowerCase();
+              const _itemSig = `${_sub} ${_nm}`;
+              const STRUCTURED_BIZ_FOOTWEAR = /\b(oxford|derby|cap[- ]?toe|wingtip|brogue|monk[- ]?strap|dress\s*shoe|formal\s*shoe)\b/i;
+              if (_dc.includes('business') || STRUCTURED_BIZ_FOOTWEAR.test(_itemSig)) {
+                logFilter(reqId, {
+                  stage: `fast_strict_formal_outdoor_heat:${targetSlot}`,
+                  reason: `FAST_STRICT_FORMAL_OUTDOOR_HEAT: "${item.name}" formality=${item.formality_score} dressCode="${item.dress_code}" outdoor+${_studioContext.tempBand} contextFormality=${_studioContext.formality}`,
+                  catalogBefore: sr.matches.length,
+                  catalogAfter: sr.matches.length,
+                });
+                continue;
+              }
+            }
+
+            logTrace(reqId, {
+              stage: `slot_final:${targetSlot}`,
+              itemId: item.id,
+              itemName: item.name,
+            });
             items.push(this.dbRowToCatalogItem(item));
             usedIds.add(itemId);
             _slotPicked = true;
@@ -3438,44 +3601,18 @@ ${slotLines}
             _pickedFallback = null;
             break;
           }
-          // If ALL candidates failed drift gates, validate fallback against FULL slot intent
-          // (not empty string — slotDescription must carry color/garment intent)
+          // If ALL candidates failed soft gates, use the hard-gate survivor as fallback unconditionally.
+          // The fallback already passed P-0 (masculine), P-1 (occasion), P1 (slot compat).
+          // Re-running validateItemAgainstIntent here would repeat the P2 drift check that
+          // already rejected this item in the main loop — defeating the fallback's purpose.
           if (!_slotPicked && _pickedFallback && !items.some((it) => mapMainCategoryToSlot(it.main_category) === targetSlot)) {
-            const _fbCheck = validateItemAgainstIntent({
-              slotDescription: sr.slot.description,
-              candidateItem: _pickedFallback,
-              avoidColors: _earlyAvoid,
+            logTrace(reqId, {
+              stage: `fallback_used:${targetSlot}`,
+              itemId: _pickedFallback.id,
+              itemName: _pickedFallback.name,
             });
-            if (_fbCheck.valid) {
-              items.push(this.dbRowToCatalogItem(_pickedFallback));
-              usedIds.add(_pickedFallback.id);
-            } else {
-              // console.log(
-              //   `⚡ [FAST] FALLBACK_DRIFT_REJECTED | slot: "${sr.slot.description}" | fallback: "${_pickedFallback.name}" | ${_fbCheck.reason}`,
-              // );
-            }
-          }
-        }
-
-        // ── Masculine post-retrieval filter (Layer 1b: defense-in-depth) ──
-        if (userPresentation === 'masculine') {
-          const preLen = items.length;
-          for (let fi = items.length - 1; fi >= 0; fi--) {
-            const it = items[fi];
-            if (
-              isFeminineItem(
-                it.main_category || '',
-                (it as any).subcategory || '',
-                (it as any).name || it.label || '',
-              )
-            ) {
-              items.splice(fi, 1);
-            }
-          }
-          if (items.length < preLen) {
-            // console.log(
-            //   `⚡ [FAST] Masculine post-filter: ${preLen} → ${items.length} items in outfit "${outfitPlan.title}"`,
-            // );
+            items.push(this.dbRowToCatalogItem(_pickedFallback));
+            usedIds.add(_pickedFallback.id);
           }
         }
 
@@ -3533,132 +3670,122 @@ ${slotLines}
         }
       }
 
+      // ── FAST slot-completeness gate — reject outfits with fewer than 4 filled slots ──
+      {
+        const preComplete = outfits.length;
+        const complete = outfits.filter((outfit: any) => {
+          const items: any[] = outfit.items ?? [];
+          const slots = new Set(items.map((it: any) => mapMainCategoryToSlot(it.main_category)));
+          const hasCore = slots.has('tops') && slots.has('bottoms') && slots.has('shoes');
+          if (!hasCore || items.length < 4) {
+            logTrace(reqId, {
+              stage: 'fast_slot_completeness_reject',
+              title: outfit.title,
+              itemCount: items.length,
+              slots: [...slots],
+              missingCore: [
+                ...(!slots.has('tops') ? ['tops'] : []),
+                ...(!slots.has('bottoms') ? ['bottoms'] : []),
+                ...(!slots.has('shoes') ? ['shoes'] : []),
+              ],
+            });
+            return false;
+          }
+          return true;
+        });
+        if (complete.length > 0) {
+          outfits = complete;
+        }
+        logTrace(reqId, {
+          stage: 'fast_slot_completeness',
+          before: preComplete,
+          after: outfits.length,
+        });
+      }
+
+      // Snapshot before cohesion filtering — used by relaxed retry if all are eliminated
+      const _preCohesionOutfits = [...outfits];
+
+      // ── FAST cohesion gate — reject outfits that pass structure but lack stylistic cohesion ──
+      {
+        const preCohesion = outfits.length;
+        const cohesionPassed = outfits.filter((outfit: any) => {
+          const cohesionItems = (outfit.items ?? []) as CatalogItem[];
+          const cohesion = scoreFastOutfitCohesion(cohesionItems, _studioContext);
+          if (!cohesion.pass) {
+            logFilter(reqId, {
+              stage: 'fast_cohesion_gate',
+              reason: `${cohesion.reason} | outfit="${outfit.title}"`,
+              catalogBefore: preCohesion,
+              catalogAfter: preCohesion,
+            });
+          }
+          return cohesion.pass;
+        });
+        if (cohesionPassed.length > 0) {
+          outfits = cohesionPassed;
+        }
+        logTrace(reqId, {
+          stage: 'fast_cohesion_summary',
+          before: preCohesion,
+          after: outfits.length,
+        });
+      }
+
       // Hard validation gate — discard structurally invalid outfits
       outfits = validateOutfitCore(outfits, query);
 
-      // ── Deterministic fallback (FIX 2) ─────────────────────────
-      // If validateOutfitCore rejected ALL outfits, build a basic one from DB.
-      // Tries separates (top+bottom+shoes) first, then dress+shoes.
-      if (outfits.length === 0 && !isStartWithItem) {
-        // console.warn(
-        //   '⚡ [FAST] All outfits rejected by validateOutfitCore — building deterministic fallback',
-        // );
-        const { rows: fallbackRows } = await pool.query(
-          `SELECT id, name, main_category, subcategory, image_url, color
-           FROM wardrobe_items
-           WHERE user_id = $1 AND main_category IS NOT NULL
-           ORDER BY favorite DESC, updated_at DESC, id ASC`,
-          [userId],
-        );
-
-        // Apply masculine filter to fallback pool
-        const fallbackPool =
-          userPresentation === 'masculine'
-            ? (fallbackRows as any[]).filter(
-                (r) =>
-                  !isFeminineItem(
-                    r.main_category || '',
-                    r.subcategory || '',
-                    r.name || '',
-                  ),
-              )
-            : (fallbackRows as any[]);
-
-        const pickFirst = (slot: string) =>
-          fallbackPool.find(
-            (r: any) =>
-              mapMainCategoryToSlot(r.main_category) === slot &&
-              validateItemAgainstIntent({
-                slotDescription: query,
-                candidateItem: r,
-                avoidColors: _earlyAvoid,
-              }).valid,
-          );
-
-        const toItem = (r: any): CatalogItem => ({
-          index: 0,
-          id: r.id,
-          label: r.name || `${r.main_category}`,
-          main_category: r.main_category,
-          subcategory: r.subcategory,
-          color: r.color,
-          image_url: r.image_url,
+      // ── FAST: Rank by cohesion and take top 3 ──
+      // No deterministic fallback. No padding. Only elite survivors.
+      if (outfits.length > 3) {
+        const scored = outfits.map((outfit: any) => {
+          const cohesionItems = (outfit.items ?? []) as CatalogItem[];
+          const cohesion = scoreFastOutfitCohesion(cohesionItems, _studioContext);
+          return { outfit, score: cohesion.score };
         });
-
-        // Path A: separates (top + bottom + shoes)
-        const top = pickFirst('tops');
-        const bottom = pickFirst('bottoms');
-        const shoes = pickFirst('shoes');
-
-        if (top && bottom && shoes) {
-          outfits = [
-            {
-              outfit_id: randomUUID(),
-              title: 'Your everyday essentials',
-              items: [toItem(top), toItem(bottom), toItem(shoes)],
-              why: 'Built from your wardrobe favorites as a reliable fallback.',
-            },
-          ];
-          // console.log('⚡ [FAST] Deterministic fallback: separates path');
-        } else {
-          // Path B: dress + shoes (matches validateOutfitCore structure)
-          const dress = pickFirst('dresses');
-          if (dress && shoes) {
-            outfits = [
-              {
-                outfit_id: randomUUID(),
-                title: 'A classic one-piece look',
-                items: [toItem(dress), toItem(shoes)],
-                why: 'Built from your wardrobe favorites as a reliable fallback.',
-              },
-            ];
-            // console.log('⚡ [FAST] Deterministic fallback: dress+shoes path');
-          } else {
-            // console.warn(
-            //   '⚡ [FAST] Deterministic fallback: insufficient items for any valid outfit structure',
-            // );
-          }
-        }
+        scored.sort((a, b) => b.score - a.score);
+        outfits = scored.slice(0, 3).map((s) => s.outfit);
+        logTrace(reqId, {
+          stage: 'fast_cohesion_rank',
+          scores: scored.map((s) => ({ title: s.outfit.title, score: +(s.score.toFixed(3)) })),
+          kept: 3,
+        });
       }
 
-      // ── Pad to 3 outfits if wardrobe has enough items ──
-      // NOTE: Includes PATH #2 (isStartWithItem) — padded outfits may not contain centerpiece
-      if (outfits.length < 3) {
-        const { rows: padRows } = await pool.query(
-          `SELECT id, name, main_category, subcategory, image_url, color
-           FROM wardrobe_items
-           WHERE user_id = $1 AND main_category IS NOT NULL
-           ORDER BY favorite DESC, updated_at DESC, id ASC`,
-          [userId],
-        );
-        const padPool =
-          userPresentation === 'masculine'
-            ? (padRows as any[]).filter(
-                (r) =>
-                  !isFeminineItem(
-                    r.main_category || '',
-                    r.subcategory || '',
-                    r.name || '',
-                  ),
-              )
-            : (padRows as any[]);
+      // ── FAST relaxed retry — backfill when strict gating leaves fewer than 3 ──
+      if (outfits.length < 3 && _preCohesionOutfits.length > 0) {
+        const needed = 3 - outfits.length;
+        const existingIds = new Set(outfits.map((o: any) => o.outfit_id));
+        const relaxed = _preCohesionOutfits
+          .filter((o: any) => !existingIds.has(o.outfit_id))
+          .map((outfit: any) => {
+            const cohesionItems = (outfit.items ?? []) as CatalogItem[];
+            const cohesion = scoreFastOutfitCohesion(cohesionItems, _studioContext, {
+              maxFormalityDelta: 6,
+              minScore: 0.38,
+            });
+            return { outfit, score: cohesion.score, pass: cohesion.pass };
+          })
+          .filter((r) => r.pass)
+          .sort((a, b) => (b.outfit.items?.length ?? 0) - (a.outfit.items?.length ?? 0) || b.score - a.score)
+          .slice(0, needed)
+          .map((r) => r.outfit);
 
-        const toItemPad = (r: any): CatalogItem => ({
-          index: 0,
-          id: r.id,
-          label: r.name || `${r.main_category}`,
-          main_category: r.main_category,
-          subcategory: r.subcategory,
-          color: r.color,
-          image_url: r.image_url,
+        if (relaxed.length > 0) {
+          outfits = [...outfits, ...relaxed];
+        }
+        logTrace(reqId, {
+          stage: 'fast_relaxed_retry',
+          preCohesionPool: _preCohesionOutfits.length,
+          relaxedSurvivors: relaxed.length,
         });
+      }
 
-        outfits = padToThreeOutfits(outfits, padPool, (items) => ({
-          outfit_id: randomUUID(),
-          title: 'More from your wardrobe',
-          items: items.map(toItemPad),
-          why: 'Additional outfit built from your wardrobe favorites.',
-        }));
+      if (outfits.length < 3 && outfits.length > 0) {
+        logTrace(reqId, {
+          stage: 'fast_undersupply',
+          survivingOutfits: outfits.length,
+        });
       }
 
       // ── 5) PATH #2 POST-PARSE VALIDATION ──
@@ -3835,6 +3962,33 @@ ${slotLines}
           // Rule 4: Formal dress + sneakers
           if (dresses.some((d: any) => FORMAL_DRESS.test(_txt(d))) &&
               shoes.some((s: any) => ATHLETIC_SHOE.test(_txt(s)))) return true;
+
+          // Rule 5: Formality spread > 4 across items
+          const fScores = items
+            .map((it: any) => it.formality_score)
+            .filter((s: any): s is number => typeof s === 'number');
+          if (fScores.length >= 2 && Math.max(...fScores) - Math.min(...fScores) > 4) return true;
+
+          // Rule 6: Mixed athletic + non-athletic base layers
+          const ATHLETIC_ANY = /\b(athletic|gym|workout|training|sport|track|running)\b/i;
+          const hasAthleticBase = [...tops, ...bottoms].some((i: any) => ATHLETIC_ANY.test(_txt(i)));
+          const hasNonAthleticBase = [...tops, ...bottoms].some((i: any) => !ATHLETIC_ANY.test(_txt(i)));
+          const allBase = [...tops, ...bottoms];
+          if (allBase.length >= 2 && hasAthleticBase && hasNonAthleticBase) return true;
+
+          // Rule 7: Open-toe footwear + heavy outerwear
+          const OPEN_TOE = /\b(sandal|open[- ]?toe|flip[- ]?flop|slide|mule)\b/i;
+          const HEAVY_OUTER = /\b(parka|puffer|peacoat|overcoat|down\s*jacket|wool\s*coat|shearling)\b/i;
+          const outerwear = bySlot('outerwear');
+          if (shoes.some((s: any) => OPEN_TOE.test(_txt(s))) &&
+              outerwear.some((o: any) => HEAVY_OUTER.test(_txt(o)))) return true;
+
+          // Rule 8: Formal accessories + casual base
+          const FORMAL_ACC = /\b(cufflink|tie\s*bar|pocket\s*square|bow\s*tie|silk\s*tie)\b/i;
+          const CASUAL_BASE = /\b(t-shirt|tee|tank\s*top|hoodie|sweatshirt|cargo|jean|denim)\b/i;
+          const accessories = bySlot('accessories');
+          if (accessories.some((a: any) => FORMAL_ACC.test(_txt(a))) &&
+              [...tops, ...bottoms].some((i: any) => CASUAL_BASE.test(_txt(i)))) return true;
 
           return false;
         };

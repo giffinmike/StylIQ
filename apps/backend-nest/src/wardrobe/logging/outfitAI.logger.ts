@@ -1,9 +1,11 @@
 import { Logger } from '@nestjs/common';
 
+console.log('🔥 OutfitAI logger loaded');
+
 const logger = new Logger('OutfitAI');
 
 function isEnabled(): boolean {
-  return process.env.OUTFIT_AI_DEBUG === 'true';
+  return process.env.NODE_ENV !== 'production' || process.env.OUTFIT_AI_DEBUG === 'true';
 }
 
 function safeStringify(data: unknown, maxLen = 5000): string {
@@ -16,6 +18,8 @@ function safeStringify(data: unknown, maxLen = 5000): string {
 }
 
 function emit(stage: string, requestId: string, data: Record<string, unknown>) {
+  console.log('🔥 EMIT CALLED', stage);
+  console.log(`[OUTFIT_AI][${stage}]`, { requestId, ...data });
   setImmediate(() => {
     logger.log(`${stage} ${safeStringify({ requestId, ...data })}`);
   });
@@ -117,4 +121,30 @@ export function logOutput(
 ) {
   if (!isEnabled()) return;
   emit('OUTPUT', requestId, data);
+}
+
+export function logContext(
+  requestId: string,
+  data: {
+    formality: number;
+    isOutdoor: boolean;
+    activityLevel: string;
+    tempBand: string | null;
+    season: string | null;
+    sourceQuery?: string;
+  },
+) {
+  if (!isEnabled()) return;
+  emit('CONTEXT', requestId, data);
+}
+
+export function logTrace(
+  requestId: string,
+  data: {
+    stage: string;
+    [key: string]: unknown;
+  },
+) {
+  if (!isEnabled()) return;
+  emit('TRACE', requestId, data);
 }
