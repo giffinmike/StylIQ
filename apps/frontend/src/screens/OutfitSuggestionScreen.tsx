@@ -524,16 +524,16 @@ export default function OutfitSuggestionScreen({navigate}: Props) {
   }, [useWeather, weather]);
 
   // ──────────────────────────────────────────────────────────────
-  // Query builder (prompt seasoning only)
+  // Query builder — HARD RULE: Studio receives ONLY what the user typed.
+  // No chip-driven preset seeds (occasion/style/weather), no
+  // "smart casual, balanced neutrals" fallback. Empty-query protection
+  // is enforced at submit time by `canGenerate` below, which disables
+  // the generate button unless `lastSpeech.trim().length > 0`, so an
+  // empty query can never reach regenerate().
   // ──────────────────────────────────────────────────────────────
   const builtQuery = useMemo(() => {
-    const parts: string[] = [];
-    if (occasion !== 'Any') parts.push(occasion);
-    if (style !== 'Any') parts.push(style);
-    if (useWeather && weather !== 'auto') parts.push(`${weather} weather`);
-    if (lastSpeech.trim().length) parts.push(lastSpeech.trim());
-    return parts.join(' ').trim() || 'smart casual, balanced neutrals';
-  }, [occasion, style, weather, lastSpeech, useWeather]);
+    return lastSpeech?.trim() ?? '';
+  }, [lastSpeech]);
 
   const canGenerate = useMemo(() => lastSpeech.trim().length > 0, [lastSpeech]);
 
@@ -1235,19 +1235,19 @@ export default function OutfitSuggestionScreen({navigate}: Props) {
                         setSelectedAdjustmentPrompt(refinementPrompt || null);
                       }}
                       disabled={loading}
-                      moodChipsDisabled={!!outfitPrompt.trim()}
+                      moodChipsDisabled={!!lastSpeech.trim()}
                       promptInputDisabled={!!selectedMoodLabel}
                       selectedMoodLabel={selectedMoodLabel}
                       selectedAdjustmentLabel={selectedAdjustmentLabel}
                       showAdjustments={false}
-                      promptValue={outfitPrompt}
+                      promptValue={lastSpeech}
                       onPromptChange={(text) => {
                         // When typing a prompt, clear any selected mood chip (mutually exclusive)
                         if (text.trim()) {
                           setSelectedMoodLabel(null);
                           setSelectedMoodPrompt(null);
                         }
-                        setOutfitPrompt(text);
+                        setLastSpeech(text);
                       }}
                       promptPlaceholder="e.g. brunch, work, etc..."
                     />
@@ -1419,10 +1419,13 @@ export default function OutfitSuggestionScreen({navigate}: Props) {
                       style={[
                         globalStyles.buttonPrimary,
                         {width: 160},
-                        (loading || (!outfitPrompt.trim() && !selectedMoodLabel && !lockedItem)) && {opacity: 0.5},
+                        (loading || !canGenerate) && {opacity: 0.5},
                       ]}
-                      onPress={handleV2Generate}
-                      disabled={loading || (!outfitPrompt.trim() && !selectedMoodLabel && !lockedItem)}>
+                      onPress={() => {
+                        if (!lastSpeech.trim()) return;
+                        regenerate(lastSpeech.trim());
+                      }}
+                      disabled={!canGenerate}>
                       <Text style={globalStyles.buttonPrimaryText}>
                         {loading ? 'Creating…' : 'Create 3 Outfits'}
                       </Text>

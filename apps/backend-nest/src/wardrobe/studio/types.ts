@@ -90,6 +90,16 @@ export interface StudioBuildContext {
   userPresentation: UserPresentation;
   weather?: WeatherContext;
   styleProfile: StyleProfileSnapshot | null;
+  // Populated by the orchestrator from deriveEnvironmentTier(ctx) before
+  // downstream scoring runs. Optional in the type so that upstream
+  // constructors (wardrobe.service.ts) do not need to know about it —
+  // the orchestrator attaches it via spread before passing ctx forward.
+  environmentTier?:
+    | 'NORMAL'
+    | 'EXTREME_HEAT'
+    | 'EXTREME_COLD'
+    | 'ATHLETIC'
+    | 'FORMAL_EVENT';
 }
 
 export type StudioInvariantCode =

@@ -6,6 +6,7 @@
 // exclusively by wardrobe.service.ts, so it is safe to call.
 
 import { scoreItemForConstraints } from '../logic/scoring';
+import { mapMainCategoryToSlot } from '../logic/categoryMapping';
 import type { StudioItem, StudioBuildContext, StudioSlots } from './types';
 
 /**
@@ -17,7 +18,7 @@ export function scoreStudioItem(
   ctx: StudioBuildContext,
 ): number {
   // Constraints layer (loafer/sneaker/brown/dress-code intent).
-  const constraints = scoreItemForConstraints(
+  let constraints = scoreItemForConstraints(
     {
       index: 0,
       id: item.id,
@@ -33,6 +34,20 @@ export function scoreStudioItem(
     ctx.parsedConstraints,
     0,
   );
+
+  // EXTREME_HEAT shoe-scoring floor. Formal leather shoes are already
+  // removed by the environmental hard gate; here we prevent ultra-casual
+  // footwear (sneakers/sandals) from collapsing below -0.5 under
+  // constraint scoring so at least some shoes survive into assembly.
+  // Scoped strictly to tier === 'EXTREME_HEAT' and slot === 'shoes' —
+  // no effect on other tiers or slots, no change to styleScore/weights.
+  if (
+    ctx.environmentTier === 'EXTREME_HEAT' &&
+    mapMainCategoryToSlot(item.main_category) === 'shoes' &&
+    constraints < -0.5
+  ) {
+    constraints = -0.5;
+  }
 
   // Style-profile color preferences: additive small nudge.
   let styleNudge = 0;

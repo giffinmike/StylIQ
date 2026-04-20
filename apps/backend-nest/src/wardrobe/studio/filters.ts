@@ -201,6 +201,29 @@ export function partitionBySlot(
     other: [],
   };
   for (const item of pool) {
+    // Footwear-first detection: catalog items sometimes have a missing or
+    // inconsistent main_category while the subcategory clearly indicates
+    // footwear (e.g. "Sneakers"). Classify those as shoes before falling
+    // back to main_category mapping so slot detection matches reality.
+    const main = (item.main_category ?? '').toLowerCase();
+    const sub = (
+      (item as any).sub ??
+      item.subcategory ??
+      (item as any).subCategory ??
+      ''
+    ).toLowerCase();
+
+    const isShoe =
+      main === 'shoes' ||
+      /\b(sneakers?|trainers?|loafers?|derbys?|oxfords?|boots?|sandals?|espadrilles?|flip[- ]?flops?|slides?|mules?|high[- ]?heels?|pumps?)\b/i.test(
+        sub,
+      );
+
+    if (isShoe) {
+      out.shoes.push(item);
+      continue;
+    }
+
     const slot = mapMainCategoryToSlot(item.main_category ?? '');
     out[slot].push(item);
   }
@@ -241,47 +264,62 @@ export type EnvironmentTier =
   | 'FORMAL_EVENT'
   | 'NORMAL';
 
-const HEAT_TEMP_F = 82;
+const HEAT_TEMP_F = 88;
 const COLD_TEMP_F = 40;
 
 /** Derive the physical-feasibility tier for a request. Pure, no side effects. */
 export function deriveEnvironmentTier(
   ctx: StudioBuildContext,
 ): EnvironmentTier {
+  const q = (ctx.effectiveQuery ?? '').toLowerCase();
   const tempF = ctx.weather?.tempF;
   const precip = ctx.weather?.precipitation;
   const st = ctx.studio;
 
-  // Athletic wins over weather tiers when the user is explicitly going to
-  // the gym — the item set shift there is absolute.
-  if (st.isGymContext || ctx.parsedConstraints.wantsGym) {
-    return 'ATHLETIC';
+  const tier: EnvironmentTier = (() => {
+    // Athletic wins over weather tiers when the user is explicitly going to
+    // the gym — the item set shift there is absolute.
+    if (st.isGymContext || ctx.parsedConstraints.wantsGym) {
+      return 'ATHLETIC';
+    }
+
+    // Formal events override general heat/cold gating for formality
+    // constraints; the physics of the venue is indoors-climate-controlled.
+    if (st.isFormalContext) {
+      return 'FORMAL_EVENT';
+    }
+
+    // Extreme heat: require an EXPLICIT signal. Climate / profile
+    // defaults must NOT auto-trigger EXTREME_HEAT — a beach context in
+    // 60°F weather is not heat. The prompt regex catches resort / pool
+    // / tropical phrasing; tempF >= HEAT_TEMP_F is the objective trigger.
+    const explicitBeachSignal =
+      /beach|sand|tropical|miami|hawaii|resort|pool/i.test(q);
+    const hotWeather = tempF != null && tempF >= HEAT_TEMP_F;
+    if (explicitBeachSignal || hotWeather) {
+      return 'EXTREME_HEAT';
+    }
+
+    // Extreme cold: explicit low temp OR snow precipitation.
+    if (typeof tempF === 'number' && tempF <= COLD_TEMP_F) {
+      return 'EXTREME_COLD';
+    }
+    if (precip === 'snow') {
+      return 'EXTREME_COLD';
+    }
+
+    return 'NORMAL';
+  })();
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[ENV_TIER]', {
+      query: ctx.effectiveQuery,
+      tempF: ctx.weather?.tempF,
+      derivedTier: tier,
+    });
   }
 
-  // Formal events override general heat/cold gating for formality
-  // constraints; the physics of the venue is indoors-climate-controlled.
-  if (st.isFormalContext) {
-    return 'FORMAL_EVENT';
-  }
-
-  // Extreme heat: explicit high temp OR beach-context default (warm-weather
-  // venue where wool/cashmere/tailoring are physically inappropriate).
-  if (typeof tempF === 'number' && tempF >= HEAT_TEMP_F) {
-    return 'EXTREME_HEAT';
-  }
-  if (st.isBeachContext) {
-    return 'EXTREME_HEAT';
-  }
-
-  // Extreme cold: explicit low temp OR snow precipitation.
-  if (typeof tempF === 'number' && tempF <= COLD_TEMP_F) {
-    return 'EXTREME_COLD';
-  }
-  if (precip === 'snow') {
-    return 'EXTREME_COLD';
-  }
-
-  return 'NORMAL';
+  return tier;
 }
 
 function fabricText(item: StudioItem): string {
@@ -441,7 +479,11 @@ export function applyEnvironmentalHardGate(
   pool: StudioItem[],
   ctx: StudioBuildContext,
 ): StudioItem[] {
-  const tier = deriveEnvironmentTier(ctx);
+  // Prefer pre-derived tier from the orchestrator to avoid running
+  // deriveEnvironmentTier twice per request (which also duplicates the
+  // [ENV_TIER] log). Fall back to derivation for callers that did not
+  // enrich ctx (e.g. tests).
+  const tier = ctx.environmentTier ?? deriveEnvironmentTier(ctx);
 
   if (tier === 'NORMAL') {
     return pool;
@@ -486,21 +528,26 @@ export function applyEnvironmentalHardGate(
     }
   }
 
-  console.log(
-    JSON.stringify({
-      _tag: 'STUDIO_ENV_HARD_GATE',
-      tier,
-      before: pool.length,
-      after: kept.length,
-      droppedCount: removed.length,
-      droppedReasons: removed.reduce<Record<string, number>>((acc, r) => {
-        acc[r.reason] = (acc[r.reason] ?? 0) + 1;
-        return acc;
-      }, {}),
-      beforeCategories: categoryHistogram(pool),
-      afterCategories: categoryHistogram(kept),
-    }),
-  );
+  if (
+    process.env.NODE_ENV !== 'production' ||
+    process.env.DEBUG_STUDIO === 'true'
+  ) {
+    console.log(
+      JSON.stringify({
+        _tag: 'STUDIO_ENV_HARD_GATE',
+        tier,
+        before: pool.length,
+        after: kept.length,
+        droppedCount: removed.length,
+        droppedReasons: removed.reduce<Record<string, number>>((acc, r) => {
+          acc[r.reason] = (acc[r.reason] ?? 0) + 1;
+          return acc;
+        }, {}),
+        beforeCategories: categoryHistogram(pool),
+        afterCategories: categoryHistogram(kept),
+      }),
+    );
+  }
 
   return kept;
 }

@@ -172,7 +172,20 @@ export function buildStrictOutfit(
     );
   }
 
-  // Search for a compatible (top, bottom, shoes) triple in rank order.
+  // Bounded exhaustive search for the best compatible (top, bottom,
+  // shoes) triple. Scanning the top-K of each slot gives the stylist
+  // a real chance at a globally better combination than the greedy
+  // early-break approach, while capping worst-case cost at K_T*K_B*K_S
+  // compatibility checks per outfit (≈ a few hundred).
+  //
+  // Triple score combines pairwise compatibility (the authoritative
+  // signal) with a small item-preference nudge so ties break toward
+  // the stylist's higher-ranked pieces. Item nudges are weighted low
+  // to keep compatibility dominant.
+  const K_TOPS = Math.min(rankedTops.length, 6);
+  const K_BOTTOMS = Math.min(rankedBottoms.length, 6);
+  const K_SHOES = Math.min(rankedShoes.length, 8);
+
   let chosenTop: StudioItem | null = null;
   let chosenBottom: StudioItem | null = null;
   let chosenShoes: StudioItem | null = null;
@@ -183,34 +196,35 @@ export function buildStrictOutfit(
   const eligible = (item: StudioItem, exclude: Set<string>): boolean =>
     !exclude.has(item.id) || reuseAllowed;
 
-  outer: for (const top of rankedTops) {
+  for (let ti = 0; ti < K_TOPS; ti++) {
+    const top = rankedTops[ti];
     if (!eligible(top, excludeTop)) continue;
-    for (const bottom of rankedBottoms) {
+    const topNudge = scoreStudioItem(top, ctx) * 0.1;
+
+    for (let bi = 0; bi < K_BOTTOMS; bi++) {
+      const bottom = rankedBottoms[bi];
       if (!eligible(bottom, excludeBottom)) continue;
       const tb = topBottomCompatibility(top, bottom, ctx);
       if (!tb.compatible) continue;
+      const bottomNudge = scoreStudioItem(bottom, ctx) * 0.1;
 
-      for (const shoes of rankedShoes) {
+      for (let si = 0; si < K_SHOES; si++) {
+        const shoes = rankedShoes[si];
         if (!eligible(shoes, excludeShoes)) continue;
         const sh = shoesCompatibility(top, bottom, shoes, ctx);
         if (!sh.compatible) continue;
 
-        const triple = tb.score + sh.score;
+        const shoesNudge = scoreStudioItem(shoes, ctx) * 0.1;
+        const triple =
+          tb.score + sh.score + topNudge + bottomNudge + shoesNudge;
+
         if (triple > chosenScore) {
           chosenTop = top;
           chosenBottom = bottom;
           chosenShoes = shoes;
           chosenScore = triple;
         }
-        // First compatible shoe is enough for this (top, bottom) iter;
-        // break to let the next bottom have a chance at a higher triple.
-        break;
       }
-    }
-    if (chosenTop && chosenBottom && chosenShoes) {
-      // Good enough: don't keep iterating ranks once we've picked a top,
-      // otherwise every outfit would converge on the single best top.
-      break outer;
     }
   }
 
