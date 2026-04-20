@@ -79,9 +79,7 @@ export class OutfitController {
     },
   ) {
     if (!HOME_SIGNAL_TYPES.has(dto.event_type)) {
-      throw new BadRequestException(
-        `Invalid event_type: ${dto.event_type}`,
-      );
+      throw new BadRequestException(`Invalid event_type: ${dto.event_type}`);
     }
     if (!LEARNING_FLAGS.EVENTS_ENABLED) {
       return { status: 'learning_disabled' };
@@ -110,15 +108,16 @@ export class OutfitController {
 
     this.fashionStateService
       .computeAndSaveState(userId)
-      .catch(err =>
-        console.error('[LEARNING INLINE] recompute failed', err),
-      );
+      .catch((err) => console.error('[LEARNING INLINE] recompute failed', err));
 
     return { status: 'ok' };
   }
 
   @Post('favorite')
-  async favoriteOutfit(@Req() req, @Body() dto: Omit<FavoriteOutfitDto, 'user_id'>) {
+  async favoriteOutfit(
+    @Req() req,
+    @Body() dto: Omit<FavoriteOutfitDto, 'user_id'>,
+  ) {
     this.logger.log('[STUDIO SAVE DEBUG] Backend /outfit/favorite route hit');
     this.logger.log(JSON.stringify(dto));
     const user_id = req.user.userId;

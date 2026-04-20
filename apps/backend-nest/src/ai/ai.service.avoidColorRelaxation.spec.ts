@@ -25,7 +25,14 @@ const mkItem = (id: string, color: string, category = 'top') => ({
   id,
   name: `Item ${id}`,
   color,
-  main_category: category === 'top' ? 'Tops' : category === 'bottom' ? 'Pants' : category === 'shoes' ? 'Shoes' : 'Tops',
+  main_category:
+    category === 'top'
+      ? 'Tops'
+      : category === 'bottom'
+        ? 'Pants'
+        : category === 'shoes'
+          ? 'Shoes'
+          : 'Tops',
   __canonicalColors: [color.toLowerCase()],
 });
 
@@ -81,12 +88,13 @@ function regenerateAvoidSafe(
       for (let bi = 0; bi < bottoms.length && generated.length < 3; bi++) {
         for (let si = 0; si < shoes.length && generated.length < 3; si++) {
           const items = [tops[ti], bottoms[bi], shoes[si]];
-          const combo = items.map((i) => i.id).sort().join(',');
+          const combo = items
+            .map((i) => i.id)
+            .sort()
+            .join(',');
           if (usedCombos.has(combo) || existingIds.has(combo)) continue;
           usedCombos.add(combo);
-          generated.push(
-            mkOutfit(`regen-${synId++}`, items),
-          );
+          generated.push(mkOutfit(`regen-${synId++}`, items));
         }
       }
     }
@@ -113,7 +121,7 @@ function finalGuardWithRegeneration(
 
   const outfitHasAvoidedColor = (outfit: any): boolean => {
     for (const it of outfit.items ?? []) {
-      const colors = extractItemColors(it as any);
+      const colors = extractItemColors(it);
       for (const ic of colors) {
         for (const ac of expanded) {
           if (colorMatchesSafe(ic, ac)) return true;
@@ -136,10 +144,18 @@ function finalGuardWithRegeneration(
   if (clean.length === 0 && beforeCount > 0) {
     const existingIds = new Set(
       candidatePool.map((o) =>
-        (o.items || []).map((i: any) => i?.id).filter(Boolean).sort().join(','),
+        (o.items || [])
+          .map((i: any) => i?.id)
+          .filter(Boolean)
+          .sort()
+          .join(','),
       ),
     );
-    const regenerated = regenerateAvoidSafe(wardrobeItems, avoidColors, existingIds);
+    const regenerated = regenerateAvoidSafe(
+      wardrobeItems,
+      avoidColors,
+      existingIds,
+    );
     if (regenerated.length > 0) {
       return { outfits: regenerated.slice(0, 3), regenerated: true };
     }
@@ -184,9 +200,7 @@ function returnGuardWithRegeneration(
   if (result.length < 3) {
     const backfill = candidatePool
       .filter((o) => !rtHasAvoid(o))
-      .filter(
-        (o) => !result.some((x) => (x.id ?? '') === (o.id ?? '')),
-      );
+      .filter((o) => !result.some((x) => (x.id ?? '') === (o.id ?? '')));
     result = [...result, ...backfill].slice(0, 3);
   }
 
@@ -194,10 +208,18 @@ function returnGuardWithRegeneration(
   if (result.length === 0 && rtBefore > 0) {
     const existingIds = new Set(
       candidatePool.map((o) =>
-        (o.items || []).map((i: any) => i?.id).filter(Boolean).sort().join(','),
+        (o.items || [])
+          .map((i: any) => i?.id)
+          .filter(Boolean)
+          .sort()
+          .join(','),
       ),
     );
-    const regenerated = regenerateAvoidSafe(wardrobeItems, avoidColors, existingIds);
+    const regenerated = regenerateAvoidSafe(
+      wardrobeItems,
+      avoidColors,
+      existingIds,
+    );
     if (regenerated.length > 0) {
       return { outfits: regenerated.slice(0, 3), regenerated: true };
     }
@@ -240,7 +262,9 @@ describe('Stylist AVOID_COLOR_FINAL_GUARD with regeneration', () => {
     for (const o of result) {
       for (const it of o.items) {
         for (const ac of expanded) {
-          expect(colorMatchesSafe(it.color?.toLowerCase() ?? '', ac)).toBe(false);
+          expect(colorMatchesSafe(it.color?.toLowerCase() ?? '', ac)).toBe(
+            false,
+          );
         }
       }
     }
@@ -251,7 +275,17 @@ describe('Stylist AVOID_COLOR_FINAL_GUARD with regeneration', () => {
       mkOutfit('1', [mkItem('a', 'black')]),
       mkOutfit('2', [mkItem('b', 'navy')]),
     ];
-    const avoid = ['black', 'navy', 'white', 'brown', 'beige', 'tan', 'rust', 'olive', 'grey'];
+    const avoid = [
+      'black',
+      'navy',
+      'white',
+      'brown',
+      'beige',
+      'tan',
+      'rust',
+      'olive',
+      'grey',
+    ];
 
     // Wardrobe only has avoided colors
     const wardrobe = [
@@ -313,9 +347,18 @@ describe('Stylist AVOID_COLOR_FINAL_GUARD with regeneration', () => {
 describe('Stylist AVOID_COLOR_RETURN_GUARD with regeneration', () => {
   it('regenerates outfits when __canonicalColors all match avoid list', () => {
     const outfits = [
-      mkOutfit('1', [mkItemWithCanonical('a', ['black']), mkItemWithCanonical('b', ['white'])]),
-      mkOutfit('2', [mkItemWithCanonical('c', ['brown']), mkItemWithCanonical('d', ['beige'])]),
-      mkOutfit('3', [mkItemWithCanonical('e', ['tan']), mkItemWithCanonical('f', ['rust'])]),
+      mkOutfit('1', [
+        mkItemWithCanonical('a', ['black']),
+        mkItemWithCanonical('b', ['white']),
+      ]),
+      mkOutfit('2', [
+        mkItemWithCanonical('c', ['brown']),
+        mkItemWithCanonical('d', ['beige']),
+      ]),
+      mkOutfit('3', [
+        mkItemWithCanonical('e', ['tan']),
+        mkItemWithCanonical('f', ['rust']),
+      ]),
     ];
     const pool = [...outfits];
     const avoid = ['black', 'white', 'brown', 'beige', 'tan', 'rust'];
@@ -338,9 +381,7 @@ describe('Stylist AVOID_COLOR_RETURN_GUARD with regeneration', () => {
   });
 
   it('returns empty when wardrobe truly insufficient', () => {
-    const outfits = [
-      mkOutfit('1', [mkItemWithCanonical('a', ['black'])]),
-    ];
+    const outfits = [mkOutfit('1', [mkItemWithCanonical('a', ['black'])])];
     const avoid = ['black', 'navy', 'olive', 'grey', 'brown', 'beige'];
 
     const wardrobe = [

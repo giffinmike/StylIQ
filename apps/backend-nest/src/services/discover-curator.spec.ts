@@ -140,7 +140,10 @@ describe('classifyColorFamily', () => {
 describe('Formality Coherence', () => {
   it('+4 when product is at or above floor', () => {
     // Blazer = 5, floor = business casual = 4 → at or above
-    const product = makeInput({ title: 'Navy Wool Blazer', blob: 'navy wool blazer' });
+    const product = makeInput({
+      title: 'Navy Wool Blazer',
+      blob: 'navy wool blazer',
+    });
     const profile = emptyProfile({ formalityFloor: 'business casual' });
     const result = computeCuratorSignals(product, profile);
     expect(result.formalityCoherence).toBe(4);
@@ -148,7 +151,10 @@ describe('Formality Coherence', () => {
 
   it('-8 when product is 1 rank below floor', () => {
     // Smart casual = 3, floor = business casual = 4 → 1 below
-    const product = makeInput({ title: 'Smart Casual Chinos', blob: 'smart casual chinos' });
+    const product = makeInput({
+      title: 'Smart Casual Chinos',
+      blob: 'smart casual chinos',
+    });
     const profile = emptyProfile({ formalityFloor: 'business casual' });
     const result = computeCuratorSignals(product, profile);
     expect(result.formalityCoherence).toBe(-8);
@@ -156,7 +162,10 @@ describe('Formality Coherence', () => {
 
   it('0 when product is 2 ranks below floor', () => {
     // Casual/hoodie = 2, floor = business casual = 4 → 2 below
-    const product = makeInput({ title: 'Casual Cotton Hoodie', blob: 'casual cotton hoodie' });
+    const product = makeInput({
+      title: 'Casual Cotton Hoodie',
+      blob: 'casual cotton hoodie',
+    });
     const profile = emptyProfile({ formalityFloor: 'business casual' });
     const result = computeCuratorSignals(product, profile);
     expect(result.formalityCoherence).toBe(0);
@@ -164,28 +173,40 @@ describe('Formality Coherence', () => {
 
   it('-8 when product is 3+ ranks below floor', () => {
     // Athletic = 1, floor = business casual = 4 → 3 below
-    const product = makeInput({ title: 'Athletic Gym Tank', blob: 'athletic gym tank' });
+    const product = makeInput({
+      title: 'Athletic Gym Tank',
+      blob: 'athletic gym tank',
+    });
     const profile = emptyProfile({ formalityFloor: 'business casual' });
     const result = computeCuratorSignals(product, profile);
     expect(result.formalityCoherence).toBe(-8);
   });
 
   it('0 when no formality floor set', () => {
-    const product = makeInput({ title: 'Athletic Running Shorts', blob: 'athletic running shorts' });
+    const product = makeInput({
+      title: 'Athletic Running Shorts',
+      blob: 'athletic running shorts',
+    });
     const profile = emptyProfile({ formalityFloor: null });
     const result = computeCuratorSignals(product, profile);
     expect(result.formalityCoherence).toBe(0);
   });
 
   it('0 when product formality cannot be inferred (unknown product)', () => {
-    const product = makeInput({ title: 'Generic Accessory Thing', blob: 'generic accessory thing' });
+    const product = makeInput({
+      title: 'Generic Accessory Thing',
+      blob: 'generic accessory thing',
+    });
     const profile = emptyProfile({ formalityFloor: 'business casual' });
     const result = computeCuratorSignals(product, profile);
     expect(result.formalityCoherence).toBe(0);
   });
 
   it('0 when floor label is unrecognized', () => {
-    const product = makeInput({ title: 'Navy Wool Blazer', blob: 'navy wool blazer' });
+    const product = makeInput({
+      title: 'Navy Wool Blazer',
+      blob: 'navy wool blazer',
+    });
     const profile = emptyProfile({ formalityFloor: 'unknown-floor-xyz' });
     const result = computeCuratorSignals(product, profile);
     expect(result.formalityCoherence).toBe(0);
@@ -193,7 +214,10 @@ describe('Formality Coherence', () => {
 
   it('+4 when product is well above floor', () => {
     // Black tie = 8, floor = casual = 2 → well above
-    const product = makeInput({ title: 'Black Tie Tuxedo', blob: 'black tie tuxedo' });
+    const product = makeInput({
+      title: 'Black Tie Tuxedo',
+      blob: 'black tie tuxedo',
+    });
     const profile = emptyProfile({ formalityFloor: 'casual' });
     const result = computeCuratorSignals(product, profile);
     expect(result.formalityCoherence).toBe(4);
@@ -479,15 +503,15 @@ describe('Clamping', () => {
     // materialElevation = -3 (athletic + luxury)
     // Raw total = -19, should clamp to -15
     const product = makeInput({
-      title: 'Athletic Gym Shorts',   // formality = 1
+      title: 'Athletic Gym Shorts', // formality = 1
       blob: 'oversized athletic gym shorts nylon mesh',
       enrichedColor: 'neon green',
     });
     const profile = emptyProfile({
-      formalityFloor: 'formal',           // rank 7, product rank 1 → gap 6 → -8
-      colorPreferences: ['navy'],         // neon vs cool, needs classic style
-      styleKeywords: ['classic', 'luxury'],// triggers neon penalty + material penalty
-      fitPreferences: ['slim'],           // conflicts with oversized → -4
+      formalityFloor: 'formal', // rank 7, product rank 1 → gap 6 → -8
+      colorPreferences: ['navy'], // neon vs cool, needs classic style
+      styleKeywords: ['classic', 'luxury'], // triggers neon penalty + material penalty
+      fitPreferences: ['slim'], // conflicts with oversized → -4
     });
     const result = computeCuratorSignals(product, profile);
     expect(result.curatorTotal).toBeGreaterThanOrEqual(-15);
@@ -504,16 +528,16 @@ describe('Clamping', () => {
     // brandElevation = +4 (tier 1)
     // Raw total = +21, should clamp to +15
     const product = makeInput({
-      title: 'Navy Wool Blazer',         // formality = 5
+      title: 'Navy Wool Blazer', // formality = 5
       blob: 'slim fit tailored wool blazer evening',
       enrichedColor: 'black',
       brandTier: 1,
     });
     const profile = emptyProfile({
-      formalityFloor: 'business casual',  // rank 4, product rank 5 → above → +4
-      colorPreferences: ['black', 'gray'],// neutral + neutral → +3
-      styleKeywords: ['formal', 'luxury'],// occasion match + luxury style
-      fitPreferences: ['slim'],           // matches slim → +4
+      formalityFloor: 'business casual', // rank 4, product rank 5 → above → +4
+      colorPreferences: ['black', 'gray'], // neutral + neutral → +3
+      styleKeywords: ['formal', 'luxury'], // occasion match + luxury style
+      fitPreferences: ['slim'], // matches slim → +4
     });
     const result = computeCuratorSignals(product, profile);
     expect(result.curatorTotal).toBe(15);
@@ -527,8 +551,8 @@ describe('Clamping', () => {
       enrichedColor: 'navy',
     });
     const profile = emptyProfile({
-      formalityFloor: 'business casual',  // blazer = 5, floor = 4 → +4
-      colorPreferences: ['blue'],         // navy → cool, blue → cool → +2
+      formalityFloor: 'business casual', // blazer = 5, floor = 4 → +4
+      colorPreferences: ['blue'], // navy → cool, blue → cool → +2
     });
     const result = computeCuratorSignals(product, profile);
     // +4 formality + +2 color = +6, within bounds
@@ -668,12 +692,16 @@ describe('debugTags', () => {
     const result = computeCuratorSignals(product, profile);
     expect(result.debugTags.length).toBeGreaterThan(0);
     // Should have at least one tag per dimension
-    const hasFormality = result.debugTags.some(t => t.startsWith('formality:'));
-    const hasColor = result.debugTags.some(t => t.startsWith('color:'));
-    const hasOccasion = result.debugTags.some(t => t.startsWith('occasion:'));
-    const hasSilhouette = result.debugTags.some(t => t.startsWith('silhouette:'));
-    const hasMaterial = result.debugTags.some(t => t.startsWith('material:'));
-    const hasBrand = result.debugTags.some(t => t.startsWith('brand:'));
+    const hasFormality = result.debugTags.some((t) =>
+      t.startsWith('formality:'),
+    );
+    const hasColor = result.debugTags.some((t) => t.startsWith('color:'));
+    const hasOccasion = result.debugTags.some((t) => t.startsWith('occasion:'));
+    const hasSilhouette = result.debugTags.some((t) =>
+      t.startsWith('silhouette:'),
+    );
+    const hasMaterial = result.debugTags.some((t) => t.startsWith('material:'));
+    const hasBrand = result.debugTags.some((t) => t.startsWith('brand:'));
     expect(hasFormality).toBe(true);
     expect(hasColor).toBe(true);
     expect(hasOccasion).toBe(true);
@@ -786,14 +814,26 @@ describe('Brand Elevation', () => {
     const product = makeInput({ brandTier: 2 });
     const profile = emptyProfile();
     const result = computeCuratorSignals(product, profile);
-    expect(result.debugTags.some(t => t.startsWith('brand:tier2'))).toBe(true);
+    expect(result.debugTags.some((t) => t.startsWith('brand:tier2'))).toBe(
+      true,
+    );
   });
 
   it('Tier 1 brand outranks Tier 5 when all else equal', () => {
-    const base = { title: 'Cotton Polo', blob: 'cotton polo shirt', enrichedColor: 'navy' };
+    const base = {
+      title: 'Cotton Polo',
+      blob: 'cotton polo shirt',
+      enrichedColor: 'navy',
+    };
     const profile = emptyProfile();
-    const tier1 = computeCuratorSignals(makeInput({ ...base, brandTier: 1 }), profile);
-    const tier5 = computeCuratorSignals(makeInput({ ...base, brandTier: 5 }), profile);
+    const tier1 = computeCuratorSignals(
+      makeInput({ ...base, brandTier: 1 }),
+      profile,
+    );
+    const tier5 = computeCuratorSignals(
+      makeInput({ ...base, brandTier: 5 }),
+      profile,
+    );
     // Tier 1 = +4, Tier 5 = -6 → 10-point separation
     expect(tier1.curatorTotal - tier5.curatorTotal).toBe(10);
     expect(tier1.curatorTotal).toBeGreaterThan(tier5.curatorTotal);
@@ -834,12 +874,24 @@ describe('Formal-context brand amplification', () => {
     const casualProfile = emptyProfile({ fitPreferences: ['slim'] });
     const casualBlob = 'slim fit cotton polo shirt'; // no occasion tokens
 
-    const tier1Formal = computeCuratorSignals(makeInput({ blob: formalBlob, brandTier: 1 }), formalProfile);
-    const tier4Formal = computeCuratorSignals(makeInput({ blob: formalBlob, brandTier: 4 }), formalProfile);
+    const tier1Formal = computeCuratorSignals(
+      makeInput({ blob: formalBlob, brandTier: 1 }),
+      formalProfile,
+    );
+    const tier4Formal = computeCuratorSignals(
+      makeInput({ blob: formalBlob, brandTier: 4 }),
+      formalProfile,
+    );
     const formalGap = tier1Formal.curatorTotal - tier4Formal.curatorTotal;
 
-    const tier1Casual = computeCuratorSignals(makeInput({ blob: casualBlob, brandTier: 1 }), casualProfile);
-    const tier4Casual = computeCuratorSignals(makeInput({ blob: casualBlob, brandTier: 4 }), casualProfile);
+    const tier1Casual = computeCuratorSignals(
+      makeInput({ blob: casualBlob, brandTier: 1 }),
+      casualProfile,
+    );
+    const tier4Casual = computeCuratorSignals(
+      makeInput({ blob: casualBlob, brandTier: 4 }),
+      casualProfile,
+    );
     const casualGap = tier1Casual.curatorTotal - tier4Casual.curatorTotal;
 
     // Formal gap should be wider than casual gap
@@ -855,7 +907,9 @@ describe('Formal-context brand amplification', () => {
     const result = computeCuratorSignals(product, casualProfile);
     expect(result.occasionBonus).toBe(0);
     expect(result.brandElevation).toBe(-3);
-    expect(result.debugTags.some(t => t.includes('formal-amplified'))).toBe(false);
+    expect(result.debugTags.some((t) => t.includes('formal-amplified'))).toBe(
+      false,
+    );
   });
 
   it('does NOT amplify when silhouette is not exact match', () => {
@@ -869,13 +923,17 @@ describe('Formal-context brand amplification', () => {
     const result = computeCuratorSignals(product, profile);
     expect(result.occasionBonus).toBe(3);
     expect(result.silhouetteDepth).toBe(0);
-    expect(result.debugTags.some(t => t.includes('formal-amplified'))).toBe(false);
+    expect(result.debugTags.some((t) => t.includes('formal-amplified'))).toBe(
+      false,
+    );
   });
 
   it('does NOT amplify when brandTier is absent', () => {
     const product = makeInput({ blob: formalBlob });
     const result = computeCuratorSignals(product, formalProfile);
     expect(result.brandElevation).toBe(0);
-    expect(result.debugTags.some(t => t.includes('formal-amplified'))).toBe(false);
+    expect(result.debugTags.some((t) => t.includes('formal-amplified'))).toBe(
+      false,
+    );
   });
 });

@@ -208,19 +208,24 @@ export class LearningController {
       const raw = spResult.rows[0]?.avoid_colors;
       profileAvoidColors = Array.isArray(raw) ? raw : [];
     } catch (e) {
-      this.logger.warn(`[Learning] summary: failed to fetch style_profiles avoid_colors: ${e.message}`);
+      this.logger.warn(
+        `[Learning] summary: failed to fetch style_profiles avoid_colors: ${e.message}`,
+      );
     }
 
     if (!state) {
       // Even without fashion state, surface profile avoid_colors
-      const merged = [...new Set(profileAvoidColors.map(c => c.toLowerCase()))];
+      const merged = [
+        ...new Set(profileAvoidColors.map((c) => c.toLowerCase())),
+      ];
       return {
         eventsCount,
         hasState: merged.length > 0,
         isColdStart: true,
-        negativePreferences: merged.length > 0
-          ? { brands: [], colors: merged, styles: [] }
-          : undefined,
+        negativePreferences:
+          merged.length > 0
+            ? { brands: [], colors: merged, styles: [] }
+            : undefined,
       };
     }
 
@@ -230,7 +235,9 @@ export class LearningController {
     const learnedAvoidColors = summary?.avoidColors ?? [];
     const mergedAvoidColors = [
       ...new Set(
-        [...profileAvoidColors, ...learnedAvoidColors].map(c => c.toLowerCase()),
+        [...profileAvoidColors, ...learnedAvoidColors].map((c) =>
+          c.toLowerCase(),
+        ),
       ),
     ];
 

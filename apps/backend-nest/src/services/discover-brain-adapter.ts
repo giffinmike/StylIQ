@@ -23,10 +23,7 @@
  * Pure deterministic. No randomness. No Date.now() in scoring paths.
  */
 
-import {
-  isStylisticallyIncoherent,
-  type VetoOutfit,
-} from '../ai/styleVeto';
+import { isStylisticallyIncoherent, type VetoOutfit } from '../ai/styleVeto';
 
 import {
   validateOutfit,
@@ -35,9 +32,7 @@ import {
   type ValidatorContext,
 } from '../ai/elite/tasteValidator';
 
-import {
-  selectTopOutfitsWithQualityFloor,
-} from '../ai/stylistQualityGate';
+import { selectTopOutfitsWithQualityFloor } from '../ai/stylistQualityGate';
 
 import type { JudgeItem, JudgeOutfit } from '../ai/styleJudge';
 

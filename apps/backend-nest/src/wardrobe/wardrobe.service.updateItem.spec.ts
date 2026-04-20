@@ -9,7 +9,9 @@
 
 jest.mock('../db/pool', () => ({
   pool: {
-    query: jest.fn().mockResolvedValue({ rows: [{ id: 'item-1' }], rowCount: 1 }),
+    query: jest
+      .fn()
+      .mockResolvedValue({ rows: [{ id: 'item-1' }], rowCount: 1 }),
   },
 }));
 

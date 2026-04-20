@@ -43,25 +43,114 @@ export interface ChatAvoidLists {
 }
 
 export interface ChatViolation {
-  type: 'AVOID_COLOR' | 'AVOID_MATERIAL' | 'AVOID_PATTERN' | 'COVERAGE_NO_GO' | 'WARDROBE_HALLUCINATION';
+  type:
+    | 'AVOID_COLOR'
+    | 'AVOID_MATERIAL'
+    | 'AVOID_PATTERN'
+    | 'COVERAGE_NO_GO'
+    | 'WARDROBE_HALLUCINATION';
   term: string;
   snippet: string;
 }
 
 // Each family is an isolated, immutable-by-convention array. No cross-family bleed.
 const COLOR_FAMILIES: ReadonlyArray<readonly string[]> = [
-  ['blue', 'navy', 'cobalt', 'royal blue', 'sky blue', 'powder blue', 'steel blue'],
+  [
+    'blue',
+    'navy',
+    'cobalt',
+    'royal blue',
+    'sky blue',
+    'powder blue',
+    'steel blue',
+  ],
   ['red', 'crimson', 'burgundy', 'maroon'],
-  ['green', 'olive', 'sage', 'emerald', 'forest green', 'hunter green', 'mint', 'jade', 'moss'],
+  [
+    'green',
+    'olive',
+    'sage',
+    'emerald',
+    'forest green',
+    'hunter green',
+    'mint',
+    'jade',
+    'moss',
+  ],
   ['white', 'ivory', 'cream', 'off-white', 'eggshell', 'pearl', 'snow'],
   ['black', 'onyx', 'jet black', 'charcoal black'],
-  ['beige', 'nude', 'sand', 'oatmeal', 'khaki', 'wheat', 'tan', 'camel', 'caramel'],
-  ['grey', 'gray', 'charcoal', 'slate', 'silver', 'ash', 'heather grey', 'heather gray'],
-  ['brown', 'chocolate', 'espresso', 'mocha', 'taupe', 'cognac', 'chestnut', 'walnut', 'sienna'],
-  ['pink', 'fuchsia', 'magenta', 'rose', 'blush', 'salmon', 'hot pink', 'dusty pink', 'mauve'],
-  ['purple', 'violet', 'plum', 'lavender', 'lilac', 'amethyst', 'eggplant', 'aubergine'],
-  ['orange', 'tangerine', 'peach', 'apricot', 'rust', 'burnt orange', 'terracotta', 'copper'],
-  ['yellow', 'mustard', 'gold', 'lemon', 'canary', 'marigold', 'saffron', 'amber'],
+  [
+    'beige',
+    'nude',
+    'sand',
+    'oatmeal',
+    'khaki',
+    'wheat',
+    'tan',
+    'camel',
+    'caramel',
+  ],
+  [
+    'grey',
+    'gray',
+    'charcoal',
+    'slate',
+    'silver',
+    'ash',
+    'heather grey',
+    'heather gray',
+  ],
+  [
+    'brown',
+    'chocolate',
+    'espresso',
+    'mocha',
+    'taupe',
+    'cognac',
+    'chestnut',
+    'walnut',
+    'sienna',
+  ],
+  [
+    'pink',
+    'fuchsia',
+    'magenta',
+    'rose',
+    'blush',
+    'salmon',
+    'hot pink',
+    'dusty pink',
+    'mauve',
+  ],
+  [
+    'purple',
+    'violet',
+    'plum',
+    'lavender',
+    'lilac',
+    'amethyst',
+    'eggplant',
+    'aubergine',
+  ],
+  [
+    'orange',
+    'tangerine',
+    'peach',
+    'apricot',
+    'rust',
+    'burnt orange',
+    'terracotta',
+    'copper',
+  ],
+  [
+    'yellow',
+    'mustard',
+    'gold',
+    'lemon',
+    'canary',
+    'marigold',
+    'saffron',
+    'amber',
+  ],
 ];
 
 /**
@@ -100,7 +189,9 @@ export function scanChatForViolations(
   avoidLists: ChatAvoidLists,
 ): ChatViolation[] {
   const violations: ChatViolation[] = [];
-  const sentences = responseText.split(/[.!?\n]+/).filter(s => s.trim().length > 10);
+  const sentences = responseText
+    .split(/[.!?\n]+/)
+    .filter((s) => s.trim().length > 10);
 
   // console.log('[AskStyla T4 DEBUG] raw avoid colors:', avoidLists.avoidColors);
 
@@ -112,27 +203,45 @@ export function scanChatForViolations(
       const colorRegex = new RegExp(`\\b${escapeRegex(ac)}\\b`, 'i');
       if (colorRegex.test(responseText)) {
         // console.log('[AskStyla T4 DEBUG] color violation detected:', ac);
-        const snippet = sentences.find(s => colorRegex.test(s))?.trim() || '';
-        violations.push({ type: 'AVOID_COLOR', term: ac, snippet: snippet.slice(0, 120) });
+        const snippet = sentences.find((s) => colorRegex.test(s))?.trim() || '';
+        violations.push({
+          type: 'AVOID_COLOR',
+          term: ac,
+          snippet: snippet.slice(0, 120),
+        });
       }
     }
   }
 
   // Material violations
   for (const am of avoidLists.avoidMaterials) {
-    const matRegex = new RegExp(`\\b${escapeRegex(am.trim().toLowerCase())}\\b`, 'i');
+    const matRegex = new RegExp(
+      `\\b${escapeRegex(am.trim().toLowerCase())}\\b`,
+      'i',
+    );
     if (matRegex.test(responseText)) {
-      const snippet = sentences.find(s => matRegex.test(s))?.trim() || '';
-      violations.push({ type: 'AVOID_MATERIAL', term: am, snippet: snippet.slice(0, 120) });
+      const snippet = sentences.find((s) => matRegex.test(s))?.trim() || '';
+      violations.push({
+        type: 'AVOID_MATERIAL',
+        term: am,
+        snippet: snippet.slice(0, 120),
+      });
     }
   }
 
   // Pattern violations
   for (const ap of avoidLists.avoidPatterns) {
-    const patRegex = new RegExp(`\\b${escapeRegex(ap.trim().toLowerCase())}\\b`, 'i');
+    const patRegex = new RegExp(
+      `\\b${escapeRegex(ap.trim().toLowerCase())}\\b`,
+      'i',
+    );
     if (patRegex.test(responseText)) {
-      const snippet = sentences.find(s => patRegex.test(s))?.trim() || '';
-      violations.push({ type: 'AVOID_PATTERN', term: ap, snippet: snippet.slice(0, 120) });
+      const snippet = sentences.find((s) => patRegex.test(s))?.trim() || '';
+      violations.push({
+        type: 'AVOID_PATTERN',
+        term: ap,
+        snippet: snippet.slice(0, 120),
+      });
     }
   }
 
@@ -141,8 +250,12 @@ export function scanChatForViolations(
     const pattern = COVERAGE_TEXT_PATTERNS[rule];
     if (!pattern) continue;
     if (pattern.test(responseText)) {
-      const snippet = sentences.find(s => pattern.test(s))?.trim() || '';
-      violations.push({ type: 'COVERAGE_NO_GO', term: rule, snippet: snippet.slice(0, 120) });
+      const snippet = sentences.find((s) => pattern.test(s))?.trim() || '';
+      violations.push({
+        type: 'COVERAGE_NO_GO',
+        term: rule,
+        snippet: snippet.slice(0, 120),
+      });
     }
   }
 
@@ -173,7 +286,7 @@ export function scanForWardrobeHallucinations(
     const phrase = match[1].trim().toLowerCase();
     if (phrase.length < 3 || phrase.length > 60) continue;
     const matched = Array.from(allowedWardrobeNames).some(
-      name => name.includes(phrase) || phrase.includes(name),
+      (name) => name.includes(phrase) || phrase.includes(name),
     );
     if (!matched) {
       violations.push({
@@ -193,11 +306,14 @@ export function scanForWardrobeHallucinations(
  */
 export function buildCorrectionPrompt(violations: ChatViolation[]): string {
   const avoidLines = violations
-    .filter(v => v.type !== 'WARDROBE_HALLUCINATION')
-    .map(v => `- Do NOT mention or recommend "${v.term}" (${v.type})`);
+    .filter((v) => v.type !== 'WARDROBE_HALLUCINATION')
+    .map((v) => `- Do NOT mention or recommend "${v.term}" (${v.type})`);
   const hallucinationLines = violations
-    .filter(v => v.type === 'WARDROBE_HALLUCINATION')
-    .map(v => `- "${v.term}" is NOT in the user's wardrobe — do not reference it`);
+    .filter((v) => v.type === 'WARDROBE_HALLUCINATION')
+    .map(
+      (v) =>
+        `- "${v.term}" is NOT in the user's wardrobe — do not reference it`,
+    );
   const lines = [...avoidLines, ...hallucinationLines];
   return `\n\nCRITICAL CORRECTION:\n${lines.join('\n')}\nRegenerate your response respecting these constraints. Only reference items the user actually owns.`;
 }
@@ -206,7 +322,7 @@ export function buildCorrectionPrompt(violations: ChatViolation[]): string {
  * Minimal user-facing correction note (appended when retry also fails).
  */
 export function buildCorrectionNote(violations: ChatViolation[]): string {
-  const terms = [...new Set(violations.map(v => v.term))].slice(0, 3);
+  const terms = [...new Set(violations.map((v) => v.term))].slice(0, 3);
   return `\n\n_Note: Some suggestions above may not perfectly match your preferences regarding ${terms.join(', ')}. Please disregard those specific recommendations._`;
 }
 
@@ -221,7 +337,7 @@ export function isStylingResponse(responseText: string): boolean {
     /\b(color|fabric|material|pattern|silk|cotton|linen|wool)\b/,
     /\b(top|bottom|shirt|blouse|pants|skirt|jacket|blazer|shoes|boots)\b/,
     /\b(recommend|suggest|try|consider|opt for|go with)\b/,
-  ].filter(r => r.test(lower)).length;
+  ].filter((r) => r.test(lower)).length;
   return hits >= 2;
 }
 
@@ -256,14 +372,22 @@ export type ChatExtractedItem = {
 /** Map main_category to validator slot. Deterministic, fail-closed to 'accessories'. */
 function mainCatToSlot(mainCategory: string | undefined): string {
   switch ((mainCategory ?? '').toLowerCase().trim()) {
-    case 'tops': return 'tops';
-    case 'bottoms': return 'bottoms';
-    case 'shoes': return 'shoes';
-    case 'outerwear': return 'outerwear';
-    case 'dresses': return 'dresses';
-    case 'activewear': return 'activewear';
-    case 'swimwear': return 'swimwear';
-    default: return 'accessories';
+    case 'tops':
+      return 'tops';
+    case 'bottoms':
+      return 'bottoms';
+    case 'shoes':
+      return 'shoes';
+    case 'outerwear':
+      return 'outerwear';
+    case 'dresses':
+      return 'dresses';
+    case 'activewear':
+      return 'activewear';
+    case 'swimwear':
+      return 'swimwear';
+    default:
+      return 'accessories';
   }
 }
 
@@ -297,7 +421,7 @@ export function extractOutfitItemsFromResponse(
 
   hits.sort((a, b) => a.pos - b.pos);
 
-  return hits.map(h => {
+  return hits.map((h) => {
     const r = wardrobeRows[h.idx];
     return {
       id: String(h.idx),
@@ -307,7 +431,8 @@ export function extractOutfitItemsFromResponse(
       color: r.color,
       material: r.material,
       fit: r.fit,
-      formality_score: r.formality_score != null ? Number(r.formality_score) : undefined,
+      formality_score:
+        r.formality_score != null ? Number(r.formality_score) : undefined,
       dress_code: r.dress_code,
     };
   });

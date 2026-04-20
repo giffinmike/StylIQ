@@ -4,11 +4,25 @@ import { pool } from '../db/pool';
 import { getSecret, secretExists } from '../config/secrets';
 import { LearningEventsService } from '../learning/learning-events.service';
 import { FashionStateService } from '../learning/fashion-state.service';
-import type { FashionStateSummary, UserFashionState } from '../learning/dto/fashion-state.dto';
+import type {
+  FashionStateSummary,
+  UserFashionState,
+} from '../learning/dto/fashion-state.dto';
 import { LEARNING_FLAGS } from '../config/feature-flags';
-import { applyDiscoverVeto, type VetoProfile, type VetoResult } from './discover-veto';
-import { computeCuratorSignals, type CuratorProfile, type CuratorResult } from './discover-curator';
-import { runDiscoverSharedBrainGate, type BrainGateProfile } from './discover-brain-adapter';
+import {
+  applyDiscoverVeto,
+  type VetoProfile,
+  type VetoResult,
+} from './discover-veto';
+import {
+  computeCuratorSignals,
+  type CuratorProfile,
+  type CuratorResult,
+} from './discover-curator';
+import {
+  runDiscoverSharedBrainGate,
+  type BrainGateProfile,
+} from './discover-brain-adapter';
 
 /**
  * Compute the effective batch date for a user based on their timezone.
@@ -26,9 +40,9 @@ function computeUserBatchDate(timezone: string): string {
       month: '2-digit',
       day: '2-digit',
     }).formatToParts(now);
-    const year = parts.find(p => p.type === 'year')!.value;
-    const month = parts.find(p => p.type === 'month')!.value;
-    const day = parts.find(p => p.type === 'day')!.value;
+    const year = parts.find((p) => p.type === 'year')!.value;
+    const month = parts.find((p) => p.type === 'month')!.value;
+    const day = parts.find((p) => p.type === 'day')!.value;
     const localDateStr = `${year}-${month}-${day}`;
 
     // Get current hour in user's timezone
@@ -48,9 +62,9 @@ function computeUserBatchDate(timezone: string): string {
         month: '2-digit',
         day: '2-digit',
       }).formatToParts(new Date(yesterday.getTime() - 24 * 60 * 60 * 1000));
-      const py = prevParts.find(p => p.type === 'year')!.value;
-      const pm = prevParts.find(p => p.type === 'month')!.value;
-      const pd = prevParts.find(p => p.type === 'day')!.value;
+      const py = prevParts.find((p) => p.type === 'year')!.value;
+      const pm = prevParts.find((p) => p.type === 'month')!.value;
+      const pd = prevParts.find((p) => p.type === 'day')!.value;
       return `${py}-${pm}-${pd}`;
     }
 
@@ -123,120 +137,262 @@ const DEBUG_RECOMMENDED_BUYS = process.env.DEBUG_RECOMMENDED_BUYS === 'true';
 /** Brand tier multiplier: prestige-aware boost applied when brand matches. */
 const BRAND_TIER_MAP: Record<string, number> = {
   // Luxury / Designer
-  'gucci': 1.35,
-  'prada': 1.35,
+  gucci: 1.35,
+  prada: 1.35,
   'saint laurent': 1.35,
-  'valentino': 1.35,
-  'versace': 1.3,
-  'balmain': 1.3,
+  valentino: 1.35,
+  versace: 1.3,
+  balmain: 1.3,
   'roberto cavalli': 1.3,
   'dolce gabbana': 1.3,
   'bottega veneta': 1.3,
-  'balenciaga': 1.3,
-  'givenchy': 1.25,
-  'fendi': 1.25,
-  'burberry': 1.25,
+  balenciaga: 1.3,
+  givenchy: 1.25,
+  fendi: 1.25,
+  burberry: 1.25,
   'tom ford': 1.3,
-  'dior': 1.35,
-  'chanel': 1.35,
+  dior: 1.35,
+  chanel: 1.35,
   'louis vuitton': 1.35,
-  'hermes': 1.35,
+  hermes: 1.35,
 
   // Premium Heritage
-  'brioni': 1.3,
-  'zegna': 1.25,
-  'canali': 1.25,
+  brioni: 1.3,
+  zegna: 1.25,
+  canali: 1.25,
   'polo ralph lauren': 1.2,
   'ralph lauren': 1.2,
   'hugo boss': 1.15,
   'brooks brothers': 1.15,
 
   // Contemporary
-  'theory': 1.15,
-  'reiss': 1.15,
-  'allsaints': 1.1,
-  'cos': 1.1,
+  theory: 1.15,
+  reiss: 1.15,
+  allsaints: 1.1,
+  cos: 1.1,
   'ted baker': 1.1,
   'club monaco': 1.1,
 
   // Mass / Fast Fashion
-  'zara': 0.95,
-  'hm': 0.9,
-  'uniqlo': 1.0,
-  'gap': 0.95,
+  zara: 0.95,
+  hm: 0.9,
+  uniqlo: 1.0,
+  gap: 0.95,
   'old navy': 0.85,
-  'boohooman': 0.85,
+  boohooman: 0.85,
   'fashion nova': 0.85,
-  'shein': 0.8,
-  'walmart': 0.75,
+  shein: 0.8,
+  walmart: 0.75,
 };
 
 /** Brand authority tiers: quality intelligence independent of user preference.
  *  Tier 1 = luxury, Tier 5 = unknown/low authority. Default = Tier 4. */
 const BRAND_AUTHORITY_TIERS: Record<string, number> = {
   // Tier 1 – Luxury / Designer
-  'alexander mcqueen': 1, 'amiri': 1, 'armani': 1, 'balenciaga': 1,
-  'balmain': 1, 'bottega veneta': 1, 'brioni': 1, 'brunello cucinelli': 1,
-  'burberry': 1, 'carolina herrera': 1, 'cartier': 1, 'celine': 1,
-  'chanel': 1, 'chloe': 1, 'christian louboutin': 1, 'dior': 1,
-  'dolce gabbana': 1, 'elie saab': 1, 'emilio pucci': 1,
-  'ermenegildo zegna': 1, 'etro': 1, 'fendi': 1, 'ferragamo': 1,
-  'giorgio armani': 1, 'givenchy': 1, 'gucci': 1, 'hermes': 1,
-  'isabel marant': 1, 'jacquemus': 1, 'jimmy choo': 1, 'kenzo': 1,
-  'lanvin': 1, 'loewe': 1, 'louis vuitton': 1, 'manolo blahnik': 1,
-  'marc jacobs': 1, 'marchesa': 1, 'marni': 1, 'max mara': 1,
-  'missoni': 1, 'miu miu': 1, 'moncler': 1, 'moschino': 1,
-  'off white': 1, 'offwhite': 1, 'oscar de la renta': 1, 'prada': 1,
-  'proenza schouler': 1, 'pucci': 1, 'rick owens': 1,
-  'roberto cavalli': 1, 'saint laurent': 1, 'salvatore ferragamo': 1,
-  'stella mccartney': 1, 'thom browne': 1, 'tiffany': 1, 'tom ford': 1,
-  'valentino': 1, 'vera wang': 1, 'versace': 1, 'vivienne westwood': 1,
-  'zegna': 1,
+  'alexander mcqueen': 1,
+  amiri: 1,
+  armani: 1,
+  balenciaga: 1,
+  balmain: 1,
+  'bottega veneta': 1,
+  brioni: 1,
+  'brunello cucinelli': 1,
+  burberry: 1,
+  'carolina herrera': 1,
+  cartier: 1,
+  celine: 1,
+  chanel: 1,
+  chloe: 1,
+  'christian louboutin': 1,
+  dior: 1,
+  'dolce gabbana': 1,
+  'elie saab': 1,
+  'emilio pucci': 1,
+  'ermenegildo zegna': 1,
+  etro: 1,
+  fendi: 1,
+  ferragamo: 1,
+  'giorgio armani': 1,
+  givenchy: 1,
+  gucci: 1,
+  hermes: 1,
+  'isabel marant': 1,
+  jacquemus: 1,
+  'jimmy choo': 1,
+  kenzo: 1,
+  lanvin: 1,
+  loewe: 1,
+  'louis vuitton': 1,
+  'manolo blahnik': 1,
+  'marc jacobs': 1,
+  marchesa: 1,
+  marni: 1,
+  'max mara': 1,
+  missoni: 1,
+  'miu miu': 1,
+  moncler: 1,
+  moschino: 1,
+  'off white': 1,
+  offwhite: 1,
+  'oscar de la renta': 1,
+  prada: 1,
+  'proenza schouler': 1,
+  pucci: 1,
+  'rick owens': 1,
+  'roberto cavalli': 1,
+  'saint laurent': 1,
+  'salvatore ferragamo': 1,
+  'stella mccartney': 1,
+  'thom browne': 1,
+  tiffany: 1,
+  'tom ford': 1,
+  valentino: 1,
+  'vera wang': 1,
+  versace: 1,
+  'vivienne westwood': 1,
+  zegna: 1,
 
   // Tier 2 – Premium Contemporary
-  'acne studios': 2, 'agolde': 2, 'alice olivia': 2, 'allsaints': 2,
-  'anine bing': 2, 'apc': 2, 'badgley mischka': 2, 'banana republic': 2,
-  'brooks brothers': 2, 'calvin klein': 2, 'canali': 2,
-  'citizens of humanity': 2, 'club monaco': 2, 'coach': 2, 'cole haan': 2,
-  'cos': 2, 'derek lam': 2, 'diane von furstenberg': 2, 'diesel': 2,
-  'dvf': 2, 'eileen fisher': 2, 'emporio armani': 2, 'furla': 2,
-  'ganni': 2, 'helmut lang': 2, 'hugo boss': 2, 'j crew': 2, 'jcrew': 2,
-  'karl lagerfeld': 2, 'kate spade': 2, 'khaite': 2, 'lacoste': 2,
-  'longchamp': 2, 'lululemon': 2, 'madewell': 2, 'massimo dutti': 2,
-  'mcm': 2, 'michael kors': 2, 'nili lotan': 2,
-  'paul smith': 2, 'phillip lim': 2, '31 phillip lim': 2,
-  'polo ralph lauren': 2, 'rag bone': 2, 'ralph lauren': 2,
-  'rebecca minkoff': 2, 'reformation': 2, 'reiss': 2, 'sandro': 2,
-  'self portrait': 2, 'staud': 2, 'stuart weitzman': 2, 'ted baker': 2,
-  'theory': 2, 'tods': 2, 'tommy hilfiger': 2, 'tory burch': 2,
-  'ulla johnson': 2, 'veronica beard': 2, 'vince': 2, 'vince camuto': 2,
-  'zimmermann': 2,
+  'acne studios': 2,
+  agolde: 2,
+  'alice olivia': 2,
+  allsaints: 2,
+  'anine bing': 2,
+  apc: 2,
+  'badgley mischka': 2,
+  'banana republic': 2,
+  'brooks brothers': 2,
+  'calvin klein': 2,
+  canali: 2,
+  'citizens of humanity': 2,
+  'club monaco': 2,
+  coach: 2,
+  'cole haan': 2,
+  cos: 2,
+  'derek lam': 2,
+  'diane von furstenberg': 2,
+  diesel: 2,
+  dvf: 2,
+  'eileen fisher': 2,
+  'emporio armani': 2,
+  furla: 2,
+  ganni: 2,
+  'helmut lang': 2,
+  'hugo boss': 2,
+  'j crew': 2,
+  jcrew: 2,
+  'karl lagerfeld': 2,
+  'kate spade': 2,
+  khaite: 2,
+  lacoste: 2,
+  longchamp: 2,
+  lululemon: 2,
+  madewell: 2,
+  'massimo dutti': 2,
+  mcm: 2,
+  'michael kors': 2,
+  'nili lotan': 2,
+  'paul smith': 2,
+  'phillip lim': 2,
+  '31 phillip lim': 2,
+  'polo ralph lauren': 2,
+  'rag bone': 2,
+  'ralph lauren': 2,
+  'rebecca minkoff': 2,
+  reformation: 2,
+  reiss: 2,
+  sandro: 2,
+  'self portrait': 2,
+  staud: 2,
+  'stuart weitzman': 2,
+  'ted baker': 2,
+  theory: 2,
+  tods: 2,
+  'tommy hilfiger': 2,
+  'tory burch': 2,
+  'ulla johnson': 2,
+  'veronica beard': 2,
+  vince: 2,
+  'vince camuto': 2,
+  zimmermann: 2,
 
   // Tier 3 – Mall / Mid-tier
-  'abercrombie': 3, 'adidas': 3, 'american eagle': 3, 'ann taylor': 3,
-  'armani exchange': 3, 'asos': 3, 'athleta': 3, 'bcbg': 3,
-  'bcbgmaxazria': 3, 'champion': 3, 'columbia': 3, 'converse': 3,
-  'dkny': 3, 'everlane': 3, 'express': 3, 'forever 21': 3,
-  'free people': 3, 'french connection': 3, 'gap': 3, 'guess': 3,
-  'h m': 3, 'hm': 3, 'hollister': 3, 'hollister co official': 3,
-  'j jill': 3, 'jjill': 3, 'kenneth cole': 3, 'levis': 3, 'loft': 3,
-  'lucky brand': 3, 'mango': 3, 'nautica': 3,
-  'new balance': 3, 'nike': 3, 'north face': 3, 'the north face': 3,
-  'patagonia': 3, 'perry ellis': 3, 'puma': 3, 'sam edelman': 3,
-  'steve madden': 3, 'tommy bahama': 3, 'topshop': 3,
-  'under armour': 3, 'under armor': 3, 'uniqlo': 3,
-  'urban outfitters': 3, 'vans': 3, 'vera bradley': 3,
-  'vineyard vines': 3, 'white house black market': 3, 'wrangler': 3,
-  'zara': 3, 'zara usa': 3,
+  abercrombie: 3,
+  adidas: 3,
+  'american eagle': 3,
+  'ann taylor': 3,
+  'armani exchange': 3,
+  asos: 3,
+  athleta: 3,
+  bcbg: 3,
+  bcbgmaxazria: 3,
+  champion: 3,
+  columbia: 3,
+  converse: 3,
+  dkny: 3,
+  everlane: 3,
+  express: 3,
+  'forever 21': 3,
+  'free people': 3,
+  'french connection': 3,
+  gap: 3,
+  guess: 3,
+  'h m': 3,
+  hm: 3,
+  hollister: 3,
+  'hollister co official': 3,
+  'j jill': 3,
+  jjill: 3,
+  'kenneth cole': 3,
+  levis: 3,
+  loft: 3,
+  'lucky brand': 3,
+  mango: 3,
+  nautica: 3,
+  'new balance': 3,
+  nike: 3,
+  'north face': 3,
+  'the north face': 3,
+  patagonia: 3,
+  'perry ellis': 3,
+  puma: 3,
+  'sam edelman': 3,
+  'steve madden': 3,
+  'tommy bahama': 3,
+  topshop: 3,
+  'under armour': 3,
+  'under armor': 3,
+  uniqlo: 3,
+  'urban outfitters': 3,
+  vans: 3,
+  'vera bradley': 3,
+  'vineyard vines': 3,
+  'white house black market': 3,
+  wrangler: 3,
+  zara: 3,
+  'zara usa': 3,
 
   // Tier 4 – Fast Fashion / Value
-  'boohoo': 4, 'boohoo usa': 4, 'boohooman': 4, 'old navy': 4, 'target': 4,
-  'fashion nova': 4, 'shein': 4, 'primark': 4, 'romwe': 4,
+  boohoo: 4,
+  'boohoo usa': 4,
+  boohooman: 4,
+  'old navy': 4,
+  target: 4,
+  'fashion nova': 4,
+  shein: 4,
+  primark: 4,
+  romwe: 4,
 
   // Tier 5 – Unknown marketplace / low authority
-  'mondressy': 5, 'vardo': 5, 'suits outlets': 5,
-  'walmart': 5, 'walmart gpaecead kids baby clothes': 5,
-  'temu': 5, 'dhgate': 5, 'aliexpress': 5, 'wish': 5,
+  mondressy: 5,
+  vardo: 5,
+  'suits outlets': 5,
+  walmart: 5,
+  'walmart gpaecead kids baby clothes': 5,
+  temu: 5,
+  dhgate: 5,
+  aliexpress: 5,
+  wish: 5,
 };
 
 /** Map brand authority tier (1–5) to a linear score adjustment (-2 to +3) */
@@ -246,12 +402,18 @@ function getBrandAuthorityScore(brand?: string | null): number {
   if (!key) return -1;
   const tier = BRAND_AUTHORITY_TIERS[key] ?? 4;
   switch (tier) {
-    case 1: return 4;
-    case 2: return 3;
-    case 3: return 1;
-    case 4: return 0;
-    case 5: return -3;
-    default: return 0;
+    case 1:
+      return 4;
+    case 2:
+      return 3;
+    case 3:
+      return 1;
+    case 4:
+      return 0;
+    case 5:
+      return -3;
+    default:
+      return 0;
   }
 }
 
@@ -262,8 +424,9 @@ function getBrandAuthorityScore(brand?: string | null): number {
  * Word-boundary safe to prevent partial matches (e.g. "express" inside "expressed").
  * Returns the normalized brand key or null if no match.
  */
-const _brandTierKeysByLength = Object.keys(BRAND_AUTHORITY_TIERS)
-  .sort((a, b) => b.length - a.length);
+const _brandTierKeysByLength = Object.keys(BRAND_AUTHORITY_TIERS).sort(
+  (a, b) => b.length - a.length,
+);
 
 const SPAM_PREFIXES = new Set(['discount', 'buy', 'sell', 'sale', 'cheap']);
 
@@ -273,19 +436,99 @@ const SPAM_PREFIXES = new Set(['discount', 'buy', 'sell', 'sale', 'cheap']);
  * Stops at known product descriptors, lowercase words, or possessive markers.
  */
 const BRAND_STOP_WORDS = new Set([
-  'classic', 'modern', 'casual', 'formal', 'slim', 'regular', 'new', 'premium',
-  'luxury', 'designer', 'original', 'authentic', 'essential', 'basic', 'organic',
-  'natural', 'handmade', 'custom', 'vintage', 'retro', 'oversized', 'lightweight',
-  'stretch', 'solid', 'striped', 'plaid', 'printed', 'graphic', 'plain',
-  'long', 'short', 'mid', 'mini', 'maxi', 'cropped',
-  'cotton', 'wool', 'silk', 'leather', 'linen', 'polyester', 'nylon', 'cashmere',
-  'mens', 'womens', 'men', 'women', 'unisex', 'kids', 'boys', 'girls',
-  'black', 'white', 'blue', 'red', 'green', 'navy', 'gray', 'grey',
-  'brown', 'beige', 'pink', 'yellow', 'purple', 'orange', 'cream', 'ivory',
-  'size', 'pack', 'set', 'piece', 'pair', 'lot',
-  'for', 'with', 'in', 'on', 'at', 'by',
-  'cool', 'soft', 'warm', 'light', 'heavy', 'thin', 'thick', 'wide', 'narrow',
-  'tight', 'loose', 'big', 'small', 'large',
+  'classic',
+  'modern',
+  'casual',
+  'formal',
+  'slim',
+  'regular',
+  'new',
+  'premium',
+  'luxury',
+  'designer',
+  'original',
+  'authentic',
+  'essential',
+  'basic',
+  'organic',
+  'natural',
+  'handmade',
+  'custom',
+  'vintage',
+  'retro',
+  'oversized',
+  'lightweight',
+  'stretch',
+  'solid',
+  'striped',
+  'plaid',
+  'printed',
+  'graphic',
+  'plain',
+  'long',
+  'short',
+  'mid',
+  'mini',
+  'maxi',
+  'cropped',
+  'cotton',
+  'wool',
+  'silk',
+  'leather',
+  'linen',
+  'polyester',
+  'nylon',
+  'cashmere',
+  'mens',
+  'womens',
+  'men',
+  'women',
+  'unisex',
+  'kids',
+  'boys',
+  'girls',
+  'black',
+  'white',
+  'blue',
+  'red',
+  'green',
+  'navy',
+  'gray',
+  'grey',
+  'brown',
+  'beige',
+  'pink',
+  'yellow',
+  'purple',
+  'orange',
+  'cream',
+  'ivory',
+  'size',
+  'pack',
+  'set',
+  'piece',
+  'pair',
+  'lot',
+  'for',
+  'with',
+  'in',
+  'on',
+  'at',
+  'by',
+  'cool',
+  'soft',
+  'warm',
+  'light',
+  'heavy',
+  'thin',
+  'thick',
+  'wide',
+  'narrow',
+  'tight',
+  'loose',
+  'big',
+  'small',
+  'large',
 ]);
 
 function extractProductBrand(title: string): string | null {
@@ -340,7 +583,7 @@ function extractBrandFromTitle(title: string): string | null {
     if (startIdx > 4) continue;
 
     // Reject if any spam token precedes the brand
-    if (tokens.slice(0, startIdx).some(t => SPAM_PREFIXES.has(t))) continue;
+    if (tokens.slice(0, startIdx).some((t) => SPAM_PREFIXES.has(t))) continue;
 
     return key;
   }
@@ -357,7 +600,8 @@ function resolveBrandTier(productBrand: string | null | undefined): number {
   // Word-boundary match against known brand keys (handles "Nike Air Max" → "nike")
   for (const key of _brandTierKeysByLength) {
     const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    if (new RegExp(`\\b${escaped}\\b`).test(norm)) return BRAND_AUTHORITY_TIERS[key];
+    if (new RegExp(`\\b${escaped}\\b`).test(norm))
+      return BRAND_AUTHORITY_TIERS[key];
   }
   return 3;
 }
@@ -383,14 +627,35 @@ function inferMainCategory(title?: string): string | null {
   if (!title) return null;
   const t = normalize(title);
 
-  if (/(jacket|coat|parka|blazer|overshirt|anorak|windbreaker|gilet|poncho|puffer)/.test(t)) return 'Outerwear';
+  if (
+    /(jacket|coat|parka|blazer|overshirt|anorak|windbreaker|gilet|poncho|puffer)/.test(
+      t,
+    )
+  )
+    return 'Outerwear';
   if (/(dress|gown|romper|jumpsuit|kaftan)/.test(t)) return 'Dresses';
-  if (/(shirt|polo|\btee\b|tshirt|t shirt|sweater|jumper|hoodie|sweatshirt|cardigan|pullover|blouse|tunic|henley|camisole|crop top|tank top)/.test(t)) return 'Tops';
-  if (/(jeans|pants|trouser|shorts|legging|jogger|chino|skirt)/.test(t)) return 'Bottoms';
-  if (/(sneaker|boot|loafer|shoe|sandal|slipper|mule|oxford|clog)/.test(t)) return 'Shoes';
-  if (/(handbag|backpack|tote bag|clutch|purse|crossbody|duffel)/.test(t)) return 'Bags';
-  if (/(watch|bracelet|necklace|earring|pendant|anklet|brooch|cufflink)/.test(t)) return 'Jewelry';
-  if (/(belt|\btie\b|\bhat\b|\bcap\b|scarf|glove|sunglasses|beanie|headband)/.test(t)) return 'Accessories';
+  if (
+    /(shirt|polo|\btee\b|tshirt|t shirt|sweater|jumper|hoodie|sweatshirt|cardigan|pullover|blouse|tunic|henley|camisole|crop top|tank top)/.test(
+      t,
+    )
+  )
+    return 'Tops';
+  if (/(jeans|pants|trouser|shorts|legging|jogger|chino|skirt)/.test(t))
+    return 'Bottoms';
+  if (/(sneaker|boot|loafer|shoe|sandal|slipper|mule|oxford|clog)/.test(t))
+    return 'Shoes';
+  if (/(handbag|backpack|tote bag|clutch|purse|crossbody|duffel)/.test(t))
+    return 'Bags';
+  if (
+    /(watch|bracelet|necklace|earring|pendant|anklet|brooch|cufflink)/.test(t)
+  )
+    return 'Jewelry';
+  if (
+    /(belt|\btie\b|\bhat\b|\bcap\b|scarf|glove|sunglasses|beanie|headband)/.test(
+      t,
+    )
+  )
+    return 'Accessories';
   if (/(swimsuit|bikini|swim trunk|rash guard)/.test(t)) return 'Swimwear';
   if (/(athletic|yoga|workout|activewear)/.test(t)) return 'Activewear';
 
@@ -436,7 +701,7 @@ function overlap01(needles: Set<string>, text: string): number {
 
 /** Deterministic brand saturation penalty: 8 * (brandFreq01 ^ 1.5) */
 function brandSatPenalty(brandFreq01: number): number {
-  return 8 * (brandFreq01 ** 1.5);
+  return 8 * brandFreq01 ** 1.5;
 }
 
 // ==================== SEMANTIC CLUSTER SUPPRESSION ====================
@@ -466,8 +731,10 @@ function getSemanticCluster(title: string, category?: string | null): string {
     text.includes('2 piece') ||
     /\bvest\b/.test(text) ||
     /\bwaistcoat\b/.test(text) ||
-    (text.includes('blazer') && (/\bmatching\b/.test(text) || /\bset\b/.test(text)))
-  ) return 'suit_cluster';
+    (text.includes('blazer') &&
+      (/\bmatching\b/.test(text) || /\bset\b/.test(text)))
+  )
+    return 'suit_cluster';
 
   // Athleisure cluster
   if (
@@ -479,7 +746,8 @@ function getSemanticCluster(title: string, category?: string | null): string {
     text.includes('hoodie set') ||
     text.includes('sweat set') ||
     text.includes('sweatsuit')
-  ) return 'athleisure_cluster';
+  )
+    return 'athleisure_cluster';
 
   // Outerwear cluster
   if (
@@ -488,7 +756,8 @@ function getSemanticCluster(title: string, category?: string | null): string {
     /\bparka\b/.test(text) ||
     /\bpuffer\b/.test(text) ||
     /\bjacket\b/.test(text)
-  ) return 'outerwear_cluster';
+  )
+    return 'outerwear_cluster';
 
   // Top cluster
   if (
@@ -499,7 +768,8 @@ function getSemanticCluster(title: string, category?: string | null): string {
     /\bpolo\b/.test(text) ||
     /\bsweater\b/.test(text) ||
     /\bjumper\b/.test(text)
-  ) return 'top_cluster';
+  )
+    return 'top_cluster';
 
   // Bottom cluster
   if (
@@ -507,7 +777,8 @@ function getSemanticCluster(title: string, category?: string | null): string {
     /\btrousers?\b/.test(text) ||
     /\bjeans\b/.test(text) ||
     /\bchinos?\b/.test(text)
-  ) return 'bottom_cluster';
+  )
+    return 'bottom_cluster';
 
   // Accessory cluster
   if (
@@ -515,7 +786,8 @@ function getSemanticCluster(title: string, category?: string | null): string {
     /\bbelt\b/.test(text) ||
     /\bscarf\b/.test(text) ||
     /\bhat\b/.test(text)
-  ) return 'accessory_cluster';
+  )
+    return 'accessory_cluster';
 
   return 'unknown_cluster';
 }
@@ -533,54 +805,345 @@ function getClusterCap(cluster: string, relaxation: number): number {
 const AESTHETIC_DESCRIPTOR_MAP: Record<string, string[]> = {
   // Aesthetic Families
   relaxed: ['relaxed', 'comfort', 'flowy', 'easy fit', 'laid back'],
-  minimalist: ['basic', 'clean', 'solid', 'plain', 'simple', 'essential', 'neutral'],
-  classic: ['straight fit', 'oxford', 'double breasted', 'button down', 'traditional', 'heritage', 'timeless', 'polo'],
-  modern: ['zip', 'zip up', 'puffer', 'bomber', 'tech', 'contemporary', 'sleek', 'asymmetric'],
-  vintage: ['retro', 'washed', 'faded', 'distressed', 'throwback', 'heritage', 'classic', 'old school'],
-  bohemian: ['boho', 'floral', 'embroidered', 'fringe', 'paisley', 'crochet', 'flowing', 'peasant'],
-  preppy: ['polo', 'button down', 'plaid', 'argyle', 'cable knit', 'oxford', 'khaki', 'chino', 'stripe'],
-  edgy: ['leather', 'moto', 'studded', 'distressed', 'ripped', 'chain', 'graphic', 'punk', 'zipper'],
-  romantic: ['lace', 'ruffle', 'floral', 'sheer', 'satin', 'delicate', 'soft', 'drape', 'feminine'],
+  minimalist: [
+    'basic',
+    'clean',
+    'solid',
+    'plain',
+    'simple',
+    'essential',
+    'neutral',
+  ],
+  classic: [
+    'straight fit',
+    'oxford',
+    'double breasted',
+    'button down',
+    'traditional',
+    'heritage',
+    'timeless',
+    'polo',
+  ],
+  modern: [
+    'zip',
+    'zip up',
+    'puffer',
+    'bomber',
+    'tech',
+    'contemporary',
+    'sleek',
+    'asymmetric',
+  ],
+  vintage: [
+    'retro',
+    'washed',
+    'faded',
+    'distressed',
+    'throwback',
+    'heritage',
+    'classic',
+    'old school',
+  ],
+  bohemian: [
+    'boho',
+    'floral',
+    'embroidered',
+    'fringe',
+    'paisley',
+    'crochet',
+    'flowing',
+    'peasant',
+  ],
+  preppy: [
+    'polo',
+    'button down',
+    'plaid',
+    'argyle',
+    'cable knit',
+    'oxford',
+    'khaki',
+    'chino',
+    'stripe',
+  ],
+  edgy: [
+    'leather',
+    'moto',
+    'studded',
+    'distressed',
+    'ripped',
+    'chain',
+    'graphic',
+    'punk',
+    'zipper',
+  ],
+  romantic: [
+    'lace',
+    'ruffle',
+    'floral',
+    'sheer',
+    'satin',
+    'delicate',
+    'soft',
+    'drape',
+    'feminine',
+  ],
 
   // Performance & Sport
-  athletic: ['performance', 'stretch', 'sport', 'flex', 'moisture wicking', 'active', 'training', 'running', 'gym'],
-  sporty: ['athletic', 'jogger', 'track', 'sneaker', 'zip up', 'hoodie', 'sweatshirt', 'workout', 'active'],
-  activewear: ['legging', 'sports bra', 'tank', 'performance', 'stretch', 'moisture', 'yoga', 'running'],
+  athletic: [
+    'performance',
+    'stretch',
+    'sport',
+    'flex',
+    'moisture wicking',
+    'active',
+    'training',
+    'running',
+    'gym',
+  ],
+  sporty: [
+    'athletic',
+    'jogger',
+    'track',
+    'sneaker',
+    'zip up',
+    'hoodie',
+    'sweatshirt',
+    'workout',
+    'active',
+  ],
+  activewear: [
+    'legging',
+    'sports bra',
+    'tank',
+    'performance',
+    'stretch',
+    'moisture',
+    'yoga',
+    'running',
+  ],
 
   // Luxury & Elevated
-  luxury: ['silk', 'cashmere', 'wool', 'leather', 'suede', 'merino', 'linen', 'italian', 'premium'],
-  elevated: ['embroidered', 'textured', 'chenille', 'blend', 'detailed', 'refined', 'quality', 'artisan'],
-  sophisticated: ['structured', 'wool', 'silk', 'elegant', 'polished', 'refined', 'classic'],
-  elegant: ['silk', 'satin', 'chiffon', 'drape', 'maxi', 'midi', 'formal', 'evening', 'gown'],
+  luxury: [
+    'silk',
+    'cashmere',
+    'wool',
+    'leather',
+    'suede',
+    'merino',
+    'linen',
+    'italian',
+    'premium',
+  ],
+  elevated: [
+    'embroidered',
+    'textured',
+    'chenille',
+    'blend',
+    'detailed',
+    'refined',
+    'quality',
+    'artisan',
+  ],
+  sophisticated: [
+    'structured',
+    'wool',
+    'silk',
+    'elegant',
+    'polished',
+    'refined',
+    'classic',
+  ],
+  elegant: [
+    'silk',
+    'satin',
+    'chiffon',
+    'drape',
+    'maxi',
+    'midi',
+    'formal',
+    'evening',
+    'gown',
+  ],
 
   // Street & Casual
-  streetwear: ['graphic', 'hoodie', 'jogger', 'cargo', 'sneaker', 'logo', 'urban', 'crew neck'],
-  casual: ['tee', 't shirt', 'jeans', 'sneaker', 'hoodie', 'sweatshirt', 'everyday', 'basic'],
-  urban: ['cargo', 'utility', 'bomber', 'sneaker', 'graphic', 'jogger', 'street'],
+  streetwear: [
+    'graphic',
+    'hoodie',
+    'jogger',
+    'cargo',
+    'sneaker',
+    'logo',
+    'urban',
+    'crew neck',
+  ],
+  casual: [
+    'tee',
+    't shirt',
+    'jeans',
+    'sneaker',
+    'hoodie',
+    'sweatshirt',
+    'everyday',
+    'basic',
+  ],
+  urban: [
+    'cargo',
+    'utility',
+    'bomber',
+    'sneaker',
+    'graphic',
+    'jogger',
+    'street',
+  ],
 
   // Texture & Material
-  rugged: ['denim', 'canvas', 'leather', 'flannel', 'corduroy', 'work', 'utility', 'heavy duty', 'boot'],
-  cozy: ['fleece', 'sherpa', 'knit', 'sweater', 'cardigan', 'wool', 'soft', 'plush', 'warm'],
-  lightweight: ['linen', 'cotton', 'breathable', 'thin', 'sheer', 'mesh', 'light', 'airy'],
+  rugged: [
+    'denim',
+    'canvas',
+    'leather',
+    'flannel',
+    'corduroy',
+    'work',
+    'utility',
+    'heavy duty',
+    'boot',
+  ],
+  cozy: [
+    'fleece',
+    'sherpa',
+    'knit',
+    'sweater',
+    'cardigan',
+    'wool',
+    'soft',
+    'plush',
+    'warm',
+  ],
+  lightweight: [
+    'linen',
+    'cotton',
+    'breathable',
+    'thin',
+    'sheer',
+    'mesh',
+    'light',
+    'airy',
+  ],
 
   // Pattern & Detail
-  bold: ['print', 'pattern', 'graphic', 'bright', 'colorful', 'statement', 'vibrant', 'neon'],
-  neutral: ['black', 'white', 'grey', 'gray', 'beige', 'navy', 'cream', 'khaki', 'earth tone'],
-  patterned: ['stripe', 'plaid', 'check', 'floral', 'paisley', 'polka dot', 'geometric', 'print'],
+  bold: [
+    'print',
+    'pattern',
+    'graphic',
+    'bright',
+    'colorful',
+    'statement',
+    'vibrant',
+    'neon',
+  ],
+  neutral: [
+    'black',
+    'white',
+    'grey',
+    'gray',
+    'beige',
+    'navy',
+    'cream',
+    'khaki',
+    'earth tone',
+  ],
+  patterned: [
+    'stripe',
+    'plaid',
+    'check',
+    'floral',
+    'paisley',
+    'polka dot',
+    'geometric',
+    'print',
+  ],
 
   // Season & Occasion
-  summer: ['linen', 'cotton', 'shorts', 'tank', 'sandal', 'light', 'breathable', 'floral'],
-  winter: ['wool', 'fleece', 'puffer', 'down', 'thermal', 'insulated', 'heavy', 'coat', 'boot'],
-  business: ['dress shirt', 'blazer', 'trouser', 'oxford', 'loafer', 'formal', 'professional', 'suit'],
-  'smart casual': ['chino', 'polo', 'loafer', 'blazer', 'button down', 'knit', 'leather'],
+  summer: [
+    'linen',
+    'cotton',
+    'shorts',
+    'tank',
+    'sandal',
+    'light',
+    'breathable',
+    'floral',
+  ],
+  winter: [
+    'wool',
+    'fleece',
+    'puffer',
+    'down',
+    'thermal',
+    'insulated',
+    'heavy',
+    'coat',
+    'boot',
+  ],
+  business: [
+    'dress shirt',
+    'blazer',
+    'trouser',
+    'oxford',
+    'loafer',
+    'formal',
+    'professional',
+    'suit',
+  ],
+  'smart casual': [
+    'chino',
+    'polo',
+    'loafer',
+    'blazer',
+    'button down',
+    'knit',
+    'leather',
+  ],
 };
 
 // ── FIT descriptors (silhouette/cut terms only) ──
 const FIT_DESCRIPTOR_MAP: Record<string, string[]> = {
-  tailored: ['slim', 'slim fit', 'structured', 'pleated', 'tapered', 'fitted', 'darted', 'shaped'],
-  fitted: ['slim fit', 'skinny', 'bodycon', 'form fitting', 'stretch', 'tapered', 'tight'],
-  oversized: ['oversized', 'boxy', 'relaxed fit', 'wide', 'loose fit', 'dropped shoulder', 'baggy'],
-  loose: ['loose', 'wide leg', 'baggy', 'oversized', 'boxy', 'dropped shoulder'],
+  tailored: [
+    'slim',
+    'slim fit',
+    'structured',
+    'pleated',
+    'tapered',
+    'fitted',
+    'darted',
+    'shaped',
+  ],
+  fitted: [
+    'slim fit',
+    'skinny',
+    'bodycon',
+    'form fitting',
+    'stretch',
+    'tapered',
+    'tight',
+  ],
+  oversized: [
+    'oversized',
+    'boxy',
+    'relaxed fit',
+    'wide',
+    'loose fit',
+    'dropped shoulder',
+    'baggy',
+  ],
+  loose: [
+    'loose',
+    'wide leg',
+    'baggy',
+    'oversized',
+    'boxy',
+    'dropped shoulder',
+  ],
 };
 
 // Combined map for backward-compatible expandStyleTokens (aesthetic + fit)
@@ -599,7 +1162,11 @@ function expandStyleTokens(styleKeywords: string[]): Set<string> {
     expanded.add(norm);
     // Check each map entry for matches
     for (const [concept, descriptors] of Object.entries(STYLE_DESCRIPTOR_MAP)) {
-      if (norm === concept || norm.includes(concept) || concept.includes(norm)) {
+      if (
+        norm === concept ||
+        norm.includes(concept) ||
+        concept.includes(norm)
+      ) {
         for (const desc of descriptors) {
           expanded.add(normalize(desc));
         }
@@ -611,11 +1178,41 @@ function expandStyleTokens(styleKeywords: string[]): Set<string> {
 
 // ==================== COLOR VOCABULARY (for auto-inference) ====================
 const COLOR_VOCAB: string[] = [
-  'black', 'white', 'navy', 'blue', 'red', 'green', 'gray', 'grey',
-  'brown', 'beige', 'tan', 'cream', 'burgundy', 'olive',
-  'charcoal', 'ivory', 'coral', 'sage', 'rust', 'mustard', 'camel', 'plum',
-  'teal', 'blush', 'wine', 'mauve', 'mint', 'rose', 'khaki', 'taupe',
-  'indigo', 'lavender', 'copper', 'gold', 'silver',
+  'black',
+  'white',
+  'navy',
+  'blue',
+  'red',
+  'green',
+  'gray',
+  'grey',
+  'brown',
+  'beige',
+  'tan',
+  'cream',
+  'burgundy',
+  'olive',
+  'charcoal',
+  'ivory',
+  'coral',
+  'sage',
+  'rust',
+  'mustard',
+  'camel',
+  'plum',
+  'teal',
+  'blush',
+  'wine',
+  'mauve',
+  'mint',
+  'rose',
+  'khaki',
+  'taupe',
+  'indigo',
+  'lavender',
+  'copper',
+  'gold',
+  'silver',
 ];
 
 /** Maps expanded fashion color tokens to canonical color buckets */
@@ -644,7 +1241,16 @@ const FASHION_COLOR_NORMALIZE: Record<string, string> = {
 
 // Canonical color buckets for thumbnail-based enrichment
 const CANONICAL_COLORS = [
-  'black', 'white', 'gray', 'navy', 'blue', 'brown', 'beige', 'red', 'burgundy', 'green',
+  'black',
+  'white',
+  'gray',
+  'navy',
+  'blue',
+  'brown',
+  'beige',
+  'red',
+  'burgundy',
+  'green',
 ] as const;
 
 /** Category adjacency map — normalized keys and values */
@@ -686,18 +1292,26 @@ const CATEGORY_STYLE_BRIDGE: Record<string, string[]> = {
 /** Body-type → category multiplier for gap bonus (0.8–1.2 range) */
 const BODY_TYPE_CATEGORY_BOOST: Record<string, Record<string, number>> = {
   inverted_triangle: { bottoms: 1.2, tops: 0.9, shoes: 1.1 },
-  pear:              { tops: 1.2, bottoms: 0.9, accessories: 1.1 },
-  apple:             { tops: 0.9, dresses: 1.2, outerwear: 1.1 },
-  hourglass:         { dresses: 1.2, tops: 1.1, bottoms: 1.0 },
-  rectangle:         { outerwear: 1.2, dresses: 1.1, accessories: 1.1 },
-  petite:            { shoes: 1.1, tops: 1.1 },
-  athletic:          { activewear: 1.2, tops: 1.1, bottoms: 0.9 },
+  pear: { tops: 1.2, bottoms: 0.9, accessories: 1.1 },
+  apple: { tops: 0.9, dresses: 1.2, outerwear: 1.1 },
+  hourglass: { dresses: 1.2, tops: 1.1, bottoms: 1.0 },
+  rectangle: { outerwear: 1.2, dresses: 1.1, accessories: 1.1 },
+  petite: { shoes: 1.1, tops: 1.1 },
+  athletic: { activewear: 1.2, tops: 1.1, bottoms: 0.9 },
 };
 
 // Fit tokens that signal loose/oversized silhouette
 const LOOSE_FIT_TOKENS = new Set([
-  'oversized', 'boxy', 'baggy', 'wide', 'loose fit', 'dropped shoulder',
-  'relaxed', 'relaxed fit', 'wide leg', 'wide fit',
+  'oversized',
+  'boxy',
+  'baggy',
+  'wide',
+  'loose fit',
+  'dropped shoulder',
+  'relaxed',
+  'relaxed fit',
+  'wide leg',
+  'wide fit',
 ]);
 
 /** Build normalized veto sets from profile constraints */
@@ -732,7 +1346,9 @@ function computeProfileFingerprint(profile: UserProfile): string {
 function jaccard(a: Set<string>, b: Set<string>): number {
   if (a.size === 0 && b.size === 0) return 1;
   let inter = 0;
-  for (const t of a) { if (b.has(t)) inter++; }
+  for (const t of a) {
+    if (b.has(t)) inter++;
+  }
   return inter / (a.size + b.size - inter);
 }
 
@@ -766,7 +1382,7 @@ function validateSetCoherence(
 
   // --- Phase 0: Hard-reject dupes & fit conflicts (permanent removal) ---
   const seenSigs = new Map<string, Set<string>>();
-  const userWantsSlim = profile.fit_preferences.some(f => {
+  const userWantsSlim = profile.fit_preferences.some((f) => {
     const n = normalize(f);
     return n === 'slim' || n === 'tailored' || n === 'fitted';
   });
@@ -785,14 +1401,17 @@ function validateSetCoherence(
       let isDupe = false;
       for (const existing of existingSigs) {
         const existingSet = new Set(existing.split(' '));
-        if (jaccard(titleTokens, existingSet) >= 0.6) { isDupe = true; break; }
+        if (jaccard(titleTokens, existingSet) >= 0.6) {
+          isDupe = true;
+          break;
+        }
       }
       if (isDupe) continue;
     }
 
     // Fit coherence: cap loose/oversized items when user prefers slim
     const normTitle = normalize(p.title);
-    const isLooseFit = [...LOOSE_FIT_TOKENS].some(t => normTitle.includes(t));
+    const isLooseFit = [...LOOSE_FIT_TOKENS].some((t) => normTitle.includes(t));
     if (isLooseFit) {
       if (looseFitCount >= LOOSE_FIT_CAP) continue;
       looseFitCount++;
@@ -804,7 +1423,7 @@ function validateSetCoherence(
   }
 
   // Pre-compute cluster keys for all eligible products (deterministic, pure)
-  const eligibleClusters: string[] = eligible.map(p =>
+  const eligibleClusters: string[] = eligible.map((p) =>
     getSemanticCluster(p.title, p.category),
   );
 
@@ -819,7 +1438,8 @@ function validateSetCoherence(
     if (admitted.length >= TARGET) break;
     const p = eligible[i];
     const brandKey = normalize(p.source || p.brand || '');
-    const colorKey = normalizeColorKey(p.enriched_color) || inferColorFromTitle(p.title);
+    const colorKey =
+      normalizeColorKey(p.enriched_color) || inferColorFromTitle(p.title);
     const cluster = eligibleClusters[i];
 
     if (brandKey && (brandCounts[brandKey] ?? 0) >= MAX_PER_BRAND) continue;
@@ -840,7 +1460,8 @@ function validateSetCoherence(
       if (admittedSet.has(i)) continue;
       const p = eligible[i];
       const brandKey = normalize(p.source || p.brand || '');
-      const colorKey = normalizeColorKey(p.enriched_color) || inferColorFromTitle(p.title);
+      const colorKey =
+        normalizeColorKey(p.enriched_color) || inferColorFromTitle(p.title);
       const cluster = eligibleClusters[i];
 
       if (brandKey && (brandCounts[brandKey] ?? 0) >= RELAXED_BRAND) continue;
@@ -862,7 +1483,8 @@ function validateSetCoherence(
       if (admittedSet.has(i)) continue;
       const p = eligible[i];
       const brandKey = normalize(p.source || p.brand || '');
-      const colorKey = normalizeColorKey(p.enriched_color) || inferColorFromTitle(p.title);
+      const colorKey =
+        normalizeColorKey(p.enriched_color) || inferColorFromTitle(p.title);
       const cluster = eligibleClusters[i];
 
       if (brandKey && (brandCounts[brandKey] ?? 0) >= RELAXED_BRAND) continue;
@@ -925,7 +1547,10 @@ export class DiscoverService {
 
   // ==================== MAIN ENTRY POINT ====================
 
-  async getRecommended(userId: string, timezone = 'UTC'): Promise<DiscoverProduct[]> {
+  async getRecommended(
+    userId: string,
+    timezone = 'UTC',
+  ): Promise<DiscoverProduct[]> {
     // console.log('🔥🔥🔥 GET RECOMMENDED ENTERED 🔥🔥🔥');
     // console.log('DEBUG_RECOMMENDED_BUYS =', process.env.DEBUG_RECOMMENDED_BUYS);
     // this.log.log(`🛒 getRecommended called for userId: ${userId}`);
@@ -960,9 +1585,7 @@ export class DiscoverService {
 
     // In-memory cooldown: if SerpAPI recently returned nothing, don't hammer it
     if (Date.now() < this.serpEmptyResultsCooldownUntil) {
-      this.log.warn(
-        `SerpAPI cooldown active for ${userId} — skipping fetch`,
-      );
+      this.log.warn(`SerpAPI cooldown active for ${userId} — skipping fetch`);
       return cached;
     }
 
@@ -1025,9 +1648,13 @@ export class DiscoverService {
   ): void {
     if (!LEARNING_FLAGS.EVENTS_ENABLED || products.length === 0) return;
 
-    const productIds = products.map(p => p.product_id).filter(Boolean);
-    const brands = [...new Set(products.map(p => p.brand).filter(Boolean))] as string[];
-    const categories = [...new Set(products.map(p => p.category).filter(Boolean))] as string[];
+    const productIds = products.map((p) => p.product_id).filter(Boolean);
+    const brands = [
+      ...new Set(products.map((p) => p.brand).filter(Boolean)),
+    ] as string[];
+    const categories = [
+      ...new Set(products.map((p) => p.category).filter(Boolean)),
+    ] as string[];
 
     this.learningEvents
       .logEvent({
@@ -1059,7 +1686,10 @@ export class DiscoverService {
   private async extractProductFeatures(
     userId: string,
     productId: string,
-  ): Promise<{ features: import('../learning/dto/learning-event.dto').ExtractedFeatures; found: boolean }> {
+  ): Promise<{
+    features: import('../learning/dto/learning-event.dto').ExtractedFeatures;
+    found: boolean;
+  }> {
     try {
       const result = await pool.query(
         `SELECT brand, category, enriched_color, price
@@ -1089,29 +1719,35 @@ export class DiscoverService {
 
   emitProductClick(userId: string, productId: string): void {
     if (!LEARNING_FLAGS.EVENTS_ENABLED) return;
-    this.extractProductFeatures(userId, productId).then(({ features }) => {
-      this.learningEvents
-        .logEvent({
-          userId,
-          eventType: 'PRODUCT_CLICK',
-          entityType: 'product',
-          entityId: productId,
-          signalPolarity: 1,
-          signalWeight: 0.35,
-          extractedFeatures: features,
-          sourceFeature: 'shopping',
-          clientEventId: `product_click:${userId}:${productId}:${Date.now()}`,
-        })
-        .catch(() => {});
-    }).catch(() => {});
+    this.extractProductFeatures(userId, productId)
+      .then(({ features }) => {
+        this.learningEvents
+          .logEvent({
+            userId,
+            eventType: 'PRODUCT_CLICK',
+            entityType: 'product',
+            entityId: productId,
+            signalPolarity: 1,
+            signalWeight: 0.35,
+            extractedFeatures: features,
+            sourceFeature: 'shopping',
+            clientEventId: `product_click:${userId}:${productId}:${Date.now()}`,
+          })
+          .catch(() => {});
+      })
+      .catch(() => {});
   }
 
   async emitItemDismissed(userId: string, productId: string): Promise<void> {
     // Persist disliked state for UI hydration on reload
-    await pool.query(
-      `UPDATE user_discover_products SET disliked = TRUE WHERE user_id = $1 AND product_id = $2`,
-      [userId, productId],
-    ).catch(err => this.log.error('[DISCOVER] disliked persist failed', err));
+    await pool
+      .query(
+        `UPDATE user_discover_products SET disliked = TRUE WHERE user_id = $1 AND product_id = $2`,
+        [userId, productId],
+      )
+      .catch((err) =>
+        this.log.error('[DISCOVER] disliked persist failed', err),
+      );
 
     if (!LEARNING_FLAGS.EVENTS_ENABLED) return;
     try {
@@ -1129,22 +1765,29 @@ export class DiscoverService {
       });
       this.fashionStateService
         .computeAndSaveState(userId)
-        .catch(err => this.log.error('[LEARNING INLINE] recompute failed', err));
+        .catch((err) =>
+          this.log.error('[LEARNING INLINE] recompute failed', err),
+        );
     } catch (err) {
       this.log.error('[LEARNING] item dismissed event failed', err);
     }
   }
 
   async undoItemDismissed(userId: string, productId: string): Promise<void> {
-    await pool.query(
-      `UPDATE user_discover_products SET disliked = FALSE WHERE user_id = $1 AND product_id = $2`,
-      [userId, productId],
-    ).catch(err => this.log.error('[DISCOVER] undo disliked failed', err));
+    await pool
+      .query(
+        `UPDATE user_discover_products SET disliked = FALSE WHERE user_id = $1 AND product_id = $2`,
+        [userId, productId],
+      )
+      .catch((err) => this.log.error('[DISCOVER] undo disliked failed', err));
   }
 
   // Returns true if today's snapshot exists (calendar-day lock — no mid-day invalidation)
   // batchDate is computed per-user timezone via computeUserBatchDate()
-  private async isCacheValid(userId: string, batchDate: string): Promise<boolean> {
+  private async isCacheValid(
+    userId: string,
+    batchDate: string,
+  ): Promise<boolean> {
     try {
       const result = await pool.query(
         `SELECT 1 FROM user_discover_products
@@ -1160,7 +1803,10 @@ export class DiscoverService {
 
   // ==================== GET CACHED PRODUCTS ====================
 
-  private async getCachedProducts(userId: string, batchDate?: string): Promise<DiscoverProduct[]> {
+  private async getCachedProducts(
+    userId: string,
+    batchDate?: string,
+  ): Promise<DiscoverProduct[]> {
     try {
       // If no batchDate provided (called outside getRecommended), fall back to UTC today
       const effectiveDate = batchDate || new Date().toISOString().slice(0, 10);
@@ -1240,8 +1886,12 @@ export class DiscoverService {
 
     // Must have gender - hard requirement
     if (!profile.gender) {
-      this.log.warn(`User ${userId} has no gender set, returning empty for fallback`);
-      console.log('🔥 RETURNING FROM fetchPersonalizedProducts (no gender → empty) 🔥');
+      this.log.warn(
+        `User ${userId} has no gender set, returning empty for fallback`,
+      );
+      console.log(
+        '🔥 RETURNING FROM fetchPersonalizedProducts (no gender → empty) 🔥',
+      );
       return [];
     }
 
@@ -1303,7 +1953,9 @@ export class DiscoverService {
 
     // If candidate pool is empty, return [] and let getRecommended() handle fallback
     if (allProducts.length === 0) {
-      console.log('🔥 RETURNING FROM fetchPersonalizedProducts (empty candidate pool) 🔥');
+      console.log(
+        '🔥 RETURNING FROM fetchPersonalizedProducts (empty candidate pool) 🔥',
+      );
       return [];
     }
 
@@ -1368,29 +2020,60 @@ export class DiscoverService {
       climate: profile.climate,
     };
 
-    const vetoStats = { nonApparel: 0, avoidColor: 0, avoidMaterial: 0, avoidPattern: 0, disliked: 0, fitVeto: 0, coverage: 0, walkability: 0, formality: 0, climate: 0, materialMix: 0 };
+    const vetoStats = {
+      nonApparel: 0,
+      avoidColor: 0,
+      avoidMaterial: 0,
+      avoidPattern: 0,
+      disliked: 0,
+      fitVeto: 0,
+      coverage: 0,
+      walkability: 0,
+      formality: 0,
+      climate: 0,
+      materialMix: 0,
+    };
     const vetoPassed: any[] = [];
 
     for (const raw of allProducts) {
       const textParts: string[] = [
-        raw.title, raw.snippet, raw.source, raw.description,
+        raw.title,
+        raw.snippet,
+        raw.source,
+        raw.description,
         ...(Array.isArray(raw.extensions) ? raw.extensions.map(String) : []),
       ].filter(Boolean);
       const blob = normalize(textParts.join(' '));
-      const enrichedColor = raw.enriched_color ? normalize(raw.enriched_color) : '';
+      const enrichedColor = raw.enriched_color
+        ? normalize(raw.enriched_color)
+        : '';
 
       const vetoResult: VetoResult = applyDiscoverVeto(
-        { title: raw.title || '', blob, enrichedColor, price: raw.extracted_price ?? null, brand: raw.source ?? null },
+        {
+          title: raw.title || '',
+          blob,
+          enrichedColor,
+          price: raw.extracted_price ?? null,
+          brand: raw.source ?? null,
+        },
         vetoProfile,
       );
 
       if (vetoResult.vetoed) {
-        const ruleKey = (vetoResult.rule || '').replace('VETO_', '').toLowerCase();
+        const ruleKey = (vetoResult.rule || '')
+          .replace('VETO_', '')
+          .toLowerCase();
         const statMap: Record<string, keyof typeof vetoStats> = {
           non_apparel: 'nonApparel',
-          color: 'avoidColor', material: 'avoidMaterial', pattern: 'avoidPattern',
-          disliked: 'disliked', fit: 'fitVeto', coverage: 'coverage',
-          walkability: 'walkability', formality: 'formality', climate: 'climate',
+          color: 'avoidColor',
+          material: 'avoidMaterial',
+          pattern: 'avoidPattern',
+          disliked: 'disliked',
+          fit: 'fitVeto',
+          coverage: 'coverage',
+          walkability: 'walkability',
+          formality: 'formality',
+          climate: 'climate',
           material_mix: 'materialMix',
         };
         const statKey = statMap[ruleKey];
@@ -1434,7 +2117,7 @@ export class DiscoverService {
     //     length: profile.color_preferences?.length,
     //   });
     // }
-    let effectiveFavoriteColors = profile.color_preferences.filter(c => {
+    let effectiveFavoriteColors = profile.color_preferences.filter((c) => {
       const n = normalize(c);
       return n.length > 0 && n !== 'null' && n !== 'undefined' && n !== 'none';
     });
@@ -1450,10 +2133,15 @@ export class DiscoverService {
       const colorFreq = new Map<string, number>();
       for (const raw of allProducts) {
         const parts: (string | null | undefined)[] = [
-          raw?.title, raw?.color, raw?.variantColor, raw?.snippet, raw?.description,
+          raw?.title,
+          raw?.color,
+          raw?.variantColor,
+          raw?.snippet,
+          raw?.description,
         ];
         if (raw?.extensions?.color) parts.push(raw.extensions.color);
-        if (Array.isArray(raw?.extensions)) parts.push(...raw.extensions.map(String));
+        if (Array.isArray(raw?.extensions))
+          parts.push(...raw.extensions.map(String));
         const blob = normalize(parts.filter(Boolean).join(' '));
         for (const color of COLOR_VOCAB) {
           if (blob.includes(color)) {
@@ -1510,29 +2198,48 @@ export class DiscoverService {
     // --- Pre-compute scoring helpers ---
     // Median price (p50) for elevation boost
     const candidatePricesForP50 = transformed
-      .map(p => p.price)
+      .map((p) => p.price)
       .filter((v): v is number => typeof v === 'number' && v > 0)
       .sort((a, b) => a - b);
-    const p50Price = candidatePricesForP50.length > 0
-      ? candidatePricesForP50[Math.floor(candidatePricesForP50.length / 2)]
-      : 0;
+    const p50Price =
+      candidatePricesForP50.length > 0
+        ? candidatePricesForP50[Math.floor(candidatePricesForP50.length / 2)]
+        : 0;
 
     // Prestige descriptors for elevation boost
     const PRESTIGE_DESCRIPTORS = [
-      'silk', 'cashmere', 'wool', 'leather', 'suede', 'merino', 'linen', 'italian',
-      'premium', 'embroidered', 'textured', 'chenille', 'refined', 'quality', 'artisan',
+      'silk',
+      'cashmere',
+      'wool',
+      'leather',
+      'suede',
+      'merino',
+      'linen',
+      'italian',
+      'premium',
+      'embroidered',
+      'textured',
+      'chenille',
+      'refined',
+      'quality',
+      'artisan',
     ];
 
     // Basic item regex for dampener (applied to normalized text)
-    const BASIC_ITEM_RE = /\b(basic|regular fit tshirt|crew neck|crewneck|plain tee|solid tee)\b/;
+    const BASIC_ITEM_RE =
+      /\b(basic|regular fit tshirt|crew neck|crewneck|plain tee|solid tee)\b/;
 
     // --- LEARNING: build normalized brand weight map from raw fashion state ---
     const LEARNING_MULTIPLIER = 2;
-    const normalizedBrandState = Object.entries(rawFashionState?.brandScores || {})
-      .reduce((acc, [brand, weight]) => {
-        acc[normalize(brand)] = weight as number;
+    const normalizedBrandState = Object.entries(
+      rawFashionState?.brandScores || {},
+    ).reduce(
+      (acc, [brand, weight]) => {
+        acc[normalize(brand)] = weight;
         return acc;
-      }, {} as Record<string, number>);
+      },
+      {} as Record<string, number>,
+    );
 
     const scored = transformed.map((p, idx) => {
       const breakdown = {
@@ -1554,10 +2261,17 @@ export class DiscoverService {
       const normBrand = normalize(p.brand);
 
       // Brand match — 0 or 1 (normalized substring)
-      const brandMatch01 = (normBrand && profile.preferred_brands?.some((b) => normBrand.includes(normalize(b)))) ? 1 : 0;
+      const brandMatch01 =
+        normBrand &&
+        profile.preferred_brands?.some((b) => normBrand.includes(normalize(b)))
+          ? 1
+          : 0;
 
       // Brand tier: prestige-aware multiplier (only when brand matches)
-      const brandNorm = (p.brand || '').toLowerCase().replace(/[^a-z\s]/g, '').trim();
+      const brandNorm = (p.brand || '')
+        .toLowerCase()
+        .replace(/[^a-z\s]/g, '')
+        .trim();
       const brandBase = 7 * brandMatch01;
       let brandContribution = brandBase;
       if (brandMatch01 === 1) {
@@ -1567,7 +2281,11 @@ export class DiscoverService {
       brandContribution = Math.min(brandContribution, 10);
 
       // Behavior brand match — 0 or 1 (normalized substring)
-      const behavior01 = (normBrand && behavior.recentBrands?.some((b) => normBrand.includes(normalize(b)))) ? 1 : 0;
+      const behavior01 =
+        normBrand &&
+        behavior.recentBrands?.some((b) => normBrand.includes(normalize(b)))
+          ? 1
+          : 0;
 
       // --- Infer category early (used by style blob + gap) ---
       const inferredCategory = p.category || inferMainCategory(p.title);
@@ -1583,10 +2301,15 @@ export class DiscoverService {
       // }
 
       const textParts: (string | null | undefined)[] = [
-        p.title, p.brand, p.source, p.category, inferredCategory,
+        p.title,
+        p.brand,
+        p.source,
+        p.category,
+        inferredCategory,
       ];
       if (raw?.snippet) textParts.push(raw.snippet);
-      if (Array.isArray(raw?.extensions)) textParts.push(...raw.extensions.map(String));
+      if (Array.isArray(raw?.extensions))
+        textParts.push(...raw.extensions.map(String));
       const productTextBlob = textParts.filter(Boolean).join(' ');
       const normProductText = normalize(productTextBlob);
 
@@ -1606,17 +2329,22 @@ export class DiscoverService {
             }
           }
         }
-        let score01 = expandedStyles.size > 0
-          ? clamp01(hits / STYLE_MATCH_CAP)
-          : 0;
+        let score01 =
+          expandedStyles.size > 0 ? clamp01(hits / STYLE_MATCH_CAP) : 0;
 
         // Category → style bridge: boost when product category implies user's style
         let bridgeApplied = false;
         if (score01 < 1.0) {
-          for (const [categoryKeyword, impliedStyles] of Object.entries(CATEGORY_STYLE_BRIDGE)) {
+          for (const [categoryKeyword, impliedStyles] of Object.entries(
+            CATEGORY_STYLE_BRIDGE,
+          )) {
             if (normProductText.includes(categoryKeyword)) {
-              const userStylesNorm = profile.style_keywords.map(k => normalize(k));
-              if (impliedStyles.some(s => userStylesNorm.includes(normalize(s)))) {
+              const userStylesNorm = profile.style_keywords.map((k) =>
+                normalize(k),
+              );
+              if (
+                impliedStyles.some((s) => userStylesNorm.includes(normalize(s)))
+              ) {
                 score01 = clamp01(score01 + 0.4);
                 bridgeApplied = true;
                 break;
@@ -1664,7 +2392,8 @@ export class DiscoverService {
         if (raw?.variantColor) colorParts.push(raw.variantColor);
         if (raw?.snippet) colorParts.push(raw.snippet);
         if (raw?.description) colorParts.push(raw.description);
-        if (Array.isArray(raw?.extensions)) colorParts.push(...raw.extensions.map(String));
+        if (Array.isArray(raw?.extensions))
+          colorParts.push(...raw.extensions.map(String));
         const productColorBlob = colorParts.filter(Boolean).join(' ');
         const normColorBlob = normalize(productColorBlob);
         for (const colorToken of profileColors) {
@@ -1675,9 +2404,8 @@ export class DiscoverService {
         }
       }
 
-      const color01 = profileColors.size > 0
-        ? clamp01(colorHits / COLOR_MATCH_CAP)
-        : 0;
+      const color01 =
+        profileColors.size > 0 ? clamp01(colorHits / COLOR_MATCH_CAP) : 0;
 
       // if (DEBUG_RECOMMENDED_BUYS && idx < 5) {
       //   console.log('🎨 COLOR DEBUG', {
@@ -1694,7 +2422,10 @@ export class DiscoverService {
         const normInferred = normalize(inferredCategory);
         let catCount = 0;
         for (const [cat, count] of ownedCategories.entries()) {
-          if (normalize(cat) === normInferred) { catCount = count; break; }
+          if (normalize(cat) === normInferred) {
+            catCount = count;
+            break;
+          }
         }
         if (catCount === 0) gapBonus = 18;
         else if (catCount === 1) gapBonus = 12;
@@ -1732,7 +2463,11 @@ export class DiscoverService {
 
       // --- ELEVATION SIGNAL: reward elevated pieces with prestige materials ---
       let elevation01 = 0;
-      if (typeof p.price === 'number' && p.price > p50Price && styleMatch.hits > 0) {
+      if (
+        typeof p.price === 'number' &&
+        p.price > p50Price &&
+        styleMatch.hits > 0
+      ) {
         let prestigeHits = 0;
         for (const d of PRESTIGE_DESCRIPTORS) {
           if (normProductText.includes(d)) prestigeHits++;
@@ -1745,14 +2480,22 @@ export class DiscoverService {
 
       // --- CASUAL INFLATION DAMPENER: soft penalty for generic casual basics in default mode ---
       // Prevents mall-tier hoodies/graphic tees from outranking elevated pieces when no formality floor is set.
-      const CASUAL_INFLATION_TOKENS = ['hoodie', 'sweatshirt', 'graphic tee', 'livedin tee', 'lightweight tee', 'icon tee', 'logo tee'];
+      const CASUAL_INFLATION_TOKENS = [
+        'hoodie',
+        'sweatshirt',
+        'graphic tee',
+        'livedin tee',
+        'lightweight tee',
+        'icon tee',
+        'logo tee',
+      ];
       const productCluster = getSemanticCluster(p.title, p.category);
       const productBrandTier = resolveBrandTier(p.brand);
       const casualInflationPenalty =
         !profile.formality_floor &&
         productCluster === 'top_cluster' &&
         productBrandTier >= 4 &&
-        CASUAL_INFLATION_TOKENS.some(token => normProductText.includes(token))
+        CASUAL_INFLATION_TOKENS.some((token) => normProductText.includes(token))
           ? -2
           : 0;
 
@@ -1762,8 +2505,11 @@ export class DiscoverService {
         const normKw = normalize(keyword);
         if (!normKw) continue;
         const descriptors = STYLE_DESCRIPTOR_MAP[normKw];
-        const tokensToCheck = descriptors ? [normKw, ...descriptors.map(d => normalize(d))] : [normKw];
-        if (tokensToCheck.some(t => normProductText.includes(t))) styleKeywordsMatched++;
+        const tokensToCheck = descriptors
+          ? [normKw, ...descriptors.map((d) => normalize(d))]
+          : [normKw];
+        if (tokensToCheck.some((t) => normProductText.includes(t)))
+          styleKeywordsMatched++;
       }
       const styleDepth01 = clamp01(styleKeywordsMatched / 3);
 
@@ -1782,15 +2528,46 @@ export class DiscoverService {
       let fashionStateBonus = 0;
       if (fsSummary && !fsSummary.isColdStart) {
         let rawFsBonus = 0;
-        if (normBrand && fsSummary.topBrands.some(b => normalize(b) === normBrand)) rawFsBonus += 3;
-        if (normBrand && fsSummary.avoidBrands.some(b => normalize(b) === normBrand)) rawFsBonus -= 3;
+        if (
+          normBrand &&
+          fsSummary.topBrands.some((b) => normalize(b) === normBrand)
+        )
+          rawFsBonus += 3;
+        if (
+          normBrand &&
+          fsSummary.avoidBrands.some((b) => normalize(b) === normBrand)
+        )
+          rawFsBonus -= 3;
         const enrichedC = normalize(p.enriched_color || '');
-        if (enrichedC && fsSummary.topColors.some(c => normalize(c) === enrichedC)) rawFsBonus += 2;
-        if (enrichedC && fsSummary.avoidColors.some(c => normalize(c) === enrichedC)) rawFsBonus -= 2;
-        if (fsSummary.topStyles && fsSummary.topStyles.some(s => normProductText.includes(normalize(s)))) rawFsBonus += 1;
-        if (fsSummary.avoidStyles && fsSummary.avoidStyles.some(s => normProductText.includes(normalize(s)))) rawFsBonus -= 1;
+        if (
+          enrichedC &&
+          fsSummary.topColors.some((c) => normalize(c) === enrichedC)
+        )
+          rawFsBonus += 2;
+        if (
+          enrichedC &&
+          fsSummary.avoidColors.some((c) => normalize(c) === enrichedC)
+        )
+          rawFsBonus -= 2;
+        if (
+          fsSummary.topStyles &&
+          fsSummary.topStyles.some((s) =>
+            normProductText.includes(normalize(s)),
+          )
+        )
+          rawFsBonus += 1;
+        if (
+          fsSummary.avoidStyles &&
+          fsSummary.avoidStyles.some((s) =>
+            normProductText.includes(normalize(s)),
+          )
+        )
+          rawFsBonus -= 1;
         // 0.7 multiplier: legacy user_pref_feature already provides partial overlap
-        fashionStateBonus = Math.max(-4, Math.min(4, +(rawFsBonus * 0.7).toFixed(2)));
+        fashionStateBonus = Math.max(
+          -4,
+          Math.min(4, +(rawFsBonus * 0.7).toFixed(2)),
+        );
       }
 
       // --- LEARNING SCORE: weight-based brand affinity from raw fashion state ---
@@ -1818,13 +2595,13 @@ export class DiscoverService {
       //   + fit(4) + elevation(5) + styleDepth(3) + authority(-2..+3) - negativePenalty(4) - brandSatPenalty + basicDamp(-2) + casualInflation(-2) + fashionState(±4) + learning
       const score =
         brandContribution +
-        (3  * behavior01) +
+        3 * behavior01 +
         adjustedGapBonus +
-        (16 * styleMatch.score01) +
-        (10 * color01) +
-        (4  * fit01) +
-        (5  * elevation01) +
-        (3  * styleDepth01) +
+        16 * styleMatch.score01 +
+        10 * color01 +
+        4 * fit01 +
+        5 * elevation01 +
+        3 * styleDepth01 +
         brandAuthority -
         penalty -
         negativePenalty +
@@ -1894,18 +2671,28 @@ export class DiscoverService {
 
       // --- EXPLANATION LAYER: build match reasons (literal tokens only) ---
       const reasons: string[] = [];
-      if (brandContribution > 0) reasons.push(`Matches preferred brand: ${p.brand}`);
-      if (color01 > 0 && matchedColors.length > 0) reasons.push(`Aligns with color palette: ${matchedColors.join(', ')}`);
+      if (brandContribution > 0)
+        reasons.push(`Matches preferred brand: ${p.brand}`);
+      if (color01 > 0 && matchedColors.length > 0)
+        reasons.push(`Aligns with color palette: ${matchedColors.join(', ')}`);
       if (styleMatch.literalTokens.length > 0) {
-        reasons.push(`Style match: ${styleMatch.literalTokens.slice(0, 3).join(', ')}`);
+        reasons.push(
+          `Style match: ${styleMatch.literalTokens.slice(0, 3).join(', ')}`,
+        );
       }
       if (styleMatch.expandedTokens.length > 0 && styleMatch.bridgeApplied) {
-        reasons.push(`Style affinity (expanded): ${styleMatch.expandedTokens.slice(0, 2).join(', ')}`);
+        reasons.push(
+          `Style affinity (expanded): ${styleMatch.expandedTokens.slice(0, 2).join(', ')}`,
+        );
       }
-      if (adjustedGapBonus > 0) reasons.push(`Fills wardrobe gap: ${inferredCategory}`);
-      if (curatorResult.silhouetteDepth < 0) reasons.push('Fit conflict: silhouette mismatch');
-      if (curatorResult.formalityCoherence > 0) reasons.push('Formality aligned');
-      if (curatorResult.materialElevation > 0) reasons.push('Premium materials detected');
+      if (adjustedGapBonus > 0)
+        reasons.push(`Fills wardrobe gap: ${inferredCategory}`);
+      if (curatorResult.silhouetteDepth < 0)
+        reasons.push('Fit conflict: silhouette mismatch');
+      if (curatorResult.formalityCoherence > 0)
+        reasons.push('Formality aligned');
+      if (curatorResult.materialElevation > 0)
+        reasons.push('Premium materials detected');
       if (curatorResult.colorHarmony > 0) reasons.push('Color harmony bonus');
       if (elevation01 > 0) reasons.push('Elevated piece: premium materials');
       if (fashionStateBonus > 0) reasons.push('Learned preference match');
@@ -1918,7 +2705,17 @@ export class DiscoverService {
         );
       }
 
-      return { product: { ...p, score_total: +finalScore.toFixed(2), score_breakdown: breakdown, match_reasons: reasons }, score: finalScore, breakdown, idx };
+      return {
+        product: {
+          ...p,
+          score_total: +finalScore.toFixed(2),
+          score_breakdown: breakdown,
+          match_reasons: reasons,
+        },
+        score: finalScore,
+        breakdown,
+        idx,
+      };
     });
 
     scored.sort((a, b) => b.score - a.score || a.idx - b.idx);
@@ -1935,8 +2732,10 @@ export class DiscoverService {
         const normKw = normalize(kw);
         if (!normKw) continue;
         const descriptors = STYLE_DESCRIPTOR_MAP[normKw];
-        const tokens = descriptors ? [normKw, ...descriptors.map(d => normalize(d))] : [normKw];
-        if (tokens.some(t => normTitle.includes(t))) {
+        const tokens = descriptors
+          ? [normKw, ...descriptors.map((d) => normalize(d))]
+          : [normKw];
+        if (tokens.some((t) => normTitle.includes(t))) {
           const key = `${nb}|${nc}|${normKw}`;
           if (seenBrandCatStyle.has(key)) {
             item.score -= 2;
@@ -2520,9 +3319,11 @@ export class DiscoverService {
       );
 
       // Ensure enriched_color column exists (idempotent)
-      await pool.query(
-        `ALTER TABLE user_discover_products ADD COLUMN IF NOT EXISTS enriched_color TEXT`,
-      ).catch(() => {}); // Ignore if already exists or permissions issue
+      await pool
+        .query(
+          `ALTER TABLE user_discover_products ADD COLUMN IF NOT EXISTS enriched_color TEXT`,
+        )
+        .catch(() => {}); // Ignore if already exists or permissions issue
 
       // Insert new products as current batch using per-user batch date
       for (const p of products) {
@@ -2656,7 +3457,9 @@ export class DiscoverService {
    * Downscales to 8x8 via sharp, averages non-background pixels,
    * converts to HSL, maps to canonical color bucket.
    */
-  private async inferDominantColorFromImage(url: string): Promise<string | null> {
+  private async inferDominantColorFromImage(
+    url: string,
+  ): Promise<string | null> {
     if (!url) return null;
     try {
       const resp = await fetch(url, { signal: AbortSignal.timeout(5000) });
@@ -2673,19 +3476,29 @@ export class DiscoverService {
         .toBuffer({ resolveWithObject: true });
 
       // Average pixels, skipping near-white (background)
-      let rSum = 0, gSum = 0, bSum = 0, count = 0;
+      let rSum = 0,
+        gSum = 0,
+        bSum = 0,
+        count = 0;
       for (let i = 0; i < data.length; i += 3) {
-        const r = data[i], g = data[i + 1], b = data[i + 2];
+        const r = data[i],
+          g = data[i + 1],
+          b = data[i + 2];
         // Skip very light pixels (likely white background)
         if (r > 240 && g > 240 && b > 240) continue;
-        rSum += r; gSum += g; bSum += b; count++;
+        rSum += r;
+        gSum += g;
+        bSum += b;
+        count++;
       }
 
       // If all pixels were background, use overall average
       if (count === 0) {
         const pixelCount = info.width * info.height;
         for (let i = 0; i < data.length; i += 3) {
-          rSum += data[i]; gSum += data[i + 1]; bSum += data[i + 2];
+          rSum += data[i];
+          gSum += data[i + 1];
+          bSum += data[i + 2];
         }
         count = pixelCount;
       }
@@ -2699,7 +3512,11 @@ export class DiscoverService {
   /**
    * Map an RGB color to one of the canonical color buckets via HSL conversion.
    */
-  private rgbToCanonicalColor(r: number, g: number, b: number): (typeof CANONICAL_COLORS)[number] {
+  private rgbToCanonicalColor(
+    r: number,
+    g: number,
+    b: number,
+  ): (typeof CANONICAL_COLORS)[number] {
     const r01 = r / 255;
     const g01 = g / 255;
     const b01 = b / 255;
@@ -2753,7 +3570,11 @@ export class DiscoverService {
   // ==================== UTILITIES ====================
 
   private ensureArray(val: unknown): string[] {
-    if (Array.isArray(val)) return val.filter(v => v != null).map(String).filter(Boolean);
+    if (Array.isArray(val))
+      return val
+        .filter((v) => v != null)
+        .map(String)
+        .filter(Boolean);
     if (typeof val === 'string') {
       const s = val.trim();
       const inner = s.startsWith('{') && s.endsWith('}') ? s.slice(1, -1) : s;

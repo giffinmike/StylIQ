@@ -55,12 +55,14 @@ function mkOutfit(id: string, items: any[]) {
   return { outfit_id: id, title: `Outfit ${id}`, items };
 }
 
-function mkItem(overrides: Partial<{
-  id: string;
-  material: string;
-  formality_score: number;
-  main_category: string;
-}>) {
+function mkItem(
+  overrides: Partial<{
+    id: string;
+    material: string;
+    formality_score: number;
+    main_category: string;
+  }>,
+) {
   return {
     id: overrides.id ?? `item-${Math.random().toString(36).slice(2, 6)}`,
     name: 'Test Item',
@@ -123,7 +125,10 @@ describe('loadFastLearningSignals', () => {
   it('returns null on timeout', async () => {
     // Simulate slow query that exceeds 100ms timeout
     mockQuery.mockImplementation(
-      () => new Promise((resolve) => setTimeout(() => resolve({ rows: [ACTIVE_STATE_ROW] }), 200)),
+      () =>
+        new Promise((resolve) =>
+          setTimeout(() => resolve({ rows: [ACTIVE_STATE_ROW] }), 200),
+        ),
     );
 
     const result = await loadFastLearningSignals(USER_ID);
@@ -156,7 +161,10 @@ describe('applyFastLearningBoost', () => {
       priceBracket: 'mid',
       isColdStart: false,
     },
-    materialAffinity: { top: ['cotton', 'linen'], bottom: ['polyester', 'nylon'] },
+    materialAffinity: {
+      top: ['cotton', 'linen'],
+      bottom: ['polyester', 'nylon'],
+    },
     dominantOccasion: 'casual',
     signalCount: 10,
   };
@@ -167,14 +175,21 @@ describe('applyFastLearningBoost', () => {
       mkOutfit('B', [mkItem({ material: 'cotton', formality_score: 1 })]),
     ];
 
-    const { outfits: ranked, boostLog } = applyFastLearningBoost(outfits, baseSignals);
+    const { outfits: ranked, boostLog } = applyFastLearningBoost(
+      outfits,
+      baseSignals,
+    );
 
     // B has cotton (top affinity +4), A has polyester (bottom -6)
     expect(ranked[0].outfit_id).toBe('B');
     expect(ranked[1].outfit_id).toBe('A');
     expect(boostLog.length).toBeGreaterThan(0);
-    expect(boostLog.some((b) => b.reason.startsWith('material_affinity_top'))).toBe(true);
-    expect(boostLog.some((b) => b.reason.startsWith('material_affinity_bottom'))).toBe(true);
+    expect(
+      boostLog.some((b) => b.reason.startsWith('material_affinity_top')),
+    ).toBe(true);
+    expect(
+      boostLog.some((b) => b.reason.startsWith('material_affinity_bottom')),
+    ).toBe(true);
   });
 
   it('preserves order when no signals match', () => {
@@ -190,7 +205,10 @@ describe('applyFastLearningBoost', () => {
       materialAffinity: { top: ['denim'], bottom: ['spandex'] },
     };
 
-    const { outfits: ranked, boostLog } = applyFastLearningBoost(outfits, signalsNoMaterialMatch);
+    const { outfits: ranked, boostLog } = applyFastLearningBoost(
+      outfits,
+      signalsNoMaterialMatch,
+    );
 
     expect(ranked.map((o: any) => o.outfit_id)).toEqual(['A', 'B', 'C']);
     expect(boostLog.length).toBe(0);
@@ -225,7 +243,8 @@ describe('applyFastLearningBoost', () => {
     const { boostLog } = applyFastLearningBoost(outfits, baseSignals);
 
     const materialBoostsA = boostLog.filter(
-      (b) => b.outfitIndex === 0 && b.reason.startsWith('material_affinity_top'),
+      (b) =>
+        b.outfitIndex === 0 && b.reason.startsWith('material_affinity_top'),
     );
     expect(materialBoostsA.length).toBe(1);
     expect(materialBoostsA[0].delta).toBe(4);
@@ -240,9 +259,17 @@ describe('applyFastLearningBoost', () => {
 
     const { boostLog } = applyFastLearningBoost(outfits, baseSignals);
 
-    expect(boostLog.some((b) => b.outfitIndex === 0 && b.reason.startsWith('occasion_alignment'))).toBe(true);
+    expect(
+      boostLog.some(
+        (b) => b.outfitIndex === 0 && b.reason.startsWith('occasion_alignment'),
+      ),
+    ).toBe(true);
     // B (formality 4) should NOT get occasion boost for casual dominant
-    expect(boostLog.some((b) => b.outfitIndex === 1 && b.reason.startsWith('occasion_alignment'))).toBe(false);
+    expect(
+      boostLog.some(
+        (b) => b.outfitIndex === 1 && b.reason.startsWith('occasion_alignment'),
+      ),
+    ).toBe(false);
   });
 
   it('does not apply occasion boost when formality is distant', () => {
@@ -254,7 +281,9 @@ describe('applyFastLearningBoost', () => {
 
     const { boostLog } = applyFastLearningBoost(outfits, baseSignals);
 
-    expect(boostLog.some((b) => b.reason.startsWith('occasion_alignment'))).toBe(false);
+    expect(
+      boostLog.some((b) => b.reason.startsWith('occasion_alignment')),
+    ).toBe(false);
   });
 
   it('returns outfits unchanged for single outfit', () => {
@@ -268,9 +297,15 @@ describe('applyFastLearningBoost', () => {
 
   it('is deterministic: same inputs always produce same output', () => {
     const outfits = [
-      mkOutfit('A', [mkItem({ id: 'i1', material: 'polyester', formality_score: 1 })]),
-      mkOutfit('B', [mkItem({ id: 'i2', material: 'cotton', formality_score: 1 })]),
-      mkOutfit('C', [mkItem({ id: 'i3', material: 'silk', formality_score: 1 })]),
+      mkOutfit('A', [
+        mkItem({ id: 'i1', material: 'polyester', formality_score: 1 }),
+      ]),
+      mkOutfit('B', [
+        mkItem({ id: 'i2', material: 'cotton', formality_score: 1 }),
+      ]),
+      mkOutfit('C', [
+        mkItem({ id: 'i3', material: 'silk', formality_score: 1 }),
+      ]),
     ];
 
     const run1 = applyFastLearningBoost(outfits, baseSignals);

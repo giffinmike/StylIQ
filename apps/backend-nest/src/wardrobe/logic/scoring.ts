@@ -3,6 +3,7 @@
 import type { ParsedConstraints } from './constraints';
 import { scoreItemForStyle, type UserStyle } from './style';
 import { scoreItemForWeather, type WeatherContext } from './weather';
+import type { StudioContext } from './studioContext';
 
 type CatalogItemLite = {
   index: number;
@@ -136,6 +137,30 @@ export function scoreItemForConstraints(
     if ((c as any).dressWanted === 'Business' && isSneaker) score -= 12;
   }
 
+  // Prevent constraint layer from dominating total score.
+  // Keep it in same scale as styleScore (~0–1 range).
+  const MAX_CONSTRAINT_SCORE = 2;
+  score = Math.min(score, MAX_CONSTRAINT_SCORE);
+
+  // Hard dress-tier mismatch penalty. Applied AFTER the cap so it
+  // always meaningfully alters ranking order — never scaled/clamped.
+  if ((c as any).dressWanted && item.dress_code) {
+    const wanted = (c as any).dressWanted as string;
+    const actual = item.dress_code;
+
+    const mismatchMatrix: Record<string, string[]> = {
+      SmartCasual: ['Casual', 'UltraCasual'],
+      BusinessCasual: ['Casual', 'UltraCasual'],
+      BusinessFormal: ['SmartCasual', 'Casual', 'UltraCasual'],
+    };
+
+    const disallowed = mismatchMatrix[wanted] || [];
+
+    if (disallowed.includes(actual)) {
+      score -= 5;
+    }
+  }
+
   return score;
 }
 
@@ -204,6 +229,7 @@ export function rerankCatalogWithContext<T extends CatalogItemLite>(
     weights?: ContextWeights;
     useWeather?: boolean;
     userPrefs?: Map<string, number>;
+    studio?: StudioContext;
   },
 ): T[] {
   const W = normalizeWeights(opts?.weights);
@@ -231,7 +257,12 @@ export function rerankCatalogWithContext<T extends CatalogItemLite>(
           ? ({ dressBias: inferredBias } as UserStyle)
           : undefined;
 
-      const styleScoreNorm = scoreItemForStyle(item as any, effectiveStyle);
+      const styleScoreNorm = scoreItemForStyle(
+        item as any,
+        effectiveStyle,
+        undefined,
+        { neutralizeDressBias: opts?.studio?.neutralizeProfileDressBias },
+      );
 
       const weatherScore =
         opts?.useWeather && opts?.weather

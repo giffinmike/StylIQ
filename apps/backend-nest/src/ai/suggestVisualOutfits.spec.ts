@@ -2179,10 +2179,7 @@ describe('enrichStylistOutfits', () => {
 
 // ─── 17️⃣ Hydration Stub Fallback (Scenario-3 avoid_colors gap) ──────────────
 
-import {
-  colorMatchesSafe,
-  expandAvoidColors,
-} from './elite/tasteValidator';
+import { colorMatchesSafe, expandAvoidColors } from './elite/tasteValidator';
 
 describe('Hydration stub fallback — avoid_colors for unknown IDs', () => {
   // Replicate exact production helpers from ai.service.ts:5484-5535
@@ -2199,7 +2196,8 @@ describe('Hydration stub fallback — avoid_colors for unknown IDs', () => {
     raw.push(full.metadata?.color);
     if (Array.isArray(full.metadata?.colors)) raw.push(...full.metadata.colors);
     raw.push(full.enrichment?.color);
-    if (Array.isArray(full.enrichment?.colors)) raw.push(...full.enrichment.colors);
+    if (Array.isArray(full.enrichment?.colors))
+      raw.push(...full.enrichment.colors);
     const out = new Set<string>();
     for (const r of raw) {
       const n = _normColor(r);
@@ -2209,7 +2207,10 @@ describe('Hydration stub fallback — avoid_colors for unknown IDs', () => {
   };
 
   // Replicate _hydrateOutfitColors WITH the stub fallback fix
-  const _hydrateOutfitColors = (outfit: any, fullItemMap: Map<string, any>): any => {
+  const _hydrateOutfitColors = (
+    outfit: any,
+    fullItemMap: Map<string, any>,
+  ): any => {
     const items = Array.isArray(outfit?.items) ? outfit.items : [];
     outfit.items = items.map((it: any) => {
       const full = it?.id ? fullItemMap.get(it.id) : null;
@@ -2219,7 +2220,8 @@ describe('Hydration stub fallback — avoid_colors for unknown IDs', () => {
         if (it.color) stubRaw.push(it.color);
         if (Array.isArray(it.colors)) stubRaw.push(...it.colors);
         if (it.metadata?.color) stubRaw.push(it.metadata.color);
-        if (Array.isArray(it.metadata?.colors)) stubRaw.push(...it.metadata.colors);
+        if (Array.isArray(it.metadata?.colors))
+          stubRaw.push(...it.metadata.colors);
         const stubOut = new Set<string>();
         for (const r of stubRaw) {
           const n = _normColor(r);
@@ -2236,7 +2238,9 @@ describe('Hydration stub fallback — avoid_colors for unknown IDs', () => {
   const rtHasAvoid = (outfit: any, expandedAvoid: string[]): boolean => {
     const items = Array.isArray(outfit?.items) ? outfit.items : [];
     for (const it of items) {
-      const colors: string[] = Array.isArray(it.__canonicalColors) ? it.__canonicalColors : [];
+      const colors: string[] = Array.isArray(it.__canonicalColors)
+        ? it.__canonicalColors
+        : [];
       for (const c of colors) {
         for (const a of expandedAvoid) {
           if (colorMatchesSafe(c, a)) return true;
@@ -2251,8 +2255,18 @@ describe('Hydration stub fallback — avoid_colors for unknown IDs', () => {
     const outfit: any = {
       id: 'outfit-1',
       items: [
-        { id: 'hallucinated-id', name: 'Navy Blazer', color: 'Navy', category: 'top' },
-        { id: 'real-shoes', name: 'Loafers', color: 'Brown', category: 'shoes' },
+        {
+          id: 'hallucinated-id',
+          name: 'Navy Blazer',
+          color: 'Navy',
+          category: 'top',
+        },
+        {
+          id: 'real-shoes',
+          name: 'Loafers',
+          color: 'Brown',
+          category: 'shoes',
+        },
       ],
     };
 
@@ -2271,9 +2285,7 @@ describe('Hydration stub fallback — avoid_colors for unknown IDs', () => {
     const fullItemMap = new Map<string, any>();
     const outfit: any = {
       id: 'outfit-2',
-      items: [
-        { id: 'no-color-stub', name: 'Mystery Item', category: 'top' },
-      ],
+      items: [{ id: 'no-color-stub', name: 'Mystery Item', category: 'top' }],
     };
 
     _hydrateOutfitColors(outfit, fullItemMap);
@@ -2291,7 +2303,12 @@ describe('Hydration stub fallback — avoid_colors for unknown IDs', () => {
     const outfit: any = {
       id: 'outfit-3',
       items: [
-        { id: 'item-a', name: 'Red Top', color: 'should-be-ignored', category: 'top' },
+        {
+          id: 'item-a',
+          name: 'Red Top',
+          color: 'should-be-ignored',
+          category: 'top',
+        },
       ],
     };
 
@@ -2301,7 +2318,9 @@ describe('Hydration stub fallback — avoid_colors for unknown IDs', () => {
     expect(outfit.items[0].__canonicalColors).toEqual(
       expect.arrayContaining(['red', 'burgundy']),
     );
-    expect(outfit.items[0].__canonicalColors).not.toContain('should-be-ignored');
+    expect(outfit.items[0].__canonicalColors).not.toContain(
+      'should-be-ignored',
+    );
   });
 
   it('avoid "navy" does NOT match stub color "blue" (no navy-bans-blue bug)', () => {

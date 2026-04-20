@@ -271,8 +271,7 @@ function detectRequestedFormality(ctx: JudgeContext): string | null {
   if (!combined.trim()) return null;
   if (/formal|black\s?tie|business\s?formal|gala|cocktail/.test(combined))
     return 'formal';
-  if (/smart\s?casual|business\s?casual/.test(combined))
-    return 'smart-casual';
+  if (/smart\s?casual|business\s?casual/.test(combined)) return 'smart-casual';
   if (/athletic|gym|sport|workout/.test(combined)) return 'athletic';
   if (/\bcasual\b|ultracasual|everyday/.test(combined)) return 'casual';
   return null;
@@ -346,11 +345,7 @@ function penaltyFormalityCoherence(
   if (requested === 'formal') {
     for (const item of items) {
       const slot = getSlot(item);
-      if (
-        slot === 'bottom' ||
-        slot === 'bottoms' ||
-        slot === 'shoes'
-      ) {
+      if (slot === 'bottom' || slot === 'bottoms' || slot === 'shoes') {
         const f = estimateFormality(item);
         if (f != null && f <= 3) {
           penalty -= 30;
@@ -362,8 +357,7 @@ function penaltyFormalityCoherence(
 
   if (requested === 'smart-casual') {
     const suitCount = items.filter((it) => {
-      const text =
-        `${it.subcategory ?? ''} ${it.name ?? ''}`.toLowerCase();
+      const text = `${it.subcategory ?? ''} ${it.name ?? ''}`.toLowerCase();
       return /\bsuit\b|tuxedo/.test(text);
     }).length;
     if (suitCount >= 2) penalty -= 15;
@@ -401,9 +395,7 @@ function penaltySilhouetteBalance(items: JudgeItem[]): number {
   const hasOversizedAthleticBottom = items.some((it) => {
     const slot = getSlot(it);
     return (
-      (slot === 'bottom' || slot === 'bottoms') &&
-      isBulky(it) &&
-      isAthletic(it)
+      (slot === 'bottom' || slot === 'bottoms') && isBulky(it) && isAthletic(it)
     );
   });
   if (hasTailoredTop && hasOversizedAthleticBottom) penalty -= 15;
@@ -443,9 +435,7 @@ function penaltyMaterialHierarchy(items: JudgeItem[]): number {
   if (hasFormalItem) {
     const hasAthleticMat = items.some((it) => {
       const mat = it.material?.toLowerCase() ?? '';
-      return /\b(mesh|neoprene|spandex|lycra|athletic|performance)\b/.test(
-        mat,
-      );
+      return /\b(mesh|neoprene|spandex|lycra|athletic|performance)\b/.test(mat);
     });
     if (hasAthleticMat) penalty -= 20;
   }
@@ -480,10 +470,7 @@ function penaltyColorHarmony(items: JudgeItem[]): {
 
 // ── RULE 5: Intent Clarity (max -25) ──────────────────────────────────────
 
-function penaltyIntentClarity(
-  items: JudgeItem[],
-  ctx: JudgeContext,
-): number {
+function penaltyIntentClarity(items: JudgeItem[], ctx: JudgeContext): number {
   let penalty = 0;
 
   const formalities: number[] = [];
@@ -577,8 +564,7 @@ export function scoreOutfit(
   if (p5 < 0) penalties.push({ rule: 'intent_clarity', points: p5 });
 
   const p6 = penaltyOccasionAppropriateness(items, context);
-  if (p6 < 0)
-    penalties.push({ rule: 'occasion_appropriateness', points: p6 });
+  if (p6 < 0) penalties.push({ rule: 'occasion_appropriateness', points: p6 });
 
   let total = 100;
   for (const p of penalties) total += p.points;

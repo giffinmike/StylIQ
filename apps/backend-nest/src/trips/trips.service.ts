@@ -193,11 +193,7 @@ export class TripsService {
     return { deleted: true };
   }
 
-  async replaceItems(
-    tripId: string,
-    userId: string,
-    dto: UpdateTripItemsDto,
-  ) {
+  async replaceItems(tripId: string, userId: string, dto: UpdateTripItemsDto) {
     // console.log('[TripsService][REPLACE_ITEMS] tripId:', tripId, 'userId:', userId);
     // console.log('[TripsService][REPLACE_ITEMS] items count:', dto.items?.length, 'capsule:', dto.capsule ? 'present' : 'null');
 
@@ -242,7 +238,10 @@ export class TripsService {
       return { tripId, items };
     } catch (err) {
       console.error('[TripsService][UPDATE_ERROR]', err);
-      console.error('[TripsService][UPDATE_PAYLOAD]', JSON.stringify(dto).slice(0, 1000));
+      console.error(
+        '[TripsService][UPDATE_PAYLOAD]',
+        JSON.stringify(dto).slice(0, 1000),
+      );
       throw err;
     }
   }

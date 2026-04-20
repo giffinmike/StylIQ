@@ -248,6 +248,7 @@ export function scoreItemForStyle(
   item: Item,
   style: UserStyle | undefined,
   W: StyleWeights = DEFAULT_STYLE_WEIGHTS,
+  opts?: { neutralizeDressBias?: boolean },
 ): number {
   if (!style) return 0;
   let rawScore = 0;
@@ -345,8 +346,11 @@ export function scoreItemForStyle(
     }
   }
 
-  // Dress code bias with proximity + penalty
-  if (dressBiasLc && dress) {
+  // Dress code bias with proximity + penalty.
+  // Suppressed when the caller signals environment dominates profile
+  // (e.g. beach/gym/black-tie in Studio). Color/category/brand/fit/fabric
+  // preferences are unaffected.
+  if (!opts?.neutralizeDressBias && dressBiasLc && dress) {
     const biasRank = DRESS_RANK[dressBiasLc] ?? 0;
     const itemRank = DRESS_RANK[t(dress)] ?? 0;
     if (biasRank && itemRank) {

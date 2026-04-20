@@ -26,7 +26,10 @@ describe('validateSlotMatch — Bottoms (trousers vs shorts)', () => {
   it('REJECTS shorts for "tailored dark trousers"', () => {
     const result = validateSlotMatch(
       { category: 'bottoms', description: 'tailored dark trousers' },
-      candidate({ name: 'Grey Fleece Drawstring Shorts', subcategory: 'Shorts' }),
+      candidate({
+        name: 'Grey Fleece Drawstring Shorts',
+        subcategory: 'Shorts',
+      }),
       'smart casual outfit',
     );
     expect(result.valid).toBe(false);
@@ -36,7 +39,10 @@ describe('validateSlotMatch — Bottoms (trousers vs shorts)', () => {
   it('REJECTS athletic shorts for "dress pants"', () => {
     const result = validateSlotMatch(
       { category: 'bottoms', description: 'navy dress pants' },
-      candidate({ name: 'Nike Running Shorts', subcategory: 'Athletic Shorts' }),
+      candidate({
+        name: 'Nike Running Shorts',
+        subcategory: 'Athletic Shorts',
+      }),
       'office outfit',
     );
     expect(result.valid).toBe(false);
@@ -228,7 +234,10 @@ describe('validateSlotMatch — Outerwear (blazer vs hoodie)', () => {
   it('REJECTS windbreaker for "tailored jacket"', () => {
     const result = validateSlotMatch(
       { category: 'outerwear', description: 'tailored jacket' },
-      candidate({ name: 'Lightweight Windbreaker', subcategory: 'Windbreaker' }),
+      candidate({
+        name: 'Lightweight Windbreaker',
+        subcategory: 'Windbreaker',
+      }),
       'date night outfit',
     );
     expect(result.valid).toBe(false);
@@ -246,7 +255,10 @@ describe('validateSlotMatch — Outerwear (blazer vs hoodie)', () => {
   it('ACCEPTS structured jacket for "blazer"', () => {
     const result = validateSlotMatch(
       { category: 'outerwear', description: 'navy blazer' },
-      candidate({ name: 'Structured Wool Jacket', subcategory: 'Structured Jacket' }),
+      candidate({
+        name: 'Structured Wool Jacket',
+        subcategory: 'Structured Jacket',
+      }),
       'business casual outfit',
     );
     expect(result.valid).toBe(true);
@@ -287,7 +299,10 @@ describe('validateSlotMatch — Tops (dress shirt vs t-shirt)', () => {
   it('ACCEPTS button-down for "dress shirt"', () => {
     const result = validateSlotMatch(
       { category: 'tops', description: 'white dress shirt' },
-      candidate({ name: 'Oxford Button-Down', subcategory: 'Button-Down Shirt' }),
+      candidate({
+        name: 'Oxford Button-Down',
+        subcategory: 'Button-Down Shirt',
+      }),
       'formal outfit',
     );
     expect(result.valid).toBe(true);
@@ -310,7 +325,11 @@ describe('validateSlotMatch — Formality Gate', () => {
   it('REJECTS athletic items when slot formality >= 7', () => {
     const result = validateSlotMatch(
       { category: 'tops', description: 'elegant top', formality: 8 },
-      candidate({ name: 'Gym Tank', subcategory: 'Athletic Tank', dress_code: 'athletic' }),
+      candidate({
+        name: 'Gym Tank',
+        subcategory: 'Athletic Tank',
+        dress_code: 'athletic',
+      }),
       'evening outfit',
     );
     expect(result.valid).toBe(false);
@@ -320,7 +339,11 @@ describe('validateSlotMatch — Formality Gate', () => {
   it('ACCEPTS athletic items when slot formality < 7', () => {
     const result = validateSlotMatch(
       { category: 'tops', description: 'workout top', formality: 3 },
-      candidate({ name: 'Gym Tank', subcategory: 'Athletic Tank', dress_code: 'athletic' }),
+      candidate({
+        name: 'Gym Tank',
+        subcategory: 'Athletic Tank',
+        dress_code: 'athletic',
+      }),
       'gym outfit',
     );
     expect(result.valid).toBe(true);
@@ -329,7 +352,11 @@ describe('validateSlotMatch — Formality Gate', () => {
   it('ACCEPTS formal items when formality is high', () => {
     const result = validateSlotMatch(
       { category: 'tops', description: 'elegant blouse', formality: 9 },
-      candidate({ name: 'Silk Blouse', subcategory: 'Blouse', dress_code: 'business formal' }),
+      candidate({
+        name: 'Silk Blouse',
+        subcategory: 'Blouse',
+        dress_code: 'business formal',
+      }),
       'gala outfit',
     );
     expect(result.valid).toBe(true);

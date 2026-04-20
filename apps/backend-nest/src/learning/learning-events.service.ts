@@ -13,7 +13,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { pool } from '../db/pool';
 import { ConsentCache } from './consent-cache';
-import { LEARNING_FLAGS, EVENT_LOGGING_CONFIG, ELITE_FLAGS } from '../config/feature-flags';
+import {
+  LEARNING_FLAGS,
+  EVENT_LOGGING_CONFIG,
+  ELITE_FLAGS,
+} from '../config/feature-flags';
 import {
   CreateLearningEventInput,
   EVENT_SIGNAL_DEFAULTS,
@@ -204,10 +208,11 @@ export class LearningEventsService {
    * Insert event into database.
    */
   private async insertEvent(input: CreateLearningEventInput): Promise<void> {
-    this.logger.log(
-      '[STUDIO LEARNING DEBUG] insertEvent called',
-      { event_type: input.eventType, source_feature: input.sourceFeature, user_id: input.userId },
-    );
+    this.logger.log('[STUDIO LEARNING DEBUG] insertEvent called', {
+      event_type: input.eventType,
+      source_feature: input.sourceFeature,
+      user_id: input.userId,
+    });
     await pool.query(
       `INSERT INTO user_learning_events (
         user_id,

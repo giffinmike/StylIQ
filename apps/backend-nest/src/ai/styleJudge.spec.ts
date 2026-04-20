@@ -556,33 +556,122 @@ describe('Style Judge', () => {
     const outfits: JudgeOutfit[] = [
       // Bad: jeans + Hawaiian
       makeOutfit('o1', [
-        { name: 'Hawaiian Shirt', category: 'top', subcategory: 'Hawaiian', formality_score: 20, color: 'red' },
-        { name: 'Jeans', category: 'bottom', subcategory: 'Jeans', formality_score: 30, color: 'blue' },
-        { name: 'Sneakers', category: 'shoes', formality_score: 25, color: 'white' },
+        {
+          name: 'Hawaiian Shirt',
+          category: 'top',
+          subcategory: 'Hawaiian',
+          formality_score: 20,
+          color: 'red',
+        },
+        {
+          name: 'Jeans',
+          category: 'bottom',
+          subcategory: 'Jeans',
+          formality_score: 30,
+          color: 'blue',
+        },
+        {
+          name: 'Sneakers',
+          category: 'shoes',
+          formality_score: 25,
+          color: 'white',
+        },
       ]),
       // Bad: magenta blazer
       makeOutfit('o2', [
-        { name: 'Magenta Blazer', category: 'top', subcategory: 'Blazer', formality_score: 70, color: 'magenta' },
-        { name: 'Black Jeans', category: 'bottom', subcategory: 'Jeans', formality_score: 30, color: 'black' },
-        { name: 'Black Loafers', category: 'shoes', subcategory: 'Loafers', formality_score: 65, color: 'black' },
+        {
+          name: 'Magenta Blazer',
+          category: 'top',
+          subcategory: 'Blazer',
+          formality_score: 70,
+          color: 'magenta',
+        },
+        {
+          name: 'Black Jeans',
+          category: 'bottom',
+          subcategory: 'Jeans',
+          formality_score: 30,
+          color: 'black',
+        },
+        {
+          name: 'Black Loafers',
+          category: 'shoes',
+          subcategory: 'Loafers',
+          formality_score: 65,
+          color: 'black',
+        },
       ]),
       // Good: classic formal
       makeOutfit('o3', [
-        { name: 'White Dress Shirt', category: 'top', subcategory: 'Dress Shirt', formality_score: 70, color: 'white' },
-        { name: 'Navy Trousers', category: 'bottom', subcategory: 'Trousers', formality_score: 70, color: 'navy' },
-        { name: 'Brown Oxford', category: 'shoes', subcategory: 'Oxford', formality_score: 80, color: 'brown' },
+        {
+          name: 'White Dress Shirt',
+          category: 'top',
+          subcategory: 'Dress Shirt',
+          formality_score: 70,
+          color: 'white',
+        },
+        {
+          name: 'Navy Trousers',
+          category: 'bottom',
+          subcategory: 'Trousers',
+          formality_score: 70,
+          color: 'navy',
+        },
+        {
+          name: 'Brown Oxford',
+          category: 'shoes',
+          subcategory: 'Oxford',
+          formality_score: 80,
+          color: 'brown',
+        },
       ]),
       // Good: smart casual
       makeOutfit('o4', [
-        { name: 'Light Blue Shirt', category: 'top', subcategory: 'Button Down', formality_score: 65, color: 'light blue' },
-        { name: 'Khaki Chinos', category: 'bottom', subcategory: 'Chinos', formality_score: 55, color: 'khaki' },
-        { name: 'Tan Loafers', category: 'shoes', subcategory: 'Loafers', formality_score: 65, color: 'tan' },
+        {
+          name: 'Light Blue Shirt',
+          category: 'top',
+          subcategory: 'Button Down',
+          formality_score: 65,
+          color: 'light blue',
+        },
+        {
+          name: 'Khaki Chinos',
+          category: 'bottom',
+          subcategory: 'Chinos',
+          formality_score: 55,
+          color: 'khaki',
+        },
+        {
+          name: 'Tan Loafers',
+          category: 'shoes',
+          subcategory: 'Loafers',
+          formality_score: 65,
+          color: 'tan',
+        },
       ]),
       // Good: neutral formal
       makeOutfit('o5', [
-        { name: 'Navy Blazer', category: 'top', subcategory: 'Blazer', formality_score: 70, color: 'navy' },
-        { name: 'Grey Trousers', category: 'bottom', subcategory: 'Trousers', formality_score: 70, color: 'grey' },
-        { name: 'Black Loafers', category: 'shoes', subcategory: 'Loafers', formality_score: 70, color: 'black' },
+        {
+          name: 'Navy Blazer',
+          category: 'top',
+          subcategory: 'Blazer',
+          formality_score: 70,
+          color: 'navy',
+        },
+        {
+          name: 'Grey Trousers',
+          category: 'bottom',
+          subcategory: 'Trousers',
+          formality_score: 70,
+          color: 'grey',
+        },
+        {
+          name: 'Black Loafers',
+          category: 'shoes',
+          subcategory: 'Loafers',
+          formality_score: 70,
+          color: 'black',
+        },
       ]),
     ];
 
@@ -605,9 +694,25 @@ describe('Style Judge', () => {
     const ctx = { query: 'casual weekend outfit' };
 
     const jeansOutfit = makeOutfit('jeans', [
-      { name: 'White T-Shirt', category: 'top', formality_score: 30, color: 'white' },
-      { name: 'Blue Jeans', category: 'bottom', subcategory: 'Jeans', formality_score: 30, color: 'blue' },
-      { name: 'White Sneakers', category: 'shoes', formality_score: 30, color: 'white' },
+      {
+        name: 'White T-Shirt',
+        category: 'top',
+        formality_score: 30,
+        color: 'white',
+      },
+      {
+        name: 'Blue Jeans',
+        category: 'bottom',
+        subcategory: 'Jeans',
+        formality_score: 30,
+        color: 'blue',
+      },
+      {
+        name: 'White Sneakers',
+        category: 'shoes',
+        formality_score: 30,
+        color: 'white',
+      },
     ]);
 
     const result = scoreOutfit(jeansOutfit, ctx);

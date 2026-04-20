@@ -234,7 +234,7 @@ export class CommunityService implements OnModuleInit {
 
     // Double-check: also skip if demo posts specifically already exist
     const demoRes = await pool.query(
-      "SELECT COUNT(*) FROM community_posts WHERE is_demo = true",
+      'SELECT COUNT(*) FROM community_posts WHERE is_demo = true',
     );
     if (parseInt(demoRes.rows[0].count) > 0) return;
 

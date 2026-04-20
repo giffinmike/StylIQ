@@ -197,7 +197,7 @@ export function applyFastLearningBoost<T extends { items?: any[] }>(
   );
   const dominantFormalityTier =
     signals.dominantOccasion !== null
-      ? OCCASION_FORMALITY[signals.dominantOccasion.toLowerCase()] ?? null
+      ? (OCCASION_FORMALITY[signals.dominantOccasion.toLowerCase()] ?? null)
       : null;
 
   const scored = outfits.map((outfit, idx) => {
@@ -254,9 +254,7 @@ export function applyFastLearningBoost<T extends { items?: any[] }>(
 
   // Stable sort: higher boost first, original index as tiebreaker
   scored.sort((a, b) =>
-    a.totalBoost !== b.totalBoost
-      ? b.totalBoost - a.totalBoost
-      : a.idx - b.idx,
+    a.totalBoost !== b.totalBoost ? b.totalBoost - a.totalBoost : a.idx - b.idx,
   );
 
   return {
@@ -285,9 +283,7 @@ function computeAvgFormality(items: any[]): number | null {
   return count > 0 ? sum / count : null;
 }
 
-function pickDominantOccasion(
-  freq: ScoreMap,
-): string | null {
+function pickDominantOccasion(freq: ScoreMap): string | null {
   let best: string | null = null;
   let bestCount = 0;
   for (const [occasion, count] of Object.entries(freq)) {

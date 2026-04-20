@@ -11,7 +11,9 @@ import {
   Req,
   UseGuards,
   NotFoundException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
+import { StudioInvariantError } from './studio/types';
 import { WardrobeService } from './wardrobe.service';
 import { CreateWardrobeItemDto } from './dto/create-wardrobe-item.dto';
 import { UpdateWardrobeItemDto } from './dto/update-wardrobe-item.dto';
@@ -164,12 +166,22 @@ export class WardrobeController {
     const weatherArg = body.useWeather === false ? undefined : body.weather;
     const userStyle = normalizeUserStyle(body.style_profile);
 
+    // ── Studio hard-lock: the /outfits endpoint is the Studio surface.
+    //    Elite slow path is authoritative for Studio. Fast path (including
+    //    swap/refine/generateOutfitsFast variants) must never execute here.
+    //    aaaaMode is forced on so downstream Elite gating treats every
+    //    request as Studio regardless of what the client sent.
+    body.useFastMode = false;
+    body.aaaaMode = true;
+
     // console.log('🚀 [OUTFITS] useFastMode:', body.useFastMode);
     // console.log('🚀 [OUTFITS] refinementPrompt:', body.refinementPrompt);
     // console.log('🚀 [OUTFITS] original query:', body.query);
 
     const requestId = randomUUID();
-    console.log(`🔥 ROUTE DECISION: useFastMode=${body.useFastMode} aaaaMode=${body.aaaaMode}`);
+    console.log(
+      `🔥 ROUTE DECISION: useFastMode=${body.useFastMode} aaaaMode=${body.aaaaMode}`,
+    );
 
     if (process.env.DEBUG_STUDIO === 'true') {
       const mode = body.useFastMode && !body.aaaaMode ? 'FAST' : 'SLOW';
@@ -196,17 +208,14 @@ export class WardrobeController {
       } as any);
     }
 
-    if (
-      swapMatch &&
-      locked.length >= 2 &&
-      body.useFastMode &&
-      !body.aaaaMode
-    ) {
+    if (swapMatch && locked.length >= 2 && body.useFastMode && !body.aaaaMode) {
       const swapSlot = swapMatch[1].toLowerCase();
       const newItemId = locked[locked.length - 1];
       const keptItemIds = locked.slice(0, -1);
 
-      console.log(`⚡ [SWAP] Detected swap request: slot=${swapSlot} newItem=${newItemId} kept=${keptItemIds.length}`);
+      console.log(
+        `⚡ [SWAP] Detected swap request: slot=${swapSlot} newItem=${newItemId} kept=${keptItemIds.length}`,
+      );
 
       const swapResult = await this.service.recomposeOutfitSlot(userId, {
         outfitItems: keptItemIds.map((id) => ({ id })),
@@ -218,17 +227,26 @@ export class WardrobeController {
 
       // If recompose succeeds, return it; otherwise fall through to full generation
       if (swapResult) return swapResult;
-      console.log('⚡ [SWAP] recomposeOutfitSlot returned null, falling through to full generation');
+      console.log(
+        '⚡ [SWAP] recomposeOutfitSlot returned null, falling through to full generation',
+      );
     }
 
     // ── REFINE FAST PATH: detect natural language slot refinements ──
     // "Keep the shirt and slacks but give me brown shoes instead"
     // Routes to deterministic mutation (~200ms) instead of full LLM (~50s)
-    const isRefineCandidate = !swapMatch && !!body.refinementPrompt && locked.length >= 2 && !!body.useFastMode && !body.aaaaMode;
+    const isRefineCandidate =
+      !swapMatch &&
+      !!body.refinementPrompt &&
+      locked.length >= 2 &&
+      !!body.useFastMode &&
+      !body.aaaaMode;
     // console.log(`REFINE_ROUTE_CHECK { reason: "swapMatch=${!!swapMatch} refinementPrompt=${!!body.refinementPrompt} locked=${locked.length} fastMode=${!!body.useFastMode} aaaaMode=${!!body.aaaaMode} => ${isRefineCandidate}" }`);
 
     if (isRefineCandidate) {
-      console.log(`REFINE_ROUTE_ENTERED { reason: "prompt=${body.refinementPrompt} lockedCount=${locked.length}" }`);
+      console.log(
+        `REFINE_ROUTE_ENTERED { reason: "prompt=${body.refinementPrompt} lockedCount=${locked.length}" }`,
+      );
 
       const mutateResult = await this.service.mutateOutfit(userId, {
         currentItemIds: locked,
@@ -264,21 +282,38 @@ export class WardrobeController {
       });
     }
 
-    return this.service.generateOutfits(userId, body.query, body.topK || 5, {
-      userStyle,
-      weather: weatherArg,
-      weights: body.weights as
-        | import('./logic/scoring').ContextWeights
-        | undefined,
-      useWeather: body.useWeather ?? true,
-      useFeedback: body.useFeedback,
-      styleAgent: body.styleAgent,
-      sessionId: body.session_id || (body as any).sessionId,
-      refinementPrompt: body.refinementPrompt,
-      lockedItemIds: body.lockedItemIds ?? [],
-      requestId,
-      aaaaMode: body.aaaaMode,
-    });
+    try {
+      return await this.service.generateOutfits(
+        userId,
+        body.query,
+        body.topK || 5,
+        {
+          userStyle,
+          weather: weatherArg,
+          weights: body.weights as
+            | import('./logic/scoring').ContextWeights
+            | undefined,
+          useWeather: body.useWeather ?? true,
+          useFeedback: body.useFeedback,
+          styleAgent: body.styleAgent,
+          sessionId: body.session_id || (body as any).sessionId,
+          refinementPrompt: body.refinementPrompt,
+          lockedItemIds: body.lockedItemIds ?? [],
+          requestId,
+          aaaaMode: body.aaaaMode,
+        },
+      );
+    } catch (err) {
+      if (err instanceof StudioInvariantError) {
+        throw new UnprocessableEntityException({
+          message: err.message,
+          code: err.code,
+          details: err.details,
+          requestId,
+        });
+      }
+      throw err;
+    }
   }
 
   /**

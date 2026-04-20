@@ -60,14 +60,17 @@ const BOTTOMS_RULES: SubcategoryRule[] = [
   {
     pattern:
       /\b(tailored\s+(pants?|trousers?)|dress\s+pants?|slacks?|formal\s+(pants?|trousers?)|suit\s+(pants?|trousers?))\b/i,
-    allow: /\b(trousers?|slacks?|dress\s*pants?|chinos?|suit\s*pants?|pants?)\b/i,
-    reject: /\b(shorts?|joggers?|sweatpants?|track\s*pants?|athletics?|cargo\s*shorts?|board\s*shorts?|swim)\b/i,
+    allow:
+      /\b(trousers?|slacks?|dress\s*pants?|chinos?|suit\s*pants?|pants?)\b/i,
+    reject:
+      /\b(shorts?|joggers?|sweatpants?|track\s*pants?|athletics?|cargo\s*shorts?|board\s*shorts?|swim)\b/i,
   },
   // "trousers" (generic) — still reject shorts/joggers
   {
     pattern: /\b(trousers?)\b/i,
     allow: /\b(trousers?|slacks?|dress\s*pants?|chinos?|pants?|jeans?)\b/i,
-    reject: /\b(shorts?|joggers?|sweatpants?|track\s*pants?|athletics?|board\s*shorts?|swim)\b/i,
+    reject:
+      /\b(shorts?|joggers?|sweatpants?|track\s*pants?|athletics?|board\s*shorts?|swim)\b/i,
   },
   // "chinos" → allow chinos, trousers, pants; reject shorts
   {
@@ -90,26 +93,33 @@ const SHOES_RULES: SubcategoryRule[] = [
   // "oxfords", "derbies", "brogues" → strict dress shoes
   {
     pattern: /\b(oxfords?|derbies?|derbys?|brogues?|wingtips?)\b/i,
-    allow: /\b(oxfords?|derbies?|derbys?|brogues?|wingtips?|dress\s*shoes?|formal)\b/i,
-    reject: /\b(sneakers?|trainers?|athletics?|running|sandals?|flip\s*flops?|slides?|boots?|hiking)\b/i,
+    allow:
+      /\b(oxfords?|derbies?|derbys?|brogues?|wingtips?|dress\s*shoes?|formal)\b/i,
+    reject:
+      /\b(sneakers?|trainers?|athletics?|running|sandals?|flip\s*flops?|slides?|boots?|hiking)\b/i,
   },
   // "loafers" → dress shoe family
   {
     pattern: /\b(loafers?)\b/i,
     allow: /\b(loafers?|moccasins?|dress\s*shoes?|slip[\s-]*ons?|formal)\b/i,
-    reject: /\b(sneakers?|trainers?|athletics?|running|sandals?|flip\s*flops?|slides?|hiking)\b/i,
+    reject:
+      /\b(sneakers?|trainers?|athletics?|running|sandals?|flip\s*flops?|slides?|hiking)\b/i,
   },
   // "dress shoes" → any dressy footwear
   {
     pattern: /\b(dress\s+shoes?|formal\s+shoes?)\b/i,
-    allow: /\b(oxfords?|derbies?|derbys?|loafers?|dress\s*shoes?|brogues?|monks?|formal|pumps?|heels?|flats?)\b/i,
-    reject: /\b(sneakers?|trainers?|athletics?|running|sandals?|flip\s*flops?|slides?|hiking|boots?)\b/i,
+    allow:
+      /\b(oxfords?|derbies?|derbys?|loafers?|dress\s*shoes?|brogues?|monks?|formal|pumps?|heels?|flats?)\b/i,
+    reject:
+      /\b(sneakers?|trainers?|athletics?|running|sandals?|flip\s*flops?|slides?|hiking|boots?)\b/i,
   },
   // "sneakers", "trainers" → athletic/casual shoes
   {
     pattern: /\b(sneakers?|trainers?|running\s+shoes?|athletic\s+shoes?)\b/i,
-    allow: /\b(sneakers?|trainers?|athletics?|running|tennis\s*shoes?|sports?|casual)\b/i,
-    reject: /\b(oxfords?|derbies?|derbys?|loafers?|brogues?|dress\s*shoes?|formal|pumps?|heels?|monks?)\b/i,
+    allow:
+      /\b(sneakers?|trainers?|athletics?|running|tennis\s*shoes?|sports?|casual)\b/i,
+    reject:
+      /\b(oxfords?|derbies?|derbys?|loafers?|brogues?|dress\s*shoes?|formal|pumps?|heels?|monks?)\b/i,
   },
   // "boots" → boot family
   {
@@ -125,9 +135,11 @@ const SHOES_RULES: SubcategoryRule[] = [
 const OUTERWEAR_RULES: SubcategoryRule[] = [
   // "blazer", "sport coat", "suit jacket" → tailored outerwear
   {
-    pattern: /\b(blazers?|sport\s*coats?|suit\s*jackets?|tailored\s+jackets?)\b/i,
+    pattern:
+      /\b(blazers?|sport\s*coats?|suit\s*jackets?|tailored\s+jackets?)\b/i,
     allow: /\b(blazers?|sport\s*coats?|suits?|tailored|structured|jackets?)\b/i,
-    reject: /\b(hoodies?|sweatshirts?|puffers?|windbreakers?|anoraks?|raincoats?|fleece|track\s*jackets?)\b/i,
+    reject:
+      /\b(hoodies?|sweatshirts?|puffers?|windbreakers?|anoraks?|raincoats?|fleece|track\s*jackets?)\b/i,
   },
 ];
 
@@ -140,7 +152,8 @@ const TOPS_RULES: SubcategoryRule[] = [
     pattern:
       /\b(dress\s+shirts?|formal\s+shirts?|button[\s-]*up\s+shirts?|button[\s-]*down\s+shirts?)\b/i,
     allow: /\b(dress\s*shirts?|button|oxford|poplin|formal|collar)\b/i,
-    reject: /\b(t[\s-]*shirts?|tee|hoodies?|sweatshirts?|tanks?|jersey|athletics?)\b/i,
+    reject:
+      /\b(t[\s-]*shirts?|tee|hoodies?|sweatshirts?|tanks?|jersey|athletics?)\b/i,
   },
 ];
 

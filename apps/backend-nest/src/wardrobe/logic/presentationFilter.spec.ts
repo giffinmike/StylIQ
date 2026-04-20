@@ -4,7 +4,10 @@ import {
   inferImplicitPresentation,
   buildGenderDirective,
 } from './presentationFilter';
-import { validateOutfit, type ValidatorItem } from '../../ai/elite/tasteValidator';
+import {
+  validateOutfit,
+  type ValidatorItem,
+} from '../../ai/elite/tasteValidator';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // resolveUserPresentation
@@ -290,12 +293,28 @@ describe('Cross-presentation end-to-end proof', () => {
       { main_category: 'Tops', subcategory: 'polo', name: 'Navy Polo' },
       { main_category: 'Bottoms', subcategory: 'jeans', name: 'Dark Jeans' },
       { main_category: 'Bottoms', subcategory: 'chinos', name: 'Tan Chinos' },
-      { main_category: 'Shoes', subcategory: 'oxford', name: "Men's Dress Shoes" },
-      { main_category: 'Shoes', subcategory: 'sneakers', name: 'White Sneakers' },
-      { main_category: 'Outerwear', subcategory: 'bomber jacket', name: 'Green Bomber' },
+      {
+        main_category: 'Shoes',
+        subcategory: 'oxford',
+        name: "Men's Dress Shoes",
+      },
+      {
+        main_category: 'Shoes',
+        subcategory: 'sneakers',
+        name: 'White Sneakers',
+      },
+      {
+        main_category: 'Outerwear',
+        subcategory: 'bomber jacket',
+        name: 'Green Bomber',
+      },
       { main_category: 'Tops', subcategory: 'henley', name: 'Grey Henley' },
       // Stray feminine item (the bug scenario)
-      { main_category: 'Skirts', subcategory: 'mini skirt', name: 'Black Mini Skirt' },
+      {
+        main_category: 'Skirts',
+        subcategory: 'mini skirt',
+        name: 'Black Mini Skirt',
+      },
     ];
 
     // Step 1: implicit detection identifies masculine (1/9 ≈ 11% feminine... wait no,
@@ -305,7 +324,9 @@ describe('Cross-presentation end-to-end proof', () => {
     // Let's test with a clearly masculine wardrobe where presentation is already set.
 
     // The critical proof: isFeminineItem catches the skirt
-    expect(isFeminineItem('Skirts', 'mini skirt', 'Black Mini Skirt')).toBe(true);
+    expect(isFeminineItem('Skirts', 'mini skirt', 'Black Mini Skirt')).toBe(
+      true,
+    );
     // And men's dress shoes are NOT feminine
     expect(isFeminineItem('Shoes', 'oxford', "Men's Dress Shoes")).toBe(false);
   });

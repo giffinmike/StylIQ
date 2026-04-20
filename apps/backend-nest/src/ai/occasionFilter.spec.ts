@@ -97,7 +97,9 @@ describe('Rule 2: Loud tailoring colors', () => {
       color: 'Magenta',
     });
     expect(isOccasionAppropriate(item, church)).toBe(false);
-    expect(getOccasionRejectionReason(item, church)).toBe('LOUD_TAILORING_COLOR');
+    expect(getOccasionRejectionReason(item, church)).toBe(
+      'LOUD_TAILORING_COLOR',
+    );
   });
 
   it('rejects neon sport coat for wedding', () => {
@@ -147,7 +149,9 @@ describe('Rule 3: Athletic casual tops', () => {
   it('rejects hoodie for church', () => {
     const item = mkItem('Tops', 'Hoodie');
     expect(isOccasionAppropriate(item, church)).toBe(false);
-    expect(getOccasionRejectionReason(item, church)).toBe('ATHLETIC_CASUAL_TOP');
+    expect(getOccasionRejectionReason(item, church)).toBe(
+      'ATHLETIC_CASUAL_TOP',
+    );
   });
 
   it('rejects graphic tee for interview', () => {
@@ -177,7 +181,9 @@ describe('Rule 4: Open casual footwear', () => {
   it('rejects slides for church', () => {
     const item = mkItem('Shoes', 'Slides');
     expect(isOccasionAppropriate(item, church)).toBe(false);
-    expect(getOccasionRejectionReason(item, church)).toBe('OPEN_CASUAL_FOOTWEAR');
+    expect(getOccasionRejectionReason(item, church)).toBe(
+      'OPEN_CASUAL_FOOTWEAR',
+    );
   });
 
   it('rejects flip-flops for wedding', () => {
@@ -215,7 +221,10 @@ describe('Fail-open behavior', () => {
 
   it('passes item with empty name in formal context', () => {
     expect(
-      isOccasionAppropriate({ name: '', subcategory: '', main_category: '' }, church),
+      isOccasionAppropriate(
+        { name: '', subcategory: '', main_category: '' },
+        church,
+      ),
     ).toBe(true);
   });
 
@@ -229,14 +238,18 @@ describe('Fail-open behavior', () => {
 
 describe('Cross-demographic universality', () => {
   it('rejects hawaiian shirt for any formal context regardless of framing', () => {
-    const item = mkItem('Tops', 'Hawaiian Shirt', { name: 'Tropical Hawaiian Shirt' });
+    const item = mkItem('Tops', 'Hawaiian Shirt', {
+      name: 'Tropical Hawaiian Shirt',
+    });
     expect(isOccasionAppropriate(item, { query: 'church' })).toBe(false);
     expect(isOccasionAppropriate(item, { query: 'funeral' })).toBe(false);
     expect(isOccasionAppropriate(item, { query: 'formal dinner' })).toBe(false);
   });
 
   it('allows standard appropriate items across all formal contexts', () => {
-    const shirt = mkItem('Tops', 'Button-Down Shirt', { name: 'White Oxford Shirt' });
+    const shirt = mkItem('Tops', 'Button-Down Shirt', {
+      name: 'White Oxford Shirt',
+    });
     const trousers = mkItem('Bottoms', 'Trousers', { name: 'Navy Trousers' });
     const shoes = mkItem('Shoes', 'Oxfords', { name: 'Black Oxfords' });
     for (const ctx of [church, wedding, interview]) {

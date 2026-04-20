@@ -1,6 +1,14 @@
 import { __test__ } from './discover.service';
 
-const { normalize, wordBoundaryMatch, LOOSE_FIT_TOKENS, extractBrandFromTitle, extractProductBrand, resolveBrandTier, getSemanticCluster } = __test__;
+const {
+  normalize,
+  wordBoundaryMatch,
+  LOOSE_FIT_TOKENS,
+  extractBrandFromTitle,
+  extractProductBrand,
+  resolveBrandTier,
+  getSemanticCluster,
+} = __test__;
 
 // ── Slim preference blocks loose-fit tokens ──────────────────────────
 
@@ -17,7 +25,7 @@ describe('Fit hard veto: slim preference blocks loose-fit items', () => {
   for (const token of mustBlock) {
     it(`blocks "${token}"`, () => {
       const blob = normalize(`Cool ${token} cotton jacket`);
-      const matched = [...LOOSE_FIT_TOKENS].some(t => blob.includes(t));
+      const matched = [...LOOSE_FIT_TOKENS].some((t) => blob.includes(t));
       expect(matched).toBe(true);
     });
   }
@@ -54,8 +62,8 @@ describe('Deterministic ranking: normalize + scoring is stable', () => {
   it('wordBoundaryMatch is deterministic', () => {
     const blob = normalize('tired man red sweater blue boxy wide leg');
     const tokens = ['red', 'blue', 'boxy', 'tired'];
-    const run1 = tokens.map(t => wordBoundaryMatch(blob, t));
-    const run2 = tokens.map(t => wordBoundaryMatch(blob, t));
+    const run1 = tokens.map((t) => wordBoundaryMatch(blob, t));
+    const run2 = tokens.map((t) => wordBoundaryMatch(blob, t));
     expect(run1).toEqual(run2);
   });
 });
@@ -84,19 +92,25 @@ describe('Tier 4 integration: discover-curator module', () => {
 
 describe('extractBrandFromTitle', () => {
   it('extracts "gucci" from title', () => {
-    expect(extractBrandFromTitle('Gucci Men\'s Leather Belt')).toBe('gucci');
+    expect(extractBrandFromTitle("Gucci Men's Leather Belt")).toBe('gucci');
   });
 
   it('extracts "ralph lauren" (multi-word) from title', () => {
-    expect(extractBrandFromTitle('Ralph Lauren Classic Fit Polo')).toBe('ralph lauren');
+    expect(extractBrandFromTitle('Ralph Lauren Classic Fit Polo')).toBe(
+      'ralph lauren',
+    );
   });
 
   it('extracts "hugo boss" from title', () => {
-    expect(extractBrandFromTitle('Hugo Boss Slim Fit Suit Jacket')).toBe('hugo boss');
+    expect(extractBrandFromTitle('Hugo Boss Slim Fit Suit Jacket')).toBe(
+      'hugo boss',
+    );
   });
 
   it('extracts "saint laurent" from title', () => {
-    expect(extractBrandFromTitle('Saint Laurent Leather Boots')).toBe('saint laurent');
+    expect(extractBrandFromTitle('Saint Laurent Leather Boots')).toBe(
+      'saint laurent',
+    );
   });
 
   it('returns null when no known brand in title', () => {
@@ -108,7 +122,9 @@ describe('extractBrandFromTitle', () => {
   });
 
   it('does NOT false-positive "express" inside "expressed"', () => {
-    expect(extractBrandFromTitle('She expressed joy at the garment')).toBeNull();
+    expect(
+      extractBrandFromTitle('She expressed joy at the garment'),
+    ).toBeNull();
   });
 
   it('does NOT false-positive "gap" inside "gaping"', () => {
@@ -116,7 +132,9 @@ describe('extractBrandFromTitle', () => {
   });
 
   it('prefers longer multi-word brand over shorter substring', () => {
-    expect(extractBrandFromTitle('Polo Ralph Lauren Oxford Shirt')).toBe('polo ralph lauren');
+    expect(extractBrandFromTitle('Polo Ralph Lauren Oxford Shirt')).toBe(
+      'polo ralph lauren',
+    );
   });
 
   // ── Spam / position hardening ────────────────────────────────────
@@ -134,11 +152,17 @@ describe('extractBrandFromTitle', () => {
   });
 
   it('accepts brand within first 5 tokens', () => {
-    expect(extractBrandFromTitle('Luxury Designer Cashmere Wool Gucci Sweater')).toBe('gucci');
+    expect(
+      extractBrandFromTitle('Luxury Designer Cashmere Wool Gucci Sweater'),
+    ).toBe('gucci');
   });
 
   it('rejects brand beyond first 5 tokens', () => {
-    expect(extractBrandFromTitle('Luxury Designer Cashmere Wool Cotton Knit Gucci Sweater')).toBeNull();
+    expect(
+      extractBrandFromTitle(
+        'Luxury Designer Cashmere Wool Cotton Knit Gucci Sweater',
+      ),
+    ).toBeNull();
   });
 
   it('rejects brand after "discount" spam prefix', () => {
@@ -166,9 +190,11 @@ describe('extractBrandFromTitle', () => {
   });
 
   it('rejects spam-stuffed title with luxury brand buried mid-title', () => {
-    expect(extractBrandFromTitle(
-      'Discount chanel sweaters for sale 2026 Chanel knitwear',
-    )).toBeNull();
+    expect(
+      extractBrandFromTitle(
+        'Discount chanel sweaters for sale 2026 Chanel knitwear',
+      ),
+    ).toBeNull();
   });
 
   it('is deterministic across 100 runs', () => {
@@ -178,7 +204,7 @@ describe('extractBrandFromTitle', () => {
       'Buy Prada Shoes 2026',
       'Chanel Cashmere Sweater',
     ];
-    const firstResults = titles.map(t => extractBrandFromTitle(t));
+    const firstResults = titles.map((t) => extractBrandFromTitle(t));
     for (let i = 0; i < 100; i++) {
       titles.forEach((t, idx) => {
         expect(extractBrandFromTitle(t)).toBe(firstResults[idx]);
@@ -191,15 +217,19 @@ describe('extractBrandFromTitle', () => {
 
 describe('extractProductBrand', () => {
   it('extracts "Gucci" from title', () => {
-    expect(extractProductBrand('Gucci Men\'s Leather Belt')).toBe('Gucci');
+    expect(extractProductBrand("Gucci Men's Leather Belt")).toBe('Gucci');
   });
 
   it('extracts "Ralph Lauren" (multi-word) from title', () => {
-    expect(extractProductBrand('Ralph Lauren Classic Fit Polo')).toBe('Ralph Lauren');
+    expect(extractProductBrand('Ralph Lauren Classic Fit Polo')).toBe(
+      'Ralph Lauren',
+    );
   });
 
   it('extracts "Hugo Boss" from title', () => {
-    expect(extractProductBrand('Hugo Boss Slim Fit Suit Jacket')).toBe('Hugo Boss');
+    expect(extractProductBrand('Hugo Boss Slim Fit Suit Jacket')).toBe(
+      'Hugo Boss',
+    );
   });
 
   it('extracts "Nike" from "Nike Air Max 90"', () => {
@@ -234,7 +264,9 @@ describe('extractProductBrand', () => {
 
   it('handles all-caps brand', () => {
     // All title-cased words pass; resolveBrandTier word-boundary-matches "dkny" inside
-    expect(extractProductBrand('DKNY Sport Leggings')).toBe('DKNY Sport Leggings');
+    expect(extractProductBrand('DKNY Sport Leggings')).toBe(
+      'DKNY Sport Leggings',
+    );
   });
 
   it('is deterministic across 100 runs', () => {
@@ -244,7 +276,7 @@ describe('extractProductBrand', () => {
       'Nike Air Max 90',
       'Ralph Lauren Slim Fit Shirt',
     ];
-    const firstResults = titles.map(t => extractProductBrand(t));
+    const firstResults = titles.map((t) => extractProductBrand(t));
     for (let i = 0; i < 100; i++) {
       titles.forEach((t, idx) => {
         expect(extractProductBrand(t)).toBe(firstResults[idx]);

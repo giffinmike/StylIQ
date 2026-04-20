@@ -5,7 +5,10 @@ console.log('🔥 OutfitAI logger loaded');
 const logger = new Logger('OutfitAI');
 
 function isEnabled(): boolean {
-  return process.env.NODE_ENV !== 'production' || process.env.OUTFIT_AI_DEBUG === 'true';
+  return (
+    process.env.NODE_ENV !== 'production' ||
+    process.env.OUTFIT_AI_DEBUG === 'true'
+  );
 }
 
 function safeStringify(data: unknown, maxLen = 5000): string {

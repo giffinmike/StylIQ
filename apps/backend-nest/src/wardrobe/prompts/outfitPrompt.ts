@@ -2,6 +2,7 @@
 
 import { parseConstraints } from '../logic/constraints';
 import { STYLE_AGENTS } from '../logic/style-agents';
+import type { StudioContext } from '../logic/studioContext';
 
 export function buildOutfitPrompt(
   catalogLines: string,
@@ -9,14 +10,26 @@ export function buildOutfitPrompt(
   styleAgent?: string,
   userStyleProfile?: any, // 👈 pass this in too
   genderDirective?: string, // Layer 2 defense-in-depth
+  // Studio-authoritative overrides. When provided, the builder SKIPS
+  // its internal parseConstraints() / intent-regex derivations so the
+  // caller (Studio slow path) remains the single source of truth.
+  studioOverrides?: {
+    constraints?: any;
+    studio?: StudioContext;
+  },
 ): string {
-  const constraints = parseConstraints(userQuery);
+  const constraints =
+    studioOverrides?.constraints ?? parseConstraints(userQuery);
   const constraintsLine = JSON.stringify(constraints);
 
+  const studio = studioOverrides?.studio;
   const s = (userQuery || '').toLowerCase();
-  const gymIntent = /\b(gym|work ?out|workout|training|exercise)\b/.test(s);
-  const upscaleIntent =
-    /\b(upscale|smart\s*casual|business|formal|dressy|rooftop)\b/.test(s);
+  const gymIntent = studio
+    ? studio.environment === 'gym'
+    : /\b(gym|work ?out|workout|training|exercise)\b/.test(s);
+  const upscaleIntent = studio
+    ? studio.environment === 'upscale'
+    : /\b(upscale|smart\s*casual|business|formal|dressy|rooftop)\b/.test(s);
 
   let styleContextLine = '';
 
@@ -131,7 +144,11 @@ ${catalogLines}
 USER REQUEST: "${userQuery || 'no explicit request'}"
 PARSED_CONSTRAINTS: ${constraintsLine}
 ${styleContextLine}
-CONTEXT_HINTS: ${JSON.stringify({ gymIntent, upscaleIntent })}
+CONTEXT_HINTS: ${
+    studio
+      ? JSON.stringify({ environment: studio.environment })
+      : JSON.stringify({ gymIntent, upscaleIntent })
+  }
 
 SELECTION RULES (strict):
 - Build 2–3 complete outfits using ONLY catalog indices.
@@ -150,8 +167,31 @@ SELECTION RULES (strict):
 
 
 INTENT GUARDRAILS:
-- If gymIntent: sneakers + athletic bottoms, avoid dress shoes/blazers unless explicitly requested.
-- If upscaleIntent: avoid hoodies/windbreakers/shorts unless clearly upscale.
+${
+  studio
+    ? (() => {
+        switch (studio.environment) {
+          case 'beach':
+            return `- Beach/resort context:
+  • Shorts allowed and preferred.
+  • Sneakers / sandals / espadrilles allowed.
+  • Linen / cotton preferred; avoid heavy wool / cashmere unless evening.
+  • Do NOT enforce business formality.`;
+          case 'gym':
+            return `- Gym/training context: sneakers + athletic bottoms; avoid dress shoes / blazers / dress shirts.`;
+          case 'black-tie':
+            return `- Black-tie context: tux jackets / dress shirts / formal shoes only; block sneakers, shorts, t-shirts, hoodies.`;
+          case 'wedding':
+            return `- Wedding context: SmartCasual → Business; blazers, dress shoes preferred; avoid shorts, sneakers, hoodies.`;
+          case 'upscale':
+            return `- Upscale context: avoid hoodies / windbreakers / shorts unless clearly upscale.`;
+          default:
+            return `- Everyday context: balance comfort and polish; no specific restrictions.`;
+        }
+      })()
+    : `- If gymIntent: sneakers + athletic bottoms, avoid dress shoes/blazers unless explicitly requested.
+- If upscaleIntent: avoid hoodies/windbreakers/shorts unless clearly upscale.`
+}
 
 OUTPUT FORMAT (STRICT JSON ONLY):
 {

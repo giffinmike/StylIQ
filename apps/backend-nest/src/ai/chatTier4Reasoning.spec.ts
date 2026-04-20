@@ -35,7 +35,9 @@ const emptyAvoids: ChatAvoidLists = {
 
 describe('detectRelevantCategory', () => {
   it('detects blazer → Outerwear', () => {
-    expect(detectRelevantCategory('Which blazer should I wear?')).toBe('Outerwear');
+    expect(detectRelevantCategory('Which blazer should I wear?')).toBe(
+      'Outerwear',
+    );
   });
 
   it('detects jacket → Outerwear', () => {
@@ -43,15 +45,21 @@ describe('detectRelevantCategory', () => {
   });
 
   it('detects dress → Dresses', () => {
-    expect(detectRelevantCategory('What dress for the wedding?')).toBe('Dresses');
+    expect(detectRelevantCategory('What dress for the wedding?')).toBe(
+      'Dresses',
+    );
   });
 
   it('detects shoes → Footwear', () => {
-    expect(detectRelevantCategory('Which shoes go with this?')).toBe('Footwear');
+    expect(detectRelevantCategory('Which shoes go with this?')).toBe(
+      'Footwear',
+    );
   });
 
   it('detects pants → Bottoms', () => {
-    expect(detectRelevantCategory('Should I wear pants or a skirt?')).toBe('Bottoms');
+    expect(detectRelevantCategory('Should I wear pants or a skirt?')).toBe(
+      'Bottoms',
+    );
   });
 
   it('detects blouse → Tops', () => {
@@ -63,7 +71,9 @@ describe('detectRelevantCategory', () => {
   });
 
   it('returns null for generic style questions', () => {
-    expect(detectRelevantCategory('What should I wear to look professional?')).toBeNull();
+    expect(
+      detectRelevantCategory('What should I wear to look professional?'),
+    ).toBeNull();
   });
 });
 
@@ -71,27 +81,39 @@ describe('detectRelevantCategory', () => {
 
 describe('detectFormalityAnchor', () => {
   it('detects "powerful"', () => {
-    expect(detectFormalityAnchor('I want to look powerful')).toBe('elevated_business');
+    expect(detectFormalityAnchor('I want to look powerful')).toBe(
+      'elevated_business',
+    );
   });
 
   it('detects "luxurious"', () => {
-    expect(detectFormalityAnchor('Something luxurious please')).toBe('elevated_business');
+    expect(detectFormalityAnchor('Something luxurious please')).toBe(
+      'elevated_business',
+    );
   });
 
   it('detects "authoritative"', () => {
-    expect(detectFormalityAnchor('I need an authoritative look')).toBe('elevated_business');
+    expect(detectFormalityAnchor('I need an authoritative look')).toBe(
+      'elevated_business',
+    );
   });
 
   it('detects "commanding"', () => {
-    expect(detectFormalityAnchor('A commanding presence')).toBe('elevated_business');
+    expect(detectFormalityAnchor('A commanding presence')).toBe(
+      'elevated_business',
+    );
   });
 
   it('detects "expensive"', () => {
-    expect(detectFormalityAnchor('Make me look expensive')).toBe('elevated_business');
+    expect(detectFormalityAnchor('Make me look expensive')).toBe(
+      'elevated_business',
+    );
   });
 
   it('detects "sophisticated"', () => {
-    expect(detectFormalityAnchor('I want a sophisticated vibe')).toBe('elevated_business');
+    expect(detectFormalityAnchor('I want a sophisticated vibe')).toBe(
+      'elevated_business',
+    );
   });
 
   it('returns null for casual queries', () => {
@@ -113,7 +135,7 @@ describe('buildShortlist', () => {
       makeItem({ name: 'Navy Coat', main_category: 'Outerwear' }),
     ];
     const result = buildShortlist(items, emptyAvoids, 'Outerwear', null);
-    expect(result.every(i => isSlot(i, 'outerwear'))).toBe(true);
+    expect(result.every((i) => isSlot(i, 'outerwear'))).toBe(true);
     expect(result.length).toBe(2);
   });
 
@@ -126,7 +148,7 @@ describe('buildShortlist', () => {
     const avoids: ChatAvoidLists = { ...emptyAvoids, avoidColors: ['blue'] };
     const result = buildShortlist(items, avoids, null, null);
     // navy and royal blue are in the blue family → excluded
-    expect(result.map(i => i.name)).toEqual(['Black Blazer']);
+    expect(result.map((i) => i.name)).toEqual(['Black Blazer']);
   });
 
   it('excludes avoid materials', () => {
@@ -136,7 +158,7 @@ describe('buildShortlist', () => {
     ];
     const avoids: ChatAvoidLists = { ...emptyAvoids, avoidMaterials: ['Silk'] };
     const result = buildShortlist(items, avoids, null, null);
-    expect(result.map(i => i.name)).toEqual(['Cotton Tee']);
+    expect(result.map((i) => i.name)).toEqual(['Cotton Tee']);
   });
 
   it('excludes avoid patterns', () => {
@@ -146,7 +168,7 @@ describe('buildShortlist', () => {
     ];
     const avoids: ChatAvoidLists = { ...emptyAvoids, avoidPatterns: ['Plaid'] };
     const result = buildShortlist(items, avoids, null, null);
-    expect(result.map(i => i.name)).toEqual(['Solid Blazer']);
+    expect(result.map((i) => i.name)).toEqual(['Solid Blazer']);
   });
 
   it('filters by formality when anchor is set', () => {
@@ -155,8 +177,16 @@ describe('buildShortlist', () => {
       makeItem({ name: 'Tailored Blazer', formality_score: 8 }),
       makeItem({ name: 'Dress Shirt', formality_score: 7 }),
     ];
-    const result = buildShortlist(items, emptyAvoids, null, 'elevated_business');
-    expect(result.map(i => i.name)).toEqual(['Tailored Blazer', 'Dress Shirt']);
+    const result = buildShortlist(
+      items,
+      emptyAvoids,
+      null,
+      'elevated_business',
+    );
+    expect(result.map((i) => i.name)).toEqual([
+      'Tailored Blazer',
+      'Dress Shirt',
+    ]);
   });
 
   it('keeps items without formality_score when anchor is set', () => {
@@ -164,9 +194,14 @@ describe('buildShortlist', () => {
       makeItem({ name: 'Mystery Item', formality_score: undefined }),
       makeItem({ name: 'Low Formality', formality_score: 2 }),
     ];
-    const result = buildShortlist(items, emptyAvoids, null, 'elevated_business');
-    expect(result.map(i => i.name)).toContain('Mystery Item');
-    expect(result.map(i => i.name)).not.toContain('Low Formality');
+    const result = buildShortlist(
+      items,
+      emptyAvoids,
+      null,
+      'elevated_business',
+    );
+    expect(result.map((i) => i.name)).toContain('Mystery Item');
+    expect(result.map((i) => i.name)).not.toContain('Low Formality');
   });
 
   it('sorts dark neutrals first', () => {
@@ -187,7 +222,11 @@ describe('buildShortlist', () => {
       makeItem({ name: 'Mid Item', color: 'white', formality_score: 6 }),
     ];
     const result = buildShortlist(items, emptyAvoids, null, null);
-    expect(result.map(i => i.name)).toEqual(['High Item', 'Mid Item', 'Low Item']);
+    expect(result.map((i) => i.name)).toEqual([
+      'High Item',
+      'Mid Item',
+      'Low Item',
+    ]);
   });
 
   it('limits to max 5 items', () => {
@@ -199,9 +238,7 @@ describe('buildShortlist', () => {
   });
 
   it('returns empty array when all items filtered out', () => {
-    const items = [
-      makeItem({ name: 'Red Dress', color: 'red' }),
-    ];
+    const items = [makeItem({ name: 'Red Dress', color: 'red' })];
     const avoids: ChatAvoidLists = { ...emptyAvoids, avoidColors: ['red'] };
     const result = buildShortlist(items, avoids, null, null);
     expect(result).toEqual([]);
@@ -246,42 +283,50 @@ describe('formatShortlistForPrompt', () => {
 
 describe('validateReasoningQuality', () => {
   it('passes a clinical structural response with contrast', () => {
-    const response = 'The black blazer widens the shoulder frame, creating vertical proportion and hierarchy. The charcoal saturation controls warmth against your undertone. The navy option lacks this structure compared to the blazer.';
+    const response =
+      'The black blazer widens the shoulder frame, creating vertical proportion and hierarchy. The charcoal saturation controls warmth against your undertone. The navy option lacks this structure compared to the blazer.';
     expect(validateReasoningQuality(response, ['black blazer'])).toBe(true);
   });
 
   it('fails when no item name referenced', () => {
-    const response = 'This piece widens the shoulder frame with vertical proportion and authority. The other option lacks structure.';
+    const response =
+      'This piece widens the shoulder frame with vertical proportion and authority. The other option lacks structure.';
     expect(validateReasoningQuality(response, ['black blazer'])).toBe(false);
   });
 
   it('fails when fewer than 3 mechanism tokens', () => {
-    const response = 'The black blazer has good structure. The other lacks this quality.';
+    const response =
+      'The black blazer has good structure. The other lacks this quality.';
     expect(validateReasoningQuality(response, ['black blazer'])).toBe(false);
   });
 
   it('fails a blog-style response', () => {
-    const response = 'The black blazer is a stunning and sophisticated choice that looks gorgeous on you. It pairs beautifully with everything in your wardrobe.';
+    const response =
+      'The black blazer is a stunning and sophisticated choice that looks gorgeous on you. It pairs beautifully with everything in your wardrobe.';
     expect(validateReasoningQuality(response, ['black blazer'])).toBe(false);
   });
 
   it('fails when response contains banned words even with mechanism tokens', () => {
-    const response = 'The black blazer creates elegant shoulder proportion and vertical hierarchy with saturation contrast. The other option lacks this authority.';
+    const response =
+      'The black blazer creates elegant shoulder proportion and vertical hierarchy with saturation contrast. The other option lacks this authority.';
     expect(validateReasoningQuality(response, ['black blazer'])).toBe(false);
   });
 
   it('fails when missing contrast clause', () => {
-    const response = 'The black blazer widens the shoulder frame, creating vertical proportion and hierarchy. The charcoal saturation controls warmth and authority.';
+    const response =
+      'The black blazer widens the shoulder frame, creating vertical proportion and hierarchy. The charcoal saturation controls warmth and authority.';
     expect(validateReasoningQuality(response, ['black blazer'])).toBe(false);
   });
 
   it('is case-insensitive for item names and tokens', () => {
-    const response = 'The BLACK BLAZER builds Shoulder width and Vertical proportion with Hierarchy. Saturation anchors Authority. The navy option lacks this Structure.';
+    const response =
+      'The BLACK BLAZER builds Shoulder width and Vertical proportion with Hierarchy. Saturation anchors Authority. The navy option lacks this Structure.';
     expect(validateReasoningQuality(response, ['black blazer'])).toBe(true);
   });
 
   it('skips very short item names (<3 chars)', () => {
-    const response = 'The is nice with shoulder vertical waist proportion. Lacks structure.';
+    const response =
+      'The is nice with shoulder vertical waist proportion. Lacks structure.';
     expect(validateReasoningQuality(response, ['is'])).toBe(false);
   });
 });

@@ -12,8 +12,8 @@
 
 export interface VetoInput {
   title: string;
-  blob: string;           // pre-normalized text blob
-  enrichedColor: string;  // pre-normalized
+  blob: string; // pre-normalized text blob
+  enrichedColor: string; // pre-normalized
   price: number | null;
   brand: string | null;
 }
@@ -64,25 +64,25 @@ function wordBoundaryMatch(blob: string, token: string): boolean {
  * Used to compare user's floor preference against inferred product formality.
  */
 export const FORMALITY_RANK_MAP: Record<string, number> = {
-  athletic:         1,
-  gym:              1,
-  activewear:       1,
-  casual:           2,
-  streetwear:       2,
-  lounge:           2,
-  'smart casual':   3,
-  weekend:          3,
+  athletic: 1,
+  gym: 1,
+  activewear: 1,
+  casual: 2,
+  streetwear: 2,
+  lounge: 2,
+  'smart casual': 3,
+  weekend: 3,
   'business casual': 4,
-  'office casual':  4,
-  business:         5,
-  professional:     5,
+  'office casual': 4,
+  business: 5,
+  professional: 5,
   'business formal': 6,
-  cocktail:         6,
-  formal:           7,
-  evening:          7,
-  gala:             7,
-  'black tie':      8,
-  'white tie':      9,
+  cocktail: 6,
+  formal: 7,
+  evening: 7,
+  gala: 7,
+  'black tie': 8,
+  'white tie': 9,
 };
 
 /**
@@ -167,21 +167,42 @@ export function inferProductFormality(title: string): number | null {
 // ─── Loose-fit tokens ────────────────────────────────────────────────
 
 const LOOSE_FIT_TOKENS = new Set([
-  'oversized', 'boxy', 'baggy', 'wide', 'loose fit', 'dropped shoulder',
-  'relaxed', 'relaxed fit', 'wide leg', 'wide fit',
+  'oversized',
+  'boxy',
+  'baggy',
+  'wide',
+  'loose fit',
+  'dropped shoulder',
+  'relaxed',
+  'relaxed fit',
+  'wide leg',
+  'wide fit',
 ]);
 
 // ─── Coverage keyword mapping ────────────────────────────────────────
 
 const COVERAGE_MAP: Record<string, string[]> = {
-  midriff:    ['crop top', 'cropped', 'midriff', 'belly'],
-  leg:        ['mini skirt', 'micro', 'thigh-high', 'thigh high', 'hot pants', 'short shorts'],
-  shoulder:   ['strapless', 'off-shoulder', 'off shoulder', 'one-shoulder', 'one shoulder'],
-  cleavage:   ['plunging', 'low-cut', 'low cut', 'deep-v', 'deep v'],
-  back:       ['backless', 'open-back', 'open back'],
-  sheer:      ['sheer', 'transparent', 'see-through', 'see through'],
-  spaghetti:  ['spaghetti', 'thin-strap', 'thin strap'],
-  halter:     ['halter'],
+  midriff: ['crop top', 'cropped', 'midriff', 'belly'],
+  leg: [
+    'mini skirt',
+    'micro',
+    'thigh-high',
+    'thigh high',
+    'hot pants',
+    'short shorts',
+  ],
+  shoulder: [
+    'strapless',
+    'off-shoulder',
+    'off shoulder',
+    'one-shoulder',
+    'one shoulder',
+  ],
+  cleavage: ['plunging', 'low-cut', 'low cut', 'deep-v', 'deep v'],
+  back: ['backless', 'open-back', 'open back'],
+  sheer: ['sheer', 'transparent', 'see-through', 'see through'],
+  spaghetti: ['spaghetti', 'thin-strap', 'thin strap'],
+  halter: ['halter'],
 };
 
 // ─── Climate tokens ──────────────────────────────────────────────────
@@ -190,32 +211,83 @@ const HOT_CLIMATES = new Set(['hot', 'tropical', 'warm']);
 const COLD_CLIMATES = new Set(['cold', 'freezing', 'winter']);
 
 const HOT_VETO_TOKENS = [
-  'wool', 'fleece', 'down', 'heavy', 'thermal', 'insulated', 'puffer', 'sherpa', 'fur',
+  'wool',
+  'fleece',
+  'down',
+  'heavy',
+  'thermal',
+  'insulated',
+  'puffer',
+  'sherpa',
+  'fur',
 ];
 const COLD_VETO_TOKENS = [
-  'mesh', 'sheer', 'open-toe', 'open toe', 'sandal', 'tank top', 'sleeveless',
+  'mesh',
+  'sheer',
+  'open-toe',
+  'open toe',
+  'sandal',
+  'tank top',
+  'sleeveless',
 ];
 
 // ─── Non-apparel tokens (hard veto) ─────────────────────────────────
 
 const NON_APPAREL_TOKENS = [
-  'phone case', 'iphone', 'samsung case', 'tablet', 'laptop',
-  'air freshener', 'candle', 'diffuser',
-  'dog collar', 'pet bed', 'cat toy', 'pet harness',
-  'car seat', 'floor mat', 'car cover',
-  'pillow', 'pillowcase', 'duvet', 'comforter', 'bed sheet', 'curtain',
-  'wall art', 'poster', 'sticker', 'decal', 'magnet',
-  'mug', 'tumbler', 'water bottle', 'lunch box',
-  'notebook', 'planner', 'pen set',
-  'action figure', 'toy', 'board game', 'puzzle',
-  'supplement', 'vitamin', 'protein powder',
-  'gift card', 'e gift',
+  'phone case',
+  'iphone',
+  'samsung case',
+  'tablet',
+  'laptop',
+  'air freshener',
+  'candle',
+  'diffuser',
+  'dog collar',
+  'pet bed',
+  'cat toy',
+  'pet harness',
+  'car seat',
+  'floor mat',
+  'car cover',
+  'pillow',
+  'pillowcase',
+  'duvet',
+  'comforter',
+  'bed sheet',
+  'curtain',
+  'wall art',
+  'poster',
+  'sticker',
+  'decal',
+  'magnet',
+  'mug',
+  'tumbler',
+  'water bottle',
+  'lunch box',
+  'notebook',
+  'planner',
+  'pen set',
+  'action figure',
+  'toy',
+  'board game',
+  'puzzle',
+  'supplement',
+  'vitamin',
+  'protein powder',
+  'gift card',
+  'e gift',
 ];
 
 // ─── Athletic material mix tokens ────────────────────────────────────
 
 const ATHLETIC_MATERIALS = ['nylon', 'polyester', 'spandex'];
-const FORMAL_TITLE_TOKENS = ['formal', 'dress shirt', 'blazer', 'suit', 'tuxedo'];
+const FORMAL_TITLE_TOKENS = [
+  'formal',
+  'dress shirt',
+  'blazer',
+  'suit',
+  'tuxedo',
+];
 
 // ─── Main veto function ──────────────────────────────────────────────
 
@@ -233,7 +305,10 @@ function veto(rule: string, reason: string): VetoResult {
  *
  * Input blob and enrichedColor are expected to be pre-normalized.
  */
-export function applyDiscoverVeto(product: VetoInput, profile: VetoProfile): VetoResult {
+export function applyDiscoverVeto(
+  product: VetoInput,
+  profile: VetoProfile,
+): VetoResult {
   const blob = product.blob;
   const normTitle = normalizeForVeto(product.title);
 
@@ -245,16 +320,17 @@ export function applyDiscoverVeto(product: VetoInput, profile: VetoProfile): Vet
   }
 
   // ── 1. VETO_FIT ──────────────────────────────────────────────────
-  const hasSlimPref = profile.fitPreferences.some(
-    f => {
-      const n = normalizeForVeto(f);
-      return n === 'slim' || n === 'tailored' || n === 'fitted';
-    },
-  );
+  const hasSlimPref = profile.fitPreferences.some((f) => {
+    const n = normalizeForVeto(f);
+    return n === 'slim' || n === 'tailored' || n === 'fitted';
+  });
   if (hasSlimPref) {
     for (const token of LOOSE_FIT_TOKENS) {
       if (blob.includes(token)) {
-        return veto('VETO_FIT', `Loose-fit token "${token}" conflicts with slim/tailored preference`);
+        return veto(
+          'VETO_FIT',
+          `Loose-fit token "${token}" conflicts with slim/tailored preference`,
+        );
       }
     }
   }
@@ -294,7 +370,10 @@ export function applyDiscoverVeto(product: VetoInput, profile: VetoProfile): Vet
     if (mapped) {
       for (const kw of mapped) {
         if (wordBoundaryMatch(blob, normalizeForVeto(kw))) {
-          return veto('VETO_COVERAGE', `Coverage no-go "${noGo}" triggered by "${kw}"`);
+          return veto(
+            'VETO_COVERAGE',
+            `Coverage no-go "${noGo}" triggered by "${kw}"`,
+          );
         }
       }
     }
@@ -317,11 +396,17 @@ export function applyDiscoverVeto(product: VetoInput, profile: VetoProfile): Vet
         wordBoundaryMatch(blob, '6 inch') ||
         wordBoundaryMatch(blob, '6inch')
       ) {
-        return veto('VETO_WALKABILITY', 'Non-walkable shoe detected (high walkability required)');
+        return veto(
+          'VETO_WALKABILITY',
+          'Non-walkable shoe detected (high walkability required)',
+        );
       }
     } else if (walk === 'medium') {
       if (wordBoundaryMatch(blob, 'stiletto')) {
-        return veto('VETO_WALKABILITY', 'Stiletto detected (medium walkability required)');
+        return veto(
+          'VETO_WALKABILITY',
+          'Stiletto detected (medium walkability required)',
+        );
       }
     }
   }
@@ -351,14 +436,20 @@ export function applyDiscoverVeto(product: VetoInput, profile: VetoProfile): Vet
     if (HOT_CLIMATES.has(clim)) {
       for (const token of HOT_VETO_TOKENS) {
         if (wordBoundaryMatch(blob, normalizeForVeto(token))) {
-          return veto('VETO_CLIMATE', `Material/weight "${token}" unsuitable for hot climate`);
+          return veto(
+            'VETO_CLIMATE',
+            `Material/weight "${token}" unsuitable for hot climate`,
+          );
         }
       }
     }
     if (COLD_CLIMATES.has(clim)) {
       for (const token of COLD_VETO_TOKENS) {
         if (wordBoundaryMatch(blob, normalizeForVeto(token))) {
-          return veto('VETO_CLIMATE', `Item "${token}" unsuitable for cold climate`);
+          return veto(
+            'VETO_CLIMATE',
+            `Item "${token}" unsuitable for cold climate`,
+          );
         }
       }
     }
@@ -366,11 +457,18 @@ export function applyDiscoverVeto(product: VetoInput, profile: VetoProfile): Vet
 
   // ── 10. VETO_MATERIAL_MIX ────────────────────────────────────────
   {
-    const hasFormalTitle = FORMAL_TITLE_TOKENS.some(t => wordBoundaryMatch(normTitle, t));
+    const hasFormalTitle = FORMAL_TITLE_TOKENS.some((t) =>
+      wordBoundaryMatch(normTitle, t),
+    );
     if (hasFormalTitle) {
-      const hasAthleticMaterial = ATHLETIC_MATERIALS.some(m => wordBoundaryMatch(blob, m));
+      const hasAthleticMaterial = ATHLETIC_MATERIALS.some((m) =>
+        wordBoundaryMatch(blob, m),
+      );
       if (hasAthleticMaterial) {
-        return veto('VETO_MATERIAL_MIX', 'Athletic material in formal item title');
+        return veto(
+          'VETO_MATERIAL_MIX',
+          'Athletic material in formal item title',
+        );
       }
     }
   }

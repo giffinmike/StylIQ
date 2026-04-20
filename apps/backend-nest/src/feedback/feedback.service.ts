@@ -75,7 +75,9 @@ export class FeedbackService {
         const features = await extractOutfitFeatures(outfit_id);
         await this.learningEvents.logEvent({
           userId: user_id,
-          eventType: isPositive ? 'OUTFIT_RATED_POSITIVE' : 'OUTFIT_RATED_NEGATIVE',
+          eventType: isPositive
+            ? 'OUTFIT_RATED_POSITIVE'
+            : 'OUTFIT_RATED_NEGATIVE',
           entityType: 'outfit',
           entityId: outfit_id,
           signalPolarity: isPositive ? 1 : -1,
@@ -86,7 +88,9 @@ export class FeedbackService {
         });
         this.fashionStateService
           .computeAndSaveState(user_id)
-          .catch(err => this.logger.error('[LEARNING INLINE] recompute failed', err));
+          .catch((err) =>
+            this.logger.error('[LEARNING INLINE] recompute failed', err),
+          );
       } catch (err) {
         this.logger.error('[LEARNING] outfit rated event failed', err);
       }

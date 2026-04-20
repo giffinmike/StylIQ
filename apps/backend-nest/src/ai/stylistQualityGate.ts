@@ -17,7 +17,7 @@ import type { StyleProfileFields } from './elite/stylistBrain';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const MIN_OK = 60;   // high-confidence threshold
+const MIN_OK = 60; // high-confidence threshold
 const MIN_SHIP = 40; // minimum shippable threshold
 
 // ── Deterministic Hash (Stylist-only) ────────────────────────────────────────
@@ -34,18 +34,132 @@ function hashString(s: string): number {
 // ── Color Family Map (Stylist-only) ─────────────────────────────────────────
 
 const COLOR_FAMILIES: Record<string, string[]> = {
-  pink: ['pink', 'fuchsia', 'magenta', 'rose', 'blush', 'salmon', 'coral pink', 'hot pink', 'dusty pink', 'mauve'],
-  white: ['white', 'ivory', 'cream', 'off-white', 'off white', 'eggshell', 'pearl', 'snow'],
-  blue: ['blue', 'navy', 'cobalt', 'royal blue', 'sky blue', 'light blue', 'powder blue', 'steel blue', 'cornflower'],
-  red: ['red', 'crimson', 'scarlet', 'cherry', 'burgundy', 'maroon', 'wine', 'ruby', 'vermillion', 'brick red'],
-  green: ['green', 'olive', 'sage', 'emerald', 'forest green', 'hunter green', 'mint', 'lime', 'jade', 'moss', 'army green', 'khaki green'],
-  yellow: ['yellow', 'mustard', 'gold', 'lemon', 'canary', 'marigold', 'saffron', 'amber'],
-  orange: ['orange', 'tangerine', 'peach', 'apricot', 'rust', 'burnt orange', 'terracotta', 'copper'],
-  purple: ['purple', 'violet', 'plum', 'lavender', 'lilac', 'amethyst', 'eggplant', 'aubergine', 'grape', 'orchid'],
-  brown: ['brown', 'tan', 'camel', 'chocolate', 'espresso', 'mocha', 'taupe', 'cognac', 'chestnut', 'walnut', 'sienna'],
+  pink: [
+    'pink',
+    'fuchsia',
+    'magenta',
+    'rose',
+    'blush',
+    'salmon',
+    'coral pink',
+    'hot pink',
+    'dusty pink',
+    'mauve',
+  ],
+  white: [
+    'white',
+    'ivory',
+    'cream',
+    'off-white',
+    'off white',
+    'eggshell',
+    'pearl',
+    'snow',
+  ],
+  blue: [
+    'blue',
+    'navy',
+    'cobalt',
+    'royal blue',
+    'sky blue',
+    'light blue',
+    'powder blue',
+    'steel blue',
+    'cornflower',
+  ],
+  red: [
+    'red',
+    'crimson',
+    'scarlet',
+    'cherry',
+    'burgundy',
+    'maroon',
+    'wine',
+    'ruby',
+    'vermillion',
+    'brick red',
+  ],
+  green: [
+    'green',
+    'olive',
+    'sage',
+    'emerald',
+    'forest green',
+    'hunter green',
+    'mint',
+    'lime',
+    'jade',
+    'moss',
+    'army green',
+    'khaki green',
+  ],
+  yellow: [
+    'yellow',
+    'mustard',
+    'gold',
+    'lemon',
+    'canary',
+    'marigold',
+    'saffron',
+    'amber',
+  ],
+  orange: [
+    'orange',
+    'tangerine',
+    'peach',
+    'apricot',
+    'rust',
+    'burnt orange',
+    'terracotta',
+    'copper',
+  ],
+  purple: [
+    'purple',
+    'violet',
+    'plum',
+    'lavender',
+    'lilac',
+    'amethyst',
+    'eggplant',
+    'aubergine',
+    'grape',
+    'orchid',
+  ],
+  brown: [
+    'brown',
+    'tan',
+    'camel',
+    'chocolate',
+    'espresso',
+    'mocha',
+    'taupe',
+    'cognac',
+    'chestnut',
+    'walnut',
+    'sienna',
+  ],
   black: ['black', 'onyx', 'jet black', 'charcoal black'],
-  grey: ['grey', 'gray', 'charcoal', 'slate', 'silver', 'ash', 'heather grey', 'heather gray', 'steel'],
-  beige: ['beige', 'nude', 'sand', 'oatmeal', 'khaki', 'wheat', 'caramel', 'buff'],
+  grey: [
+    'grey',
+    'gray',
+    'charcoal',
+    'slate',
+    'silver',
+    'ash',
+    'heather grey',
+    'heather gray',
+    'steel',
+  ],
+  beige: [
+    'beige',
+    'nude',
+    'sand',
+    'oatmeal',
+    'khaki',
+    'wheat',
+    'caramel',
+    'buff',
+  ],
 };
 
 /**
@@ -112,7 +226,7 @@ export function selectTopOutfitsWithQualityFloor<T extends JudgeOutfit>(
     const outfitKey =
       outfit.id ??
       ((outfit.items ?? []).map((i) => (i as any).id || '').join('|') ||
-      `idx-${index}`);
+        `idx-${index}`);
     const idHash = hashString(outfitKey);
     const epsilon = (idHash % 1000) / 100000; // max 0.00999
     const adjustedScore = finalScore + epsilon;
@@ -132,7 +246,8 @@ export function selectTopOutfitsWithQualityFloor<T extends JudgeOutfit>(
 
   // Sort descending by adjustedScore, stable by original index
   scored.sort((a, b) => {
-    if (a.adjustedScore !== b.adjustedScore) return b.adjustedScore - a.adjustedScore;
+    if (a.adjustedScore !== b.adjustedScore)
+      return b.adjustedScore - a.adjustedScore;
     return a.index - b.index;
   });
 
@@ -165,7 +280,7 @@ export function selectTopOutfitsWithQualityFloor<T extends JudgeOutfit>(
   const toConfidence = (score: number): Confidence => {
     if (maxScore <= 0) return 'low';
     const ratio = score / maxScore;
-    if (ratio >= 0.95) return 'high';   // within 5% of max
+    if (ratio >= 0.95) return 'high'; // within 5% of max
     if (ratio >= 0.85) return 'medium'; // within 15% of max
     return 'low';
   };
@@ -210,10 +325,10 @@ export function applyStylistProfileEnhancements(
   let metalPreferenceHits = 0;
 
   for (const item of outfit.items ?? []) {
-    const name = ((item.name ?? '') as string).toLowerCase();
-    const subcategory = ((item.subcategory ?? '') as string).toLowerCase();
-    const material = ((item.material ?? '') as string).toLowerCase();
-    const category = ((item.category ?? item.main_category ?? '') as string).toLowerCase();
+    const name = (item.name ?? '').toLowerCase();
+    const subcategory = (item.subcategory ?? '').toLowerCase();
+    const material = (item.material ?? '').toLowerCase();
+    const category = (item.category ?? item.main_category ?? '').toLowerCase();
 
     // Signal: footwear_comfort — "Comfort first" + heel/stiletto shoe
     if (
@@ -221,7 +336,9 @@ export function applyStylistProfileEnhancements(
       (category === 'shoes' || category === 'footwear')
     ) {
       const heelKeywords = ['heel', 'stiletto', 'pump', 'platform'];
-      if (heelKeywords.some((kw) => name.includes(kw) || subcategory.includes(kw))) {
+      if (
+        heelKeywords.some((kw) => name.includes(kw) || subcategory.includes(kw))
+      ) {
         delta -= 5;
         footwearComfortHits++;
       }
@@ -233,7 +350,11 @@ export function applyStylistProfileEnhancements(
       (category === 'shoes' || category === 'footwear')
     ) {
       const narrowKeywords = ['pointed', 'pointy', 'narrow', 'stiletto'];
-      if (narrowKeywords.some((kw) => name.includes(kw) || subcategory.includes(kw))) {
+      if (
+        narrowKeywords.some(
+          (kw) => name.includes(kw) || subcategory.includes(kw),
+        )
+      ) {
         delta -= 3;
         footWidthHits++;
       }
@@ -241,8 +362,19 @@ export function applyStylistProfileEnhancements(
 
     // Signal: care_tolerance — "Easy care only" + dry-clean-only material
     if (profile.care_tolerance?.toLowerCase() === 'easy care only') {
-      const dryCleanKeywords = ['silk', 'cashmere', 'suede', 'velvet', 'dry clean', 'dry-clean'];
-      if (dryCleanKeywords.some((kw) => material.includes(kw) || name.includes(kw))) {
+      const dryCleanKeywords = [
+        'silk',
+        'cashmere',
+        'suede',
+        'velvet',
+        'dry clean',
+        'dry-clean',
+      ];
+      if (
+        dryCleanKeywords.some(
+          (kw) => material.includes(kw) || name.includes(kw),
+        )
+      ) {
         delta -= 3;
         careToleranceHits++;
       }
@@ -266,7 +398,14 @@ export function applyStylistProfileEnhancements(
         const preferredMetal = profile.metal_preference.toLowerCase();
         const itemText = `${name} ${material} ${subcategory}`;
         // Only penalize if we can detect a specific metal that doesn't match
-        const metalKeywords = ['gold', 'silver', 'rose gold', 'platinum', 'bronze', 'copper'];
+        const metalKeywords = [
+          'gold',
+          'silver',
+          'rose gold',
+          'platinum',
+          'bronze',
+          'copper',
+        ];
         const detectedMetal = metalKeywords.find((m) => itemText.includes(m));
         if (detectedMetal && !preferredMetal.includes(detectedMetal)) {
           delta -= 2;
@@ -276,7 +415,13 @@ export function applyStylistProfileEnhancements(
     }
   }
 
-  if (footwearComfortHits + footWidthHits + careToleranceHits + metalPreferenceHits > 0) {
+  if (
+    footwearComfortHits +
+      footWidthHits +
+      careToleranceHits +
+      metalPreferenceHits >
+    0
+  ) {
     console.log(
       JSON.stringify({
         _tag: 'STYLIST_PROFILE_SIGNAL_COUNTS',

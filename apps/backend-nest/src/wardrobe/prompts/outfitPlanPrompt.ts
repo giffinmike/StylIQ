@@ -33,7 +33,7 @@ export type OutfitPlanResponse = {
 };
 
 // Derive formality from query keywords
-function deriveFormality(query: string): number {
+export function deriveFormality(query: string): number {
   const q = query.toLowerCase();
   if (/\b(formal|business|interview|wedding|gala|black.?tie)\b/.test(q))
     return 9;
@@ -46,7 +46,7 @@ function deriveFormality(query: string): number {
 }
 
 // Derive occasion from query
-function deriveOccasion(query: string): string | null {
+export function deriveOccasion(query: string): string | null {
   const q = query.toLowerCase();
   if (/\b(work|office|meeting|interview)\b/.test(q)) return 'work';
   if (/\b(date|dinner|restaurant)\b/.test(q)) return 'date';
@@ -213,9 +213,7 @@ REFINEMENT MODE:
 
     // P1 soft preferences
     if (sp.patternPreferences?.length)
-      lines.push(
-        `- Preferred patterns: ${sp.patternPreferences.join(', ')}`,
-      );
+      lines.push(`- Preferred patterns: ${sp.patternPreferences.join(', ')}`);
     if (sp.avoidPatterns?.length)
       lines.push(`- Avoided patterns: ${sp.avoidPatterns.join(', ')}`);
     if (sp.silhouettePreference)

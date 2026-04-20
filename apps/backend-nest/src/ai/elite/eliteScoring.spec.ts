@@ -393,8 +393,8 @@ describe('scoreOutfit (Phase 2)', () => {
       preferredBrands: [],
     };
     const result = scoreOutfit(outfit, ctx, { mode: 'studio', rerank: true });
-    // Nike: +10, Gucci: -15, slot complete: +5 = 0
-    expect(result.score).toBe(0);
+    // Nike: +10, Gucci: -10 (rebalanced), slot complete: +5 = 5
+    expect(result.score).toBe(5);
     expect(result.flags).toContain('brand');
     expect(result.flags).toContain('slot_complete');
   });
@@ -429,7 +429,10 @@ describe('scoreOutfit (Phase 2)', () => {
     expect(result.confidence).toBe(0);
   });
 
-  it('formality coherence: tight range (≤1) gives +4 in studio', () => {
+  it('formality compression bonus removed: tight range alone no longer scores', () => {
+    // The old rule (+4 when range ≤ 1) rewarded monotone formality clusters.
+    // It has been replaced by a queryContext-gated high-low contrast bonus.
+    // Without queryContext only slot_complete fires.
     const outfit = {
       id: 'o1',
       items: [
@@ -439,13 +442,13 @@ describe('scoreOutfit (Phase 2)', () => {
       ],
     } as any;
     const result = scoreOutfit(outfit, {}, { mode: 'studio', rerank: true });
-    // formality range 0.8 ≤ 1 → +4, slot complete: +5 = 9
-    expect(result.score).toBe(9);
-    expect(result.flags).toContain('formality');
+    expect(result.score).toBe(5); // slot_complete only
+    expect(result.flags).not.toContain('formality');
+    expect(result.flags).not.toContain('formality_contrast');
     expect(result.flags).toContain('slot_complete');
   });
 
-  it('formality coherence: medium range (≤2) gives +2 in studio', () => {
+  it('formality compression bonus removed: medium range alone no longer scores', () => {
     const outfit = {
       id: 'o1',
       items: [
@@ -455,9 +458,8 @@ describe('scoreOutfit (Phase 2)', () => {
       ],
     } as any;
     const result = scoreOutfit(outfit, {}, { mode: 'studio', rerank: true });
-    // formality range 2 ≤ 2 → +2, slot complete: +5 = 7
-    expect(result.score).toBe(7);
-    expect(result.flags).toContain('formality');
+    expect(result.score).toBe(5); // slot_complete only
+    expect(result.flags).not.toContain('formality');
   });
 
   it('formality coherence: wide range (>2) gives no bonus', () => {
@@ -1032,8 +1034,8 @@ describe('Style Profile scoring layer', () => {
       { presentation: 'masculine' },
       { mode: 'studio', rerank: true },
     );
-    // presentation: -15, slot_complete: +5 = -10
-    expect(result.score).toBe(-10);
+    // presentation: -8 (rebalanced), slot_complete: +5 = -3
+    expect(result.score).toBe(-3);
     expect(result.flags).toContain('presentation');
     expect(result.flags).toContain('slot_complete');
   });
@@ -1056,27 +1058,24 @@ describe('Style Profile scoring layer', () => {
 
   // ── FINAL hardening: strict style-signal gate ────────────────────────────
 
-  it('fail-open: slot_complete alone does NOT reorder (style-signal gate)', () => {
-    // Outfit A: slot-complete (tops+bottoms+shoes) → slot_complete fires, score=5
-    // Outfit B: NOT slot-complete (tops only) → slot_complete does NOT fire, score=0
-    // Without the gate, A would rank above B, reordering the input [B, A].
-    // With the gate, no style-profile signal fired → preserve exact input order [B, A].
+  it('slot_complete alone DOES reorder after fail-open gate removal', () => {
+    // The old behavior preserved input order when only slot_complete fired.
+    // The fail-open gate has been removed intentionally so Elite always acts
+    // on scoring. Higher-scoring outfit now wins regardless of signal type.
     const incomplete = makeOutfit('incomplete', [{ id: 'i1', slot: 'tops' }]);
     const complete = makeOutfit('complete', [
       { id: 'i2', slot: 'tops' },
       { id: 'i3', slot: 'bottoms' },
       { id: 'i4', slot: 'shoes' },
     ]);
-    // Empty StyleContext: no brand, color, category, style, formality, presentation signals
     const ctx: any = {};
     const result = elitePostProcessOutfits([incomplete, complete], ctx, {
       mode: 'studio',
       rerank: true,
     });
-    // MUST preserve exact input order despite score difference (0 vs 5)
     expect(result.outfits.map((o: any) => o.id)).toEqual([
-      'incomplete',
       'complete',
+      'incomplete',
     ]);
   });
 
@@ -1234,7 +1233,8 @@ describe('Style Profile scoring layer', () => {
       debug: true,
     });
 
-    // Exact input order preserved (fail-open)
+    // All three outfits score the same (+5 slot_complete each) with an empty
+    // StyleContext. Stable sort preserves input order on score ties.
     expect(result.outfits.map((o: any) => o.id)).toEqual([
       'enriched-a',
       'enriched-b',
@@ -1256,9 +1256,6 @@ describe('Style Profile scoring layer', () => {
         expect(STYLE_FLAGS).not.toContain(flag);
       }
     }
-
-    // Debug confirms skip reason
-    expect(result.debug).toHaveProperty('skipped', 'no_style_signals');
   });
 });
 
@@ -1554,8 +1551,8 @@ describe('Profile avoid_colors scoring', () => {
     };
     const result = scoreOutfit(outfit, ctx, { mode: 'studio', rerank: true });
     expect(result.flags).toContain('profile_avoid_colors');
-    // -10 for neon match + 5 slot_complete = -5
-    expect(result.score).toBe(-5);
+    // -6 for neon match (rebalanced) + 5 slot_complete = -1
+    expect(result.score).toBe(-1);
   });
 
   it('skips gracefully when avoid_colors is empty', () => {
@@ -1595,7 +1592,7 @@ describe('Profile avoid_materials scoring', () => {
     };
     const result = scoreOutfit(outfit, ctx, { mode: 'studio', rerank: true });
     expect(result.flags).toContain('profile_avoid_materials');
-    expect(result.score).toBe(-5); // -10 + 5 slot
+    expect(result.score).toBe(-1); // -6 (rebalanced) + 5 slot
   });
 });
 
@@ -1632,7 +1629,7 @@ describe('Silhouette preference scoring', () => {
     items: items.map((i) => ({ ...i })),
   });
 
-  it('+2 for matching fit, -3 for mismatching', () => {
+  it('+6 for matching fit, -6 for mismatching', () => {
     const outfit = makeOutfit('o1', [
       { id: 'i1', slot: 'tops', fit: 'tailored' },
       { id: 'i2', slot: 'bottoms', fit: 'oversized' },
@@ -1647,8 +1644,8 @@ describe('Silhouette preference scoring', () => {
     };
     const result = scoreOutfit(outfit, ctx, { mode: 'studio', rerank: true });
     expect(result.flags).toContain('silhouette');
-    // tailored +2, oversized -3, slot +5 = 4
-    expect(result.score).toBe(4);
+    // tailored +6, oversized -6, slot +5 = 5
+    expect(result.score).toBe(5);
   });
 });
 
@@ -1673,8 +1670,8 @@ describe('Contrast preference scoring', () => {
     };
     const result = scoreOutfit(outfit, ctx, { mode: 'studio', rerank: true });
     expect(result.flags).toContain('contrast');
-    // +4 contrast, +5 slot = 9
-    expect(result.score).toBe(9);
+    // +7 contrast (rebalanced), +5 slot = 12
+    expect(result.score).toBe(12);
   });
 
   it('skips when preference is "No preference"', () => {

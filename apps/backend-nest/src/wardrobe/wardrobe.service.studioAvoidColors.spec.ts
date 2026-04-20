@@ -15,15 +15,12 @@ import {
 
 // ── Helpers (mirror the inline guard in wardrobe.service.ts) ──
 
-function guardFilter(
-  outfits: any[],
-  avoidColors: string[],
-): any[] {
+function guardFilter(outfits: any[], avoidColors: string[]): any[] {
   if (!avoidColors.length) return outfits;
   const expanded = expandAvoidColors(avoidColors);
   const hasAvoided = (outfit: any): boolean => {
     for (const it of outfit.items ?? []) {
-      for (const ic of extractItemColors(it as any)) {
+      for (const ic of extractItemColors(it)) {
         for (const ac of expanded) {
           if (colorMatchesSafe(ic, ac)) return true;
         }
@@ -42,7 +39,10 @@ function selectTopValid(
   scored: { o: any; valid: boolean; cs: number }[],
   n: number,
 ): any[] {
-  return scored.filter((s) => s.valid).slice(0, n).map((s) => s.o);
+  return scored
+    .filter((s) => s.valid)
+    .slice(0, n)
+    .map((s) => s.o);
 }
 
 const mkOutfit = (id: string, items: any[]) => ({
@@ -207,15 +207,51 @@ describe('Studio full pipeline — oversized pool + avoid_colors', () => {
   it('9 candidates, 3 have avoided colors → returns 3 valid, none contain avoided', () => {
     // Simulate: 9 scored candidates, 3 contain magenta (avoided)
     const scored = [
-      { o: mkOutfit('1', [mkItem('white'), mkItem('black')]), valid: true, cs: 95 },
-      { o: mkOutfit('2', [mkItem('magenta'), mkItem('grey')]), valid: false, cs: 92 },
-      { o: mkOutfit('3', [mkItem('blue'), mkItem('tan')]), valid: true, cs: 88 },
-      { o: mkOutfit('4', [mkItem('magenta'), mkItem('white')]), valid: false, cs: 85 },
-      { o: mkOutfit('5', [mkItem('grey'), mkItem('black')]), valid: true, cs: 82 },
-      { o: mkOutfit('6', [mkItem('magenta'), mkItem('beige')]), valid: false, cs: 78 },
-      { o: mkOutfit('7', [mkItem('olive'), mkItem('cream')]), valid: true, cs: 75 },
-      { o: mkOutfit('8', [mkItem('charcoal'), mkItem('white')]), valid: true, cs: 72 },
-      { o: mkOutfit('9', [mkItem('navy'), mkItem('tan')]), valid: true, cs: 68 },
+      {
+        o: mkOutfit('1', [mkItem('white'), mkItem('black')]),
+        valid: true,
+        cs: 95,
+      },
+      {
+        o: mkOutfit('2', [mkItem('magenta'), mkItem('grey')]),
+        valid: false,
+        cs: 92,
+      },
+      {
+        o: mkOutfit('3', [mkItem('blue'), mkItem('tan')]),
+        valid: true,
+        cs: 88,
+      },
+      {
+        o: mkOutfit('4', [mkItem('magenta'), mkItem('white')]),
+        valid: false,
+        cs: 85,
+      },
+      {
+        o: mkOutfit('5', [mkItem('grey'), mkItem('black')]),
+        valid: true,
+        cs: 82,
+      },
+      {
+        o: mkOutfit('6', [mkItem('magenta'), mkItem('beige')]),
+        valid: false,
+        cs: 78,
+      },
+      {
+        o: mkOutfit('7', [mkItem('olive'), mkItem('cream')]),
+        valid: true,
+        cs: 75,
+      },
+      {
+        o: mkOutfit('8', [mkItem('charcoal'), mkItem('white')]),
+        valid: true,
+        cs: 72,
+      },
+      {
+        o: mkOutfit('9', [mkItem('navy'), mkItem('tan')]),
+        valid: true,
+        cs: 68,
+      },
     ];
 
     // Layer 1: selectTopValid gate
@@ -270,7 +306,10 @@ describe('Studio slot-pick — skip avoid_color violators in Pinecone matches', 
       let violated = false;
       for (const ic of colors) {
         for (const ac of expanded) {
-          if (colorMatchesSafe(ic, ac)) { violated = true; break; }
+          if (colorMatchesSafe(ic, ac)) {
+            violated = true;
+            break;
+          }
         }
         if (violated) break;
       }

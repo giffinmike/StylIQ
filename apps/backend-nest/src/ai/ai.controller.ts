@@ -277,21 +277,25 @@ export class AiController {
           // console.log(`👗 [recreate-outfit] Searching for: "${searchQuery}" (brand: ${piece.brand || 'none'})`);
 
           try {
-            let products = await this.searchGoogleShopping(
+            const products = await this.searchGoogleShopping(
               searchQuery,
               undefined,
             );
 
             const textFiltered = products.filter((p: any) => {
-              const text = `${p.title ?? ''} ${p.name ?? ''} ${p.product_title ?? ''}`
-                .toLowerCase();
+              const text =
+                `${p.title ?? ''} ${p.name ?? ''} ${p.product_title ?? ''}`.toLowerCase();
 
               if (targetPresentation === 'masculine') {
-                return !/(women|woman|female|ladies|girls|girl|womens|women's|junior|juniors|kids|kid|toddler|youth)/i.test(text);
+                return !/(women|woman|female|ladies|girls|girl|womens|women's|junior|juniors|kids|kid|toddler|youth)/i.test(
+                  text,
+                );
               }
 
               if (targetPresentation === 'feminine') {
-                return !/(men|man|male|mens|men's|boys|boy|youth|junior|juniors|kids|kid|toddler)/i.test(text);
+                return !/(men|man|male|mens|men's|boys|boy|youth|junior|juniors|kids|kid|toddler)/i.test(
+                  text,
+                );
               }
 
               return true;
@@ -303,11 +307,13 @@ export class AiController {
               const classified = await Promise.all(
                 textFiltered.map(async (product: any) => {
                   const candidate =
-                    typeof product.image === 'string' && product.image.startsWith('http')
+                    typeof product.image === 'string' &&
+                    product.image.startsWith('http')
                       ? product.image
-                      : typeof product.thumbnail === 'string' && product.thumbnail.startsWith('http')
-                      ? product.thumbnail
-                      : null;
+                      : typeof product.thumbnail === 'string' &&
+                          product.thumbnail.startsWith('http')
+                        ? product.thumbnail
+                        : null;
 
                   if (!candidate) {
                     return { product, keep: false };
@@ -343,8 +349,8 @@ export class AiController {
               );
 
               filteredProducts = classified
-                .filter(c => c.keep)
-                .map(c => c.product);
+                .filter((c) => c.keep)
+                .map((c) => c.product);
             }
 
             return {

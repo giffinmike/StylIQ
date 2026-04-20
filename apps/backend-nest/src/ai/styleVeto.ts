@@ -119,8 +119,7 @@ function isLongSleeveTailoring(item: VetoItem): boolean {
   return LONG_SLEEVE_TAILORING_RE.test(itemText(item));
 }
 
-const BARE_LEG_LOWER_RE =
-  /\b(shorts|mini\s?skirt|micro\s?skirt)\b/i;
+const BARE_LEG_LOWER_RE = /\b(shorts|mini\s?skirt|micro\s?skirt)\b/i;
 
 function isBareLegLower(item: VetoItem): boolean {
   const slot = getSlot(item);
@@ -133,16 +132,14 @@ function isBareLegLower(item: VetoItem): boolean {
 function checkTailoredUpperAthleticLower(items: VetoItem[]): string | null {
   const hasTailored = items.some(isTailoredUpper);
   const hasAthletic = items.some(isAthleticLower);
-  if (hasTailored && hasAthletic)
-    return 'TAILORED_UPPER_ATHLETIC_LOWER';
+  if (hasTailored && hasAthletic) return 'TAILORED_UPPER_ATHLETIC_LOWER';
   return null;
 }
 
 function checkFormalFootwearAthleticLower(items: VetoItem[]): string | null {
   const hasFormal = items.some(isFormalFootwear);
   const hasAthletic = items.some(isAthleticLower);
-  if (hasFormal && hasAthletic)
-    return 'FORMAL_FOOTWEAR_ATHLETIC_LOWER';
+  if (hasFormal && hasAthletic) return 'FORMAL_FOOTWEAR_ATHLETIC_LOWER';
   return null;
 }
 
@@ -159,16 +156,14 @@ function checkFormalContextExposedAthletic(
 function checkTailoredJacketCasualFootwear(items: VetoItem[]): string | null {
   const hasJacket = items.some(isTailoredJacket);
   const hasCasual = items.some(isCasualOpenFootwear);
-  if (hasJacket && hasCasual)
-    return 'TAILORED_JACKET_CASUAL_OPEN_FOOTWEAR';
+  if (hasJacket && hasCasual) return 'TAILORED_JACKET_CASUAL_OPEN_FOOTWEAR';
   return null;
 }
 
 function checkCoveredFormalExposedCasual(items: VetoItem[]): string | null {
   const hasTailoring = items.some(isLongSleeveTailoring);
   const hasBareLeg = items.some(isBareLegLower);
-  if (hasTailoring && hasBareLeg)
-    return 'COVERED_FORMAL_UPPER_BARE_LEG_LOWER';
+  if (hasTailoring && hasBareLeg) return 'COVERED_FORMAL_UPPER_BARE_LEG_LOWER';
   return null;
 }
 

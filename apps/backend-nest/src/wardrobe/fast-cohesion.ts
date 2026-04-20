@@ -27,18 +27,32 @@ type CohesionResult = {
 
 export type CohesionConfig = {
   maxFormalityDelta?: number; // default 5
-  minScore?: number;          // default 0.45
+  minScore?: number; // default 0.45
 };
 
-const LIGHT_MATERIAL = /\b(linen|cotton|silk|chiffon|seersucker|chambray|jersey|mesh|rayon|modal)\b/i;
-const HEAVY_MATERIAL = /\b(wool|cashmere|fleece|corduroy|tweed|shearling|fur|sherpa|flannel|leather|suede|denim|canvas)\b/i;
+const LIGHT_MATERIAL =
+  /\b(linen|cotton|silk|chiffon|seersucker|chambray|jersey|mesh|rayon|modal)\b/i;
+const HEAVY_MATERIAL =
+  /\b(wool|cashmere|fleece|corduroy|tweed|shearling|fur|sherpa|flannel|leather|suede|denim|canvas)\b/i;
 
 const WARM_SEASON = new Set(['summer', 'spring']);
 const COLD_SEASON = new Set(['winter', 'fall']);
 
 const NEUTRAL_COLORS = new Set([
-  'black', 'white', 'gray', 'grey', 'charcoal', 'navy', 'beige',
-  'cream', 'ivory', 'khaki', 'tan', 'taupe', 'brown', 'camel',
+  'black',
+  'white',
+  'gray',
+  'grey',
+  'charcoal',
+  'navy',
+  'beige',
+  'cream',
+  'ivory',
+  'khaki',
+  'tan',
+  'taupe',
+  'brown',
+  'camel',
 ]);
 
 const CLASH_PAIRS: [Set<string>, Set<string>][] = [
@@ -62,21 +76,32 @@ function extractColorTokens(item: CohesionItem): string[] {
   const tokens: string[] = [];
   for (const raw of [item.color, item.color_family]) {
     if (!raw) continue;
-    for (const t of raw.toLowerCase().replace(/[^a-z\s]/g, ' ').split(/\s+/)) {
+    for (const t of raw
+      .toLowerCase()
+      .replace(/[^a-z\s]/g, ' ')
+      .split(/\s+/)) {
       if (t) tokens.push(t);
     }
   }
   return tokens;
 }
 
-function scoreFormalitySpread(items: CohesionItem[], maxDelta = 5): { score: number; reject: boolean; reason?: string } {
+function scoreFormalitySpread(
+  items: CohesionItem[],
+  maxDelta = 5,
+): { score: number; reject: boolean; reason?: string } {
   const scores = items
     .map((i) => i.formality_score)
     .filter((s): s is number => typeof s === 'number');
   if (scores.length < 2) return { score: 1, reject: false };
 
   const delta = Math.max(...scores) - Math.min(...scores);
-  if (delta >= maxDelta) return { score: 0, reject: true, reason: `FORMALITY_SPREAD: delta=${delta}` };
+  if (delta >= maxDelta)
+    return {
+      score: 0,
+      reject: true,
+      reason: `FORMALITY_SPREAD: delta=${delta}`,
+    };
   if (delta >= maxDelta - 1) return { score: 0, reject: false };
   if (delta >= 3) return { score: 0.3, reject: false };
   if (delta >= 2) return { score: 0.7, reject: false };
@@ -128,7 +153,10 @@ function scoreColorHarmony(items: CohesionItem[]): number {
   return Math.max(0, Math.min(1, harmony));
 }
 
-function scoreMaterialWeight(items: CohesionItem[], ctx: CohesionContext): number {
+function scoreMaterialWeight(
+  items: CohesionItem[],
+  ctx: CohesionContext,
+): number {
   const weights = items.map(classifyWeight);
   const unique = new Set(weights);
 
@@ -142,7 +170,10 @@ function scoreMaterialWeight(items: CohesionItem[], ctx: CohesionContext): numbe
   return 0.7;
 }
 
-function scoreSeasonCoherence(items: CohesionItem[], ctx: CohesionContext): number {
+function scoreSeasonCoherence(
+  items: CohesionItem[],
+  ctx: CohesionContext,
+): number {
   if (!ctx.season) return 0.7;
 
   const weights = items.map(classifyWeight);
@@ -166,7 +197,8 @@ export function scoreFastOutfitCohesion(
   const minScore = config?.minScore ?? 0.45;
 
   const formality = scoreFormalitySpread(items, maxFormalityDelta);
-  if (formality.reject) return { score: 0, pass: false, reason: formality.reason };
+  if (formality.reject)
+    return { score: 0, pass: false, reason: formality.reason };
 
   const dressCode = scoreDressCodeAlignment(items);
   const color = scoreColorHarmony(items);
@@ -174,9 +206,9 @@ export function scoreFastOutfitCohesion(
   const season = scoreSeasonCoherence(items, context);
 
   const score =
-    formality.score * 0.30 +
-    dressCode * 0.20 +
-    color * 0.20 +
+    formality.score * 0.3 +
+    dressCode * 0.2 +
+    color * 0.2 +
     material * 0.15 +
     season * 0.15;
 
@@ -185,6 +217,8 @@ export function scoreFastOutfitCohesion(
   return {
     score,
     pass,
-    reason: pass ? undefined : `COHESION_LOW: score=${score.toFixed(2)} (formality=${formality.score.toFixed(2)} dress=${dressCode.toFixed(2)} color=${color.toFixed(2)} material=${material.toFixed(2)} season=${season.toFixed(2)})`,
+    reason: pass
+      ? undefined
+      : `COHESION_LOW: score=${score.toFixed(2)} (formality=${formality.score.toFixed(2)} dress=${dressCode.toFixed(2)} color=${color.toFixed(2)} material=${material.toFixed(2)} season=${season.toFixed(2)})`,
   };
 }

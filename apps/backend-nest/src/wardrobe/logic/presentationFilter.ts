@@ -80,7 +80,12 @@ export function isFeminineItem(
  * 'masculine' if ≤5%, or null if genuinely mixed or too few items.
  */
 export function inferImplicitPresentation(
-  items: { main_category?: string; category?: string; subcategory?: string; name?: string }[],
+  items: {
+    main_category?: string;
+    category?: string;
+    subcategory?: string;
+    name?: string;
+  }[],
 ): UserPresentation | null {
   const wearable = items.filter((item) => {
     const cat = (item.main_category || item.category || '').toLowerCase();
@@ -95,7 +100,7 @@ export function inferImplicitPresentation(
     ),
   ).length;
   const ratio = feminineCount / wearable.length;
-  if (ratio >= 0.70) return 'feminine';
+  if (ratio >= 0.7) return 'feminine';
   if (ratio <= 0.05) return 'masculine';
   return null;
 }

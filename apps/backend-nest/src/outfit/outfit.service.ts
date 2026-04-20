@@ -169,7 +169,9 @@ export class OutfitService {
           });
           this.fashionStateService
             .computeAndSaveState(user_id)
-            .catch(err => this.logger.error('[LEARNING INLINE] recompute failed', err));
+            .catch((err) =>
+              this.logger.error('[LEARNING INLINE] recompute failed', err),
+            );
         } catch (err) {
           this.logger.error('[LEARNING] outfit rated event failed', err);
         }

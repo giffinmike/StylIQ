@@ -10,15 +10,22 @@ import { expandAvoidColorsLite, ChatAvoidLists } from './chatTier4';
 // ── 1a. Category Detection ──────────────────────────────────────────────
 
 const CATEGORY_MAP: Record<string, RegExp> = {
-  Outerwear: /\b(blazer|jacket|coat|parka|trench|puffer|bomber|cardigan|overcoat|peacoat|anorak|windbreaker|cape|poncho|shrug|vest)\b/i,
+  Outerwear:
+    /\b(blazer|jacket|coat|parka|trench|puffer|bomber|cardigan|overcoat|peacoat|anorak|windbreaker|cape|poncho|shrug|vest)\b/i,
   Tops: /\b(top|blouse|shirt|tee|t-shirt|tank|camisole|tunic|polo|henley|sweater|pullover|sweatshirt|hoodie|crop top|bodysuit)\b/i,
-  Bottoms: /\b(pants|trousers|jeans|shorts|skirt|leggings|joggers|chinos|culottes|palazzo|cargo|slacks|bermuda)\b/i,
-  Dresses: /\b(dress|gown|maxi|midi|mini dress|sundress|sheath|wrap dress|shift dress|cocktail dress|evening dress)\b/i,
-  Footwear: /\b(shoes|boots|sneakers|heels|loafers|sandals|pumps|flats|oxfords|mules|espadrilles|slides|stilettos|wedges|ankle boots)\b/i,
+  Bottoms:
+    /\b(pants|trousers|jeans|shorts|skirt|leggings|joggers|chinos|culottes|palazzo|cargo|slacks|bermuda)\b/i,
+  Dresses:
+    /\b(dress|gown|maxi|midi|mini dress|sundress|sheath|wrap dress|shift dress|cocktail dress|evening dress)\b/i,
+  Footwear:
+    /\b(shoes|boots|sneakers|heels|loafers|sandals|pumps|flats|oxfords|mules|espadrilles|slides|stilettos|wedges|ankle boots)\b/i,
   Bags: /\b(bag|purse|tote|clutch|backpack|crossbody|satchel|handbag|messenger|duffel|weekender)\b/i,
-  Accessories: /\b(watch|belt|scarf|hat|sunglasses|bracelet|necklace|earring|ring|tie|pocket square|cufflinks|brooch|gloves)\b/i,
-  Activewear: /\b(activewear|athletic|workout|gym|sports bra|yoga|running|track)\b/i,
-  Swimwear: /\b(swimsuit|bikini|one-piece|swim trunks|boardshorts|cover-up|rash guard)\b/i,
+  Accessories:
+    /\b(watch|belt|scarf|hat|sunglasses|bracelet|necklace|earring|ring|tie|pocket square|cufflinks|brooch|gloves)\b/i,
+  Activewear:
+    /\b(activewear|athletic|workout|gym|sports bra|yoga|running|track)\b/i,
+  Swimwear:
+    /\b(swimsuit|bikini|one-piece|swim trunks|boardshorts|cover-up|rash guard)\b/i,
   Suits: /\b(suit|tuxedo|dinner jacket)\b/i,
   Loungewear: /\b(loungewear|pajamas|robe|sleepwear|nightgown)\b/i,
 };
@@ -32,9 +39,12 @@ export function detectRelevantCategory(message: string): string | null {
 
 // ── 1b. Formality Anchor ────────────────────────────────────────────────
 
-const AUTHORITY_TRIGGERS = /\b(powerful|luxurious|authoritative|expensive|commanding|prestigious|elegant|executive|sophisticated)\b/i;
+const AUTHORITY_TRIGGERS =
+  /\b(powerful|luxurious|authoritative|expensive|commanding|prestigious|elegant|executive|sophisticated)\b/i;
 
-export function detectFormalityAnchor(message: string): 'elevated_business' | null {
+export function detectFormalityAnchor(
+  message: string,
+): 'elevated_business' | null {
   return AUTHORITY_TRIGGERS.test(message) ? 'elevated_business' : null;
 }
 
@@ -60,12 +70,25 @@ export interface ShortlistItem {
 }
 
 const DARK_NEUTRAL_COLORS = new Set([
-  'black', 'charcoal', 'navy', 'dark grey', 'dark gray', 'slate',
-  'onyx', 'jet black', 'charcoal black', 'steel blue', 'midnight',
-  'espresso', 'chocolate', 'deep navy', 'dark brown',
+  'black',
+  'charcoal',
+  'navy',
+  'dark grey',
+  'dark gray',
+  'slate',
+  'onyx',
+  'jet black',
+  'charcoal black',
+  'steel blue',
+  'midnight',
+  'espresso',
+  'chocolate',
+  'deep navy',
+  'dark brown',
 ]);
 
-const STRUCTURED_KEYWORDS = /\b(tailored|structured|fitted|darted|lined|bespoke|sharp|crisp|pressed|suiting|wool|cashmere|silk|tweed)\b/i;
+const STRUCTURED_KEYWORDS =
+  /\b(tailored|structured|fitted|darted|lined|bespoke|sharp|crisp|pressed|suiting|wool|cashmere|silk|tweed)\b/i;
 
 export function buildShortlist(
   items: ShortlistItem[],
@@ -73,22 +96,33 @@ export function buildShortlist(
   category: string | null,
   formalityAnchor: 'elevated_business' | null,
 ): ShortlistItem[] {
-  const expandedAvoidColors = avoidLists.avoidColors.length > 0
-    ? new Set(expandAvoidColorsLite(avoidLists.avoidColors).map(c => c.toLowerCase()))
-    : new Set<string>();
+  const expandedAvoidColors =
+    avoidLists.avoidColors.length > 0
+      ? new Set(
+          expandAvoidColorsLite(avoidLists.avoidColors).map((c) =>
+            c.toLowerCase(),
+          ),
+        )
+      : new Set<string>();
 
-  const avoidMaterials = new Set(avoidLists.avoidMaterials.map(m => m.trim().toLowerCase()));
-  const avoidPatterns = new Set(avoidLists.avoidPatterns.map(p => p.trim().toLowerCase()));
+  const avoidMaterials = new Set(
+    avoidLists.avoidMaterials.map((m) => m.trim().toLowerCase()),
+  );
+  const avoidPatterns = new Set(
+    avoidLists.avoidPatterns.map((p) => p.trim().toLowerCase()),
+  );
 
-  let candidates = items.filter(item => {
+  const candidates = items.filter((item) => {
     // Filter by category if detected
-    if (category && item.main_category && item.main_category !== category) return false;
+    if (category && item.main_category && item.main_category !== category)
+      return false;
 
     // Exclude avoid colors
     const itemColor = (item.color || '').toLowerCase();
     const itemColorFamily = (item.color_family || '').toLowerCase();
     if (itemColor && expandedAvoidColors.has(itemColor)) return false;
-    if (itemColorFamily && expandedAvoidColors.has(itemColorFamily)) return false;
+    if (itemColorFamily && expandedAvoidColors.has(itemColorFamily))
+      return false;
 
     // Exclude avoid patterns
     const itemPattern = (item.pattern || '').toLowerCase();
@@ -99,9 +133,11 @@ export function buildShortlist(
     if (itemMaterial && avoidMaterials.has(itemMaterial)) return false;
 
     // Formality threshold
-    if (formalityAnchor === 'elevated_business'
-      && item.formality_score != null
-      && item.formality_score < 6) {
+    if (
+      formalityAnchor === 'elevated_business' &&
+      item.formality_score != null &&
+      item.formality_score < 6
+    ) {
       return false;
     }
 
@@ -110,8 +146,12 @@ export function buildShortlist(
 
   // Deterministic sort: dark neutrals first → higher formality → structured tailoring
   candidates.sort((a, b) => {
-    const aIsDark = DARK_NEUTRAL_COLORS.has((a.color || '').toLowerCase()) ? 1 : 0;
-    const bIsDark = DARK_NEUTRAL_COLORS.has((b.color || '').toLowerCase()) ? 1 : 0;
+    const aIsDark = DARK_NEUTRAL_COLORS.has((a.color || '').toLowerCase())
+      ? 1
+      : 0;
+    const bIsDark = DARK_NEUTRAL_COLORS.has((b.color || '').toLowerCase())
+      ? 1
+      : 0;
     if (bIsDark !== aIsDark) return bIsDark - aIsDark;
 
     const aFormality = a.formality_score ?? 0;
@@ -120,10 +160,14 @@ export function buildShortlist(
 
     const aStructured = STRUCTURED_KEYWORDS.test(
       `${a.material || ''} ${a.fit || ''} ${a.ai_description || ''}`,
-    ) ? 1 : 0;
+    )
+      ? 1
+      : 0;
     const bStructured = STRUCTURED_KEYWORDS.test(
       `${b.material || ''} ${b.fit || ''} ${b.ai_description || ''}`,
-    ) ? 1 : 0;
+    )
+      ? 1
+      : 0;
     return bStructured - aStructured;
   });
 
@@ -140,7 +184,9 @@ export function formatShortlistForPrompt(shortlist: ShortlistItem[]): string {
       item.brand,
       item.material,
       item.fit,
-    ].filter(Boolean).join(' \u2022 ');
+    ]
+      .filter(Boolean)
+      .join(' \u2022 ');
 
     const extras = [
       item.pattern && `pattern:${item.pattern}`,
@@ -148,9 +194,13 @@ export function formatShortlistForPrompt(shortlist: ShortlistItem[]): string {
       item.dress_code && `dress-code:${item.dress_code}`,
       item.seasonality && `season:${item.seasonality}`,
       item.color_family && `color-family:${item.color_family}`,
-    ].filter(Boolean).join(' | ');
+    ]
+      .filter(Boolean)
+      .join(' | ');
 
-    const desc = item.ai_description ? `\n      ${String(item.ai_description).slice(0, 200)}` : '';
+    const desc = item.ai_description
+      ? `\n      ${String(item.ai_description).slice(0, 200)}`
+      : '';
     return `  ${i + 1}. ${parts}${extras ? `\n      [${extras}]` : ''}${desc}`;
   });
 
@@ -199,19 +249,44 @@ At the end, return a short JSON block like:
 // ── 1e. Reasoning Quality Validator ─────────────────────────────────────
 
 const REQUIRED_MECHANISM_TOKENS = [
-  'shoulder', 'vertical', 'waist', 'proportion', 'hierarchy',
-  'taper', 'structure', 'frame', 'saturation', 'contrast',
-  'warmth', 'authority',
+  'shoulder',
+  'vertical',
+  'waist',
+  'proportion',
+  'hierarchy',
+  'taper',
+  'structure',
+  'frame',
+  'saturation',
+  'contrast',
+  'warmth',
+  'authority',
 ];
 
 const CONTRAST_CLAUSE_INDICATORS = [
-  'lacks', 'does not provide', 'less structured', 'weaker option', 'compared to',
+  'lacks',
+  'does not provide',
+  'less structured',
+  'weaker option',
+  'compared to',
 ];
 
 const BANNED_WORDS = [
-  'sleek', 'sophisticated', 'elegant', 'excellent choice', 'impactful',
-  'harmonious', 'stunning', 'gorgeous', 'fabulous', 'chic',
-  'lovely', 'beautiful', 'perfect', 'amazing', 'wonderful',
+  'sleek',
+  'sophisticated',
+  'elegant',
+  'excellent choice',
+  'impactful',
+  'harmonious',
+  'stunning',
+  'gorgeous',
+  'fabulous',
+  'chic',
+  'lovely',
+  'beautiful',
+  'perfect',
+  'amazing',
+  'wonderful',
 ];
 
 export function validateReasoningQuality(
@@ -221,21 +296,23 @@ export function validateReasoningQuality(
   const lower = response.toLowerCase();
 
   // A) Must reference at least 1 shortlist item by name
-  const hasItemRef = shortlistNames.some(name =>
-    name.length >= 3 && lower.includes(name.toLowerCase()),
+  const hasItemRef = shortlistNames.some(
+    (name) => name.length >= 3 && lower.includes(name.toLowerCase()),
   );
   if (!hasItemRef) return false;
 
   // B) Must use at least 3 mechanism tokens
-  const tokenHits = REQUIRED_MECHANISM_TOKENS.filter(t => lower.includes(t)).length;
+  const tokenHits = REQUIRED_MECHANISM_TOKENS.filter((t) =>
+    lower.includes(t),
+  ).length;
   if (tokenHits < 3) return false;
 
   // C) Must include at least 1 contrast clause indicator
-  const hasContrast = CONTRAST_CLAUSE_INDICATORS.some(c => lower.includes(c));
+  const hasContrast = CONTRAST_CLAUSE_INDICATORS.some((c) => lower.includes(c));
   if (!hasContrast) return false;
 
   // D) Must NOT contain any banned words
-  const hasBanned = BANNED_WORDS.some(b => lower.includes(b));
+  const hasBanned = BANNED_WORDS.some((b) => lower.includes(b));
   if (hasBanned) return false;
 
   return true;

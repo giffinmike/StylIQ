@@ -207,7 +207,10 @@ const ATHLETIC_MATERIALS = new Set([
 
 const COLOR_FAMILIES: [string, string[]][] = [
   ['white', ['white', 'off white', 'cream', 'ivory', 'ecru']],
-  ['beige', ['beige', 'tan', 'taupe', 'khaki', 'stone', 'oatmeal', 'sand', 'nude']],
+  [
+    'beige',
+    ['beige', 'tan', 'taupe', 'khaki', 'stone', 'oatmeal', 'sand', 'nude'],
+  ],
   ['gray', ['gray', 'grey', 'charcoal', 'silver', 'slate', 'heather']],
   ['black', ['black']],
   ['navy', ['navy', 'dark blue']],
@@ -237,23 +240,58 @@ for (const [family, members] of COLOR_FAMILIES) {
 }
 
 const NEUTRAL_FAMILIES = new Set([
-  'white', 'beige', 'gray', 'black', 'navy', 'brown', 'olive',
+  'white',
+  'beige',
+  'gray',
+  'black',
+  'navy',
+  'brown',
+  'olive',
 ]);
 
 const LOUD_FAMILIES = new Set([
-  'red', 'magenta', 'neon', 'bright', 'lime', 'purple',
+  'red',
+  'magenta',
+  'neon',
+  'bright',
+  'lime',
+  'purple',
 ]);
 
 const UNDERSTATED_TONE_WORDS = [
-  'understated', 'low-key', 'lowkey', 'minimal', 'minimalist', 'simple',
-  'effortless', 'subtle', 'muted', 'quiet', 'clean', 'classic',
-  'neutral', 'monochrome', 'tonal', 'balanced',
+  'understated',
+  'low-key',
+  'lowkey',
+  'minimal',
+  'minimalist',
+  'simple',
+  'effortless',
+  'subtle',
+  'muted',
+  'quiet',
+  'clean',
+  'classic',
+  'neutral',
+  'monochrome',
+  'tonal',
+  'balanced',
 ];
 
 const STATEMENT_KEYWORDS = [
-  'logo', 'graphic', 'statement', 'print', 'printed', 'pattern',
-  'patterned', 'tie-dye', 'neon', 'sequin', 'glitter', 'metallic',
-  'colorblock', 'striped',
+  'logo',
+  'graphic',
+  'statement',
+  'print',
+  'printed',
+  'pattern',
+  'patterned',
+  'tie-dye',
+  'neon',
+  'sequin',
+  'glitter',
+  'metallic',
+  'colorblock',
+  'striped',
 ];
 
 // ── Anchor priority by category (spec: outerwear > shoes > statement top > statement bottom > dress) ──
@@ -312,7 +350,11 @@ function textContainsKeyword(text: string, keywords: Set<string>): boolean {
 
 function extractColorTokens(text: string): string[] {
   if (!text) return [];
-  const lower = text.toLowerCase().replace(/[^a-z\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  const lower = text
+    .toLowerCase()
+    .replace(/[^a-z\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
   const words = lower.split(' ');
   const tokens: string[] = [];
   for (let i = 0; i < words.length; i++) {
@@ -344,7 +386,9 @@ function scoreStyleColorPrecision(
 ): { score: number; reason: string } | null {
   const candidateText = `${candidate.color || ''} ${candidate.name || candidate.ai_title || ''}`;
   const candidateTokens = extractColorTokens(candidateText);
-  const candidateFamilies = candidateTokens.map((t) => COLOR_FAMILY_MAP[t]).filter(Boolean);
+  const candidateFamilies = candidateTokens
+    .map((t) => COLOR_FAMILY_MAP[t])
+    .filter(Boolean);
 
   let colorScore = 0;
   let reason = '';
@@ -373,7 +417,9 @@ function scoreStyleColorPrecision(
       reason = `colorMatch:${overlap[0]}`;
     } else {
       const refNeutral = refFamilies.some((f) => NEUTRAL_FAMILIES.has(f));
-      const candNeutral = candidateFamilies.some((f) => NEUTRAL_FAMILIES.has(f));
+      const candNeutral = candidateFamilies.some((f) =>
+        NEUTRAL_FAMILIES.has(f),
+      );
       const candLoud = candidateFamilies.some((f) => LOUD_FAMILIES.has(f));
 
       if (refNeutral && candNeutral) {
@@ -406,7 +452,9 @@ function scoreStyleColorPrecision(
     }
     if (candLoud) {
       colorScore -= 0.6 * toneStrength;
-      reason = reason ? `${reason}+understatedPenalty:loud` : 'understatedPenalty:loud';
+      reason = reason
+        ? `${reason}+understatedPenalty:loud`
+        : 'understatedPenalty:loud';
     }
 
     const candName = (candidate.name || candidate.ai_title || '').toLowerCase();
@@ -456,13 +504,23 @@ function deriveColorTemperature(colorStr: string): ColorTemperature {
 function deriveDominantFamilies(colorStr: string): string[] {
   const words = extractColorWords(colorStr);
   // Return unique recognized color words
-  return [...new Set(words.filter((w) => WARM_COLORS.has(w) || COOL_COLORS.has(w) || NEUTRAL_COLORS.has(w)))];
+  return [
+    ...new Set(
+      words.filter(
+        (w) =>
+          WARM_COLORS.has(w) || COOL_COLORS.has(w) || NEUTRAL_COLORS.has(w),
+      ),
+    ),
+  ];
 }
 
 function isNeutralBase(colorStr: string): boolean {
   const words = extractColorWords(colorStr);
   if (words.length === 0) return true; // no color info → treat as neutral
-  return words.every((w) => NEUTRAL_COLORS.has(w) || (!WARM_COLORS.has(w) && !COOL_COLORS.has(w)));
+  return words.every(
+    (w) =>
+      NEUTRAL_COLORS.has(w) || (!WARM_COLORS.has(w) && !COOL_COLORS.has(w)),
+  );
 }
 
 function deriveSilhouetteProfile(item: CompositionItem): SilhouetteProfile {
@@ -487,7 +545,8 @@ function deriveMaterialTier(item: CompositionItem): MaterialTier {
 
   // Check material string first (most direct signal)
   if (mat) {
-    for (const kw of ATHLETIC_MATERIALS) if (mat.includes(kw)) return 'athletic';
+    for (const kw of ATHLETIC_MATERIALS)
+      if (mat.includes(kw)) return 'athletic';
     for (const kw of FORMAL_MATERIALS) if (mat.includes(kw)) return 'formal';
     for (const kw of SMART_MATERIALS) if (mat.includes(kw)) return 'smart';
     for (const kw of CASUAL_MATERIALS) if (mat.includes(kw)) return 'casual';
@@ -495,9 +554,39 @@ function deriveMaterialTier(item: CompositionItem): MaterialTier {
 
   // Fall back to subcategory/name keywords
   if (textContainsKeyword(text, ATHLETIC_MATERIALS)) return 'athletic';
-  if (textContainsKeyword(sub, new Set(['tuxedo', 'gown', 'formal', 'evening']))) return 'formal';
-  if (textContainsKeyword(sub, new Set(['blazer', 'sport coat', 'dress shirt', 'trouser', 'oxford', 'derby']))) return 'smart';
-  if (textContainsKeyword(sub, new Set(['hoodie', 'sweatshirt', 'sneaker', 'jean', 'denim', 't-shirt', 'tee']))) return 'casual';
+  if (
+    textContainsKeyword(sub, new Set(['tuxedo', 'gown', 'formal', 'evening']))
+  )
+    return 'formal';
+  if (
+    textContainsKeyword(
+      sub,
+      new Set([
+        'blazer',
+        'sport coat',
+        'dress shirt',
+        'trouser',
+        'oxford',
+        'derby',
+      ]),
+    )
+  )
+    return 'smart';
+  if (
+    textContainsKeyword(
+      sub,
+      new Set([
+        'hoodie',
+        'sweatshirt',
+        'sneaker',
+        'jean',
+        'denim',
+        't-shirt',
+        'tee',
+      ]),
+    )
+  )
+    return 'casual';
 
   return 'casual'; // safe default
 }
@@ -656,7 +745,11 @@ export function scoreItemComposition(
 
   // ── Style-color precision (5th dimension — additive, skippable for base-score calc) ──
   if (!_skipStyleDim) {
-    const styleResult = scoreStyleColorPrecision(candidate, ctx, requestedSlotDescription);
+    const styleResult = scoreStyleColorPrecision(
+      candidate,
+      ctx,
+      requestedSlotDescription,
+    );
     if (styleResult !== null) {
       score += styleResult.score;
       signals++;
@@ -682,14 +775,19 @@ export function scoreOutfitComposition(
   if (items.length < 2) return 0;
 
   // Resolve full item data
-  const resolved = items
-    .filter(Boolean)
-    .map((i) => {
-      const full = fullItemMap.get(i.id);
-      return full
-        ? { ...i, color: full.color, material: full.material, subcategory: full.subcategory, name: full.name || full.ai_title, main_category: full.main_category }
-        : i;
-    });
+  const resolved = items.filter(Boolean).map((i) => {
+    const full = fullItemMap.get(i.id);
+    return full
+      ? {
+          ...i,
+          color: full.color,
+          material: full.material,
+          subcategory: full.subcategory,
+          name: full.name || full.ai_title,
+          main_category: full.main_category,
+        }
+      : i;
+  });
 
   // Find anchor
   const anchor = selectAnchorItem(resolved);
@@ -709,21 +807,22 @@ export function scoreOutfitComposition(
     scoreItemComposition(item, ctx, categoryFormalityMap, subcategorySignals),
   );
 
-  const avgScore = itemScores.reduce((sum, s) => sum + s, 0) / itemScores.length;
+  const avgScore =
+    itemScores.reduce((sum, s) => sum + s, 0) / itemScores.length;
 
   // ── Redundancy penalty (preserved from original) ──
   const coreItems = resolved.filter((i) => i.category !== 'accessory');
   const catCounts = new Map<string, number>();
   for (const i of coreItems) {
-    if (i.category) catCounts.set(i.category, (catCounts.get(i.category) || 0) + 1);
+    if (i.category)
+      catCounts.set(i.category, (catCounts.get(i.category) || 0) + 1);
   }
   let duplicates = 0;
   for (const count of catCounts.values()) {
     if (count > 1) duplicates += count - 1;
   }
-  const redundancyPenalty = coreItems.length > 0
-    ? Math.min(1, duplicates / coreItems.length)
-    : 0;
+  const redundancyPenalty =
+    coreItems.length > 0 ? Math.min(1, duplicates / coreItems.length) : 0;
 
   // Blend: composition coherence dominates, redundancy is secondary
   return Math.max(-1, Math.min(1, avgScore * 0.85 - redundancyPenalty * 0.15));
@@ -757,12 +856,20 @@ export function rankByComposition<T extends CompositionItem>(
   if (ranked.length > 0) {
     const winner = ranked[0];
     const baseScore = scoreItemComposition(
-      winner, ctx, categoryFormalityMap, subcategorySignals,
-      undefined, true, // skip style dimension for base score
+      winner,
+      ctx,
+      categoryFormalityMap,
+      subcategorySignals,
+      undefined,
+      true, // skip style dimension for base score
     );
     const adjustment = winner.__compositionScore - baseScore;
     if (Math.abs(adjustment) > 0.001) {
-      const styleResult = scoreStyleColorPrecision(winner, ctx, requestedSlotDescription);
+      const styleResult = scoreStyleColorPrecision(
+        winner,
+        ctx,
+        requestedSlotDescription,
+      );
       // console.log(
       //   `STYLE_SCORE_ADJUSTMENT { slot: "${winner.category || ''}", requested: "${(requestedSlotDescription || '').slice(0, 60)}", itemId: "${winner.id}", itemName: "${(winner.name || '').slice(0, 40)}", baseScore: ${baseScore.toFixed(3)}, adjustment: ${adjustment.toFixed(3)}, finalScore: ${winner.__compositionScore.toFixed(3)}, reason: "${styleResult?.reason || 'none'}" }`,
       // );

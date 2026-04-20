@@ -181,7 +181,10 @@ describe('VETO_FIT', () => {
   const slimProfile = emptyProfile({ fitPreferences: ['slim'] });
 
   it('blocks oversized when slim pref', () => {
-    const input = makeInput({ title: 'Oversized Cotton Jacket', blob: 'oversized cotton jacket' });
+    const input = makeInput({
+      title: 'Oversized Cotton Jacket',
+      blob: 'oversized cotton jacket',
+    });
     const result = applyDiscoverVeto(input, slimProfile);
     expect(result.vetoed).toBe(true);
     expect(result.rule).toBe('VETO_FIT');
@@ -197,28 +200,40 @@ describe('VETO_FIT', () => {
 
   it('blocks relaxed fit when fitted pref', () => {
     const profile = emptyProfile({ fitPreferences: ['fitted'] });
-    const input = makeInput({ title: 'Relaxed Fit Chinos', blob: 'relaxed fit chinos' });
+    const input = makeInput({
+      title: 'Relaxed Fit Chinos',
+      blob: 'relaxed fit chinos',
+    });
     const result = applyDiscoverVeto(input, profile);
     expect(result.vetoed).toBe(true);
     expect(result.rule).toBe('VETO_FIT');
   });
 
   it('blocks wide leg', () => {
-    const input = makeInput({ title: 'Wide Leg Pants', blob: 'wide leg pants' });
+    const input = makeInput({
+      title: 'Wide Leg Pants',
+      blob: 'wide leg pants',
+    });
     const result = applyDiscoverVeto(input, slimProfile);
     expect(result.vetoed).toBe(true);
     expect(result.rule).toBe('VETO_FIT');
   });
 
   it('does NOT block slim items', () => {
-    const input = makeInput({ title: 'Slim Fit Cotton Polo', blob: 'slim fit cotton polo' });
+    const input = makeInput({
+      title: 'Slim Fit Cotton Polo',
+      blob: 'slim fit cotton polo',
+    });
     const result = applyDiscoverVeto(input, slimProfile);
     expect(result.vetoed).toBe(false);
   });
 
   it('does NOT block when no slim preference', () => {
     const profile = emptyProfile({ fitPreferences: ['relaxed'] });
-    const input = makeInput({ title: 'Oversized Hoodie', blob: 'oversized hoodie' });
+    const input = makeInput({
+      title: 'Oversized Hoodie',
+      blob: 'oversized hoodie',
+    });
     const result = applyDiscoverVeto(input, profile);
     expect(result.vetoed).toBe(false);
   });
@@ -237,7 +252,11 @@ describe('VETO_COLOR', () => {
 
   it('blocks via enrichedColor exact match', () => {
     const profile = emptyProfile({ avoidColors: new Set(['red']) });
-    const input = makeInput({ title: 'Jacket', blob: 'jacket cotton', enrichedColor: 'red' });
+    const input = makeInput({
+      title: 'Jacket',
+      blob: 'jacket cotton',
+      enrichedColor: 'red',
+    });
     const result = applyDiscoverVeto(input, profile);
     expect(result.vetoed).toBe(true);
     expect(result.rule).toBe('VETO_COLOR');
@@ -245,7 +264,10 @@ describe('VETO_COLOR', () => {
 
   it('does NOT false-positive "tired" for "red"', () => {
     const profile = emptyProfile({ avoidColors: new Set(['red']) });
-    const input = makeInput({ title: 'Tired Man Sweater', blob: 'tired man sweater' });
+    const input = makeInput({
+      title: 'Tired Man Sweater',
+      blob: 'tired man sweater',
+    });
     const result = applyDiscoverVeto(input, profile);
     expect(result.vetoed).toBe(false);
   });
@@ -263,7 +285,10 @@ describe('VETO_COLOR', () => {
 describe('VETO_MATERIAL', () => {
   it('blocks avoid material', () => {
     const profile = emptyProfile({ avoidMaterials: new Set(['leather']) });
-    const input = makeInput({ title: 'Leather Jacket', blob: 'leather jacket' });
+    const input = makeInput({
+      title: 'Leather Jacket',
+      blob: 'leather jacket',
+    });
     const result = applyDiscoverVeto(input, profile);
     expect(result.vetoed).toBe(true);
     expect(result.rule).toBe('VETO_MATERIAL');
@@ -282,7 +307,10 @@ describe('VETO_MATERIAL', () => {
 describe('VETO_PATTERN', () => {
   it('blocks avoid pattern', () => {
     const profile = emptyProfile({ avoidPatterns: new Set(['plaid']) });
-    const input = makeInput({ title: 'Plaid Flannel Shirt', blob: 'plaid flannel shirt' });
+    const input = makeInput({
+      title: 'Plaid Flannel Shirt',
+      blob: 'plaid flannel shirt',
+    });
     const result = applyDiscoverVeto(input, profile);
     expect(result.vetoed).toBe(true);
     expect(result.rule).toBe('VETO_PATTERN');
@@ -301,7 +329,10 @@ describe('VETO_PATTERN', () => {
 describe('VETO_DISLIKED', () => {
   it('blocks disliked style', () => {
     const profile = emptyProfile({ dislikedStyles: new Set(['bohemian']) });
-    const input = makeInput({ title: 'Bohemian Maxi Dress', blob: 'bohemian maxi dress' });
+    const input = makeInput({
+      title: 'Bohemian Maxi Dress',
+      blob: 'bohemian maxi dress',
+    });
     const result = applyDiscoverVeto(input, profile);
     expect(result.vetoed).toBe(true);
     expect(result.rule).toBe('VETO_DISLIKED');
@@ -328,7 +359,10 @@ describe('VETO_COVERAGE', () => {
 
   it('blocks cropped when midriff is no-go', () => {
     const profile = emptyProfile({ coverageNoGo: ['midriff'] });
-    const input = makeInput({ title: 'Cropped Sweater', blob: 'cropped sweater' });
+    const input = makeInput({
+      title: 'Cropped Sweater',
+      blob: 'cropped sweater',
+    });
     const result = applyDiscoverVeto(input, profile);
     expect(result.vetoed).toBe(true);
     expect(result.rule).toBe('VETO_COVERAGE');
@@ -336,7 +370,10 @@ describe('VETO_COVERAGE', () => {
 
   it('blocks plunging when cleavage is no-go', () => {
     const profile = emptyProfile({ coverageNoGo: ['cleavage'] });
-    const input = makeInput({ title: 'Plunging Neckline Dress', blob: 'plunging neckline dress' });
+    const input = makeInput({
+      title: 'Plunging Neckline Dress',
+      blob: 'plunging neckline dress',
+    });
     const result = applyDiscoverVeto(input, profile);
     expect(result.vetoed).toBe(true);
     expect(result.rule).toBe('VETO_COVERAGE');
@@ -344,7 +381,10 @@ describe('VETO_COVERAGE', () => {
 
   it('blocks backless when back is no-go', () => {
     const profile = emptyProfile({ coverageNoGo: ['back'] });
-    const input = makeInput({ title: 'Backless Evening Gown', blob: 'backless evening gown' });
+    const input = makeInput({
+      title: 'Backless Evening Gown',
+      blob: 'backless evening gown',
+    });
     const result = applyDiscoverVeto(input, profile);
     expect(result.vetoed).toBe(true);
     expect(result.rule).toBe('VETO_COVERAGE');
@@ -352,7 +392,10 @@ describe('VETO_COVERAGE', () => {
 
   it('blocks strapless when shoulder is no-go', () => {
     const profile = emptyProfile({ coverageNoGo: ['shoulder'] });
-    const input = makeInput({ title: 'Strapless Dress', blob: 'strapless dress' });
+    const input = makeInput({
+      title: 'Strapless Dress',
+      blob: 'strapless dress',
+    });
     const result = applyDiscoverVeto(input, profile);
     expect(result.vetoed).toBe(true);
     expect(result.rule).toBe('VETO_COVERAGE');
@@ -376,7 +419,10 @@ describe('VETO_COVERAGE', () => {
 
   it('does NOT block regular top when midriff is no-go', () => {
     const profile = emptyProfile({ coverageNoGo: ['midriff'] });
-    const input = makeInput({ title: 'Classic Cotton Shirt', blob: 'classic cotton shirt' });
+    const input = makeInput({
+      title: 'Classic Cotton Shirt',
+      blob: 'classic cotton shirt',
+    });
     const result = applyDiscoverVeto(input, profile);
     expect(result.vetoed).toBe(false);
   });
@@ -384,7 +430,10 @@ describe('VETO_COVERAGE', () => {
   it('fallback: direct match on unmapped no-go term', () => {
     const profile = emptyProfile({ coverageNoGo: ['midriff'] });
     // "midriff" is a mapped keyword under the midriff key, so it matches via map
-    const input = makeInput({ title: 'Midriff Baring Top', blob: 'midriff baring top' });
+    const input = makeInput({
+      title: 'Midriff Baring Top',
+      blob: 'midriff baring top',
+    });
     const result = applyDiscoverVeto(input, profile);
     expect(result.vetoed).toBe(true);
     expect(result.rule).toBe('VETO_COVERAGE');
@@ -396,7 +445,10 @@ describe('VETO_COVERAGE', () => {
 describe('VETO_WALKABILITY', () => {
   it('blocks stiletto when walkability=high', () => {
     const profile = emptyProfile({ walkabilityRequirement: 'high' });
-    const input = makeInput({ title: 'Stiletto Heels', blob: 'stiletto heels' });
+    const input = makeInput({
+      title: 'Stiletto Heels',
+      blob: 'stiletto heels',
+    });
     const result = applyDiscoverVeto(input, profile);
     expect(result.vetoed).toBe(true);
     expect(result.rule).toBe('VETO_WALKABILITY');
@@ -404,7 +456,10 @@ describe('VETO_WALKABILITY', () => {
 
   it('blocks platform when walkability=high', () => {
     const profile = emptyProfile({ walkabilityRequirement: 'high' });
-    const input = makeInput({ title: 'Platform Sandals', blob: 'platform sandals' });
+    const input = makeInput({
+      title: 'Platform Sandals',
+      blob: 'platform sandals',
+    });
     const result = applyDiscoverVeto(input, profile);
     expect(result.vetoed).toBe(true);
     expect(result.rule).toBe('VETO_WALKABILITY');
@@ -412,7 +467,10 @@ describe('VETO_WALKABILITY', () => {
 
   it('blocks high heel when walkability=high', () => {
     const profile = emptyProfile({ walkabilityRequirement: 'high' });
-    const input = makeInput({ title: 'High Heel Pumps', blob: 'high heel pumps' });
+    const input = makeInput({
+      title: 'High Heel Pumps',
+      blob: 'high heel pumps',
+    });
     const result = applyDiscoverVeto(input, profile);
     expect(result.vetoed).toBe(true);
     expect(result.rule).toBe('VETO_WALKABILITY');
@@ -427,16 +485,25 @@ describe('VETO_WALKABILITY', () => {
 
   it('medium blocks stiletto but NOT platform', () => {
     const profile = emptyProfile({ walkabilityRequirement: 'medium' });
-    const stiletto = makeInput({ title: 'Stiletto Boots', blob: 'stiletto boots' });
+    const stiletto = makeInput({
+      title: 'Stiletto Boots',
+      blob: 'stiletto boots',
+    });
     expect(applyDiscoverVeto(stiletto, profile).vetoed).toBe(true);
 
-    const platform = makeInput({ title: 'Platform Sneakers', blob: 'platform sneakers' });
+    const platform = makeInput({
+      title: 'Platform Sneakers',
+      blob: 'platform sneakers',
+    });
     expect(applyDiscoverVeto(platform, profile).vetoed).toBe(false);
   });
 
   it('does NOT veto when walkability is null', () => {
     const profile = emptyProfile({ walkabilityRequirement: null });
-    const input = makeInput({ title: 'Stiletto Heels', blob: 'stiletto heels' });
+    const input = makeInput({
+      title: 'Stiletto Heels',
+      blob: 'stiletto heels',
+    });
     const result = applyDiscoverVeto(input, profile);
     expect(result.vetoed).toBe(false);
   });
@@ -447,7 +514,10 @@ describe('VETO_WALKABILITY', () => {
 describe('VETO_FORMALITY', () => {
   it('blocks athletic (1) when floor=business casual (4)', () => {
     const profile = emptyProfile({ formalityFloor: 'business casual' });
-    const input = makeInput({ title: 'Athletic Running Shorts', blob: 'athletic running shorts' });
+    const input = makeInput({
+      title: 'Athletic Running Shorts',
+      blob: 'athletic running shorts',
+    });
     const result = applyDiscoverVeto(input, profile);
     expect(result.vetoed).toBe(true);
     expect(result.rule).toBe('VETO_FORMALITY');
@@ -455,14 +525,20 @@ describe('VETO_FORMALITY', () => {
 
   it('allows business (5) when floor=business casual (4)', () => {
     const profile = emptyProfile({ formalityFloor: 'business casual' });
-    const input = makeInput({ title: 'Business Travel Blazer', blob: 'business travel blazer' });
+    const input = makeInput({
+      title: 'Business Travel Blazer',
+      blob: 'business travel blazer',
+    });
     const result = applyDiscoverVeto(input, profile);
     expect(result.vetoed).toBe(false);
   });
 
   it('allows 1-rank-below (smart casual=3 with floor=business casual=4)', () => {
     const profile = emptyProfile({ formalityFloor: 'business casual' });
-    const input = makeInput({ title: 'Smart Casual Chinos', blob: 'smart casual chinos' });
+    const input = makeInput({
+      title: 'Smart Casual Chinos',
+      blob: 'smart casual chinos',
+    });
     const result = applyDiscoverVeto(input, profile);
     expect(result.vetoed).toBe(false);
   });
@@ -477,14 +553,20 @@ describe('VETO_FORMALITY', () => {
 
   it('skips when no keywords match (fail-open)', () => {
     const profile = emptyProfile({ formalityFloor: 'business casual' });
-    const input = makeInput({ title: 'Unknown Generic Accessory', blob: 'unknown generic accessory' });
+    const input = makeInput({
+      title: 'Unknown Generic Accessory',
+      blob: 'unknown generic accessory',
+    });
     const result = applyDiscoverVeto(input, profile);
     expect(result.vetoed).toBe(false);
   });
 
   it('skips when formalityFloor is null', () => {
     const profile = emptyProfile({ formalityFloor: null });
-    const input = makeInput({ title: 'Athletic Gym Shorts', blob: 'athletic gym shorts' });
+    const input = makeInput({
+      title: 'Athletic Gym Shorts',
+      blob: 'athletic gym shorts',
+    });
     const result = applyDiscoverVeto(input, profile);
     expect(result.vetoed).toBe(false);
   });
@@ -511,7 +593,10 @@ describe('VETO_CLIMATE', () => {
 
   it('blocks fleece in warm climate', () => {
     const profile = emptyProfile({ climate: 'warm' });
-    const input = makeInput({ title: 'Fleece Pullover', blob: 'fleece pullover' });
+    const input = makeInput({
+      title: 'Fleece Pullover',
+      blob: 'fleece pullover',
+    });
     const result = applyDiscoverVeto(input, profile);
     expect(result.vetoed).toBe(true);
     expect(result.rule).toBe('VETO_CLIMATE');
@@ -519,7 +604,10 @@ describe('VETO_CLIMATE', () => {
 
   it('blocks sandals in cold climate', () => {
     const profile = emptyProfile({ climate: 'cold' });
-    const input = makeInput({ title: 'Open Toe Sandals', blob: 'open toe sandal' });
+    const input = makeInput({
+      title: 'Open Toe Sandals',
+      blob: 'open toe sandal',
+    });
     const result = applyDiscoverVeto(input, profile);
     expect(result.vetoed).toBe(true);
     expect(result.rule).toBe('VETO_CLIMATE');
@@ -527,7 +615,10 @@ describe('VETO_CLIMATE', () => {
 
   it('blocks sleeveless in freezing climate', () => {
     const profile = emptyProfile({ climate: 'freezing' });
-    const input = makeInput({ title: 'Sleeveless Top', blob: 'sleeveless top' });
+    const input = makeInput({
+      title: 'Sleeveless Top',
+      blob: 'sleeveless top',
+    });
     const result = applyDiscoverVeto(input, profile);
     expect(result.vetoed).toBe(true);
     expect(result.rule).toBe('VETO_CLIMATE');
@@ -576,7 +667,10 @@ describe('VETO_CLIMATE', () => {
 describe('VETO_MATERIAL_MIX', () => {
   it('blocks polyester formal suit', () => {
     const profile = emptyProfile();
-    const input = makeInput({ title: 'Formal Suit Jacket', blob: 'formal suit jacket polyester' });
+    const input = makeInput({
+      title: 'Formal Suit Jacket',
+      blob: 'formal suit jacket polyester',
+    });
     const result = applyDiscoverVeto(input, profile);
     expect(result.vetoed).toBe(true);
     expect(result.rule).toBe('VETO_MATERIAL_MIX');
@@ -584,7 +678,10 @@ describe('VETO_MATERIAL_MIX', () => {
 
   it('blocks nylon blazer', () => {
     const profile = emptyProfile();
-    const input = makeInput({ title: 'Classic Blazer', blob: 'classic blazer nylon' });
+    const input = makeInput({
+      title: 'Classic Blazer',
+      blob: 'classic blazer nylon',
+    });
     const result = applyDiscoverVeto(input, profile);
     expect(result.vetoed).toBe(true);
     expect(result.rule).toBe('VETO_MATERIAL_MIX');
@@ -592,7 +689,10 @@ describe('VETO_MATERIAL_MIX', () => {
 
   it('blocks spandex dress shirt', () => {
     const profile = emptyProfile();
-    const input = makeInput({ title: 'Dress Shirt', blob: 'dress shirt spandex' });
+    const input = makeInput({
+      title: 'Dress Shirt',
+      blob: 'dress shirt spandex',
+    });
     const result = applyDiscoverVeto(input, profile);
     expect(result.vetoed).toBe(true);
     expect(result.rule).toBe('VETO_MATERIAL_MIX');
@@ -600,7 +700,10 @@ describe('VETO_MATERIAL_MIX', () => {
 
   it('allows polyester athletic shorts (no formal title)', () => {
     const profile = emptyProfile();
-    const input = makeInput({ title: 'Athletic Shorts', blob: 'athletic shorts polyester' });
+    const input = makeInput({
+      title: 'Athletic Shorts',
+      blob: 'athletic shorts polyester',
+    });
     const result = applyDiscoverVeto(input, profile);
     // Athletic shorts with polyester should NOT trigger VETO_MATERIAL_MIX
     // (title has no formal token)
@@ -609,7 +712,10 @@ describe('VETO_MATERIAL_MIX', () => {
 
   it('allows cotton formal suit', () => {
     const profile = emptyProfile();
-    const input = makeInput({ title: 'Formal Suit', blob: 'formal suit cotton' });
+    const input = makeInput({
+      title: 'Formal Suit',
+      blob: 'formal suit cotton',
+    });
     const result = applyDiscoverVeto(input, profile);
     expect(result.vetoed).toBe(false);
   });
@@ -632,16 +738,25 @@ describe('Determinism: same input always produces same output', () => {
     });
 
     const inputs: VetoInput[] = [
-      makeInput({ title: 'Oversized Red Hoodie', blob: 'oversized red hoodie cotton' }),
-      makeInput({ title: 'Slim Fit Navy Blazer', blob: 'slim fit navy blazer wool' }),
+      makeInput({
+        title: 'Oversized Red Hoodie',
+        blob: 'oversized red hoodie cotton',
+      }),
+      makeInput({
+        title: 'Slim Fit Navy Blazer',
+        blob: 'slim fit navy blazer wool',
+      }),
       makeInput({ title: 'Crop Top', blob: 'crop top cotton' }),
       makeInput({ title: 'Stiletto Heels', blob: 'stiletto heels' }),
-      makeInput({ title: 'Classic Polo Shirt', blob: 'classic polo shirt cotton' }),
+      makeInput({
+        title: 'Classic Polo Shirt',
+        blob: 'classic polo shirt cotton',
+      }),
     ];
 
-    const firstRun = inputs.map(i => applyDiscoverVeto(i, profile));
+    const firstRun = inputs.map((i) => applyDiscoverVeto(i, profile));
     for (let run = 0; run < 100; run++) {
-      const thisRun = inputs.map(i => applyDiscoverVeto(i, profile));
+      const thisRun = inputs.map((i) => applyDiscoverVeto(i, profile));
       expect(thisRun).toEqual(firstRun);
     }
   });
