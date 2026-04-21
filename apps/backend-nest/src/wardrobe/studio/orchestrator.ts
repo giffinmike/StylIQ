@@ -52,53 +52,33 @@ export function runStudioOrchestrator(
   // First partition the gated pool
   let partitioned = partitionBySlot(pool);
 
-  // Scoped shoe restoration: only in EXTREME_HEAT or NORMAL tiers. In
-  // HEAT, the hard gate can legitimately strip every leather/formal
-  // shoe; NORMAL should never empty the slot in practice but we keep
-  // the safety net. Restoration is deliberately skipped in EXTREME_COLD
-  // / ATHLETIC / FORMAL_EVENT — those tiers strip shoes for physics
-  // reasons (sandals in snow, dress shoes in the gym, sneakers in black
-  // tie) and re-introducing them would undermine stylist quality.
-  //
-  // Restoration draws from the ORIGINAL catalog (not filteredPool),
-  // because aesthetic filters can themselves strip the last surviving
-  // pair — the invariant here is "the user owns at least one shoe",
-  // and the original catalog is the only authoritative answer.
-  if (
-    partitioned.shoes.length === 0 &&
-    (environmentTier === 'EXTREME_HEAT' || environmentTier === 'NORMAL')
-  ) {
-    console.warn(
-      '[STUDIO] No shoes after gating — restoring from original catalog',
-      { tier: environmentTier },
-    );
-
+  // Universal shoe-ownership guarantee. Runs across every tier because
+  // the invariant below must represent "user owns zero shoes" — never
+  // "filtering removed all shoes". The fallback inspects the ORIGINAL
+  // catalog (not the filtered / gated pool), picks the best-ranked
+  // shoe via scoreStudioItem, and injects it into the pool exactly
+  // once. Compatibility, exclusion, and tier-specific drop rules in
+  // the builder remain authoritative for what actually gets selected.
+  if (partitioned.shoes.length === 0) {
     const originalPartitioned = partitionBySlot(catalog);
 
     if (originalPartitioned.shoes.length > 0) {
-      pool = [...pool, ...originalPartitioned.shoes];
-      partitioned = partitionBySlot(pool);
-    }
+      const bestShoe = originalPartitioned.shoes
+        .slice()
+        .sort(
+          (a, b) =>
+            scoreStudioItem(b, enrichedCtx) - scoreStudioItem(a, enrichedCtx),
+        )[0];
 
-    // Final safety fallback: if partitioning still reports zero shoes
-    // (e.g. the original catalog contains a shoe that the strict
-    // partition missed due to taxonomy drift), forcibly inject the
-    // highest-ranked shoe-like item from the original catalog. This
-    // keeps the invariant unreachable unless the user truly owns zero
-    // shoes. Uses scoreStudioItem so the injected pair is the best
-    // available, not arbitrary.
-    if (partitioned.shoes.length === 0 && originalPartitioned.shoes.length > 0) {
-      const ranked = [...originalPartitioned.shoes].sort(
-        (a, b) => scoreStudioItem(b, enrichedCtx) - scoreStudioItem(a, enrichedCtx),
-      );
-      const forced = ranked[0];
-      console.warn('[STUDIO] Forcing shoe injection', {
-        tier: environmentTier,
-        id: forced.id,
-        label: forced.label,
-      });
-      pool = [...pool, forced];
-      partitioned = partitionBySlot(pool);
+      if (!pool.find((p) => p.id === bestShoe.id)) {
+        console.warn('[STUDIO] No shoes after gating — injecting best-ranked shoe from original catalog', {
+          tier: environmentTier,
+          id: bestShoe.id,
+          label: bestShoe.label,
+        });
+        pool = [...pool, bestShoe];
+        partitioned = partitionBySlot(pool);
+      }
     }
   }
 
