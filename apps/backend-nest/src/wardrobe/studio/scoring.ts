@@ -84,7 +84,69 @@ export function scoreStudioItem(
     if (tempF <= 45 && layering === 'outer') weatherNudge += 0.2;
   }
 
-  return constraints + styleNudge + weatherNudge;
+  // Tier-aware item nudges. Bounded, universal, tier-gated only —
+  // never per-prompt or per-user. Reinforces the environment-tier
+  // physics already applied by the hard gate: pushes appropriate
+  // subcategories up and inappropriate ones down so ranking within
+  // the surviving pool reflects stylist intent.
+  let tierNudge = 0;
+  const sub = (item.subcategory ?? '').toLowerCase();
+  const dressCode = (item.dress_code ?? '').toLowerCase();
+
+  if (ctx.environmentTier === 'ATHLETIC') {
+    const isAthletic =
+      /athletic|jersey|tank|tee|t[-\s]?shirt|sweatpant|track|performance|running|sneaker|trainer|\bshorts?\b/.test(
+        sub,
+      );
+    const isTailored =
+      /blazer|sport\s*coat|suit|oxford|loafer|derby|trouser|dress\s*pant|slack/.test(
+        sub,
+      );
+    if (isAthletic) tierNudge += 0.6;
+    if (isTailored) tierNudge -= 0.6;
+  } else if (
+    ctx.environmentTier === 'FORMAL_EVENT' ||
+    ctx.environmentTier === 'NORMAL'
+  ) {
+    if (/ultracasual/.test(dressCode)) tierNudge -= 1.0;
+  }
+
+  // EXTREME_HEAT environment affinity (generalized, deterministic).
+  // Uses only existing StudioItem fields. No name/profile/brand refs.
+  let score = 0;
+  if (ctx.environmentTier === 'EXTREME_HEAT') {
+    const formality = Number(item.formality_score ?? 5);
+    const main = item.main_category;
+    const subLower = (item.subcategory ?? '').toLowerCase();
+    const material = (item.material ?? '').toLowerCase();
+
+    // Reward very casual pieces in extreme heat
+    if (formality <= 2) score += 0.8;
+
+    // Reward shorts
+    if (main === 'Bottoms' && subLower === 'shorts') {
+      score += 1.0;
+    }
+
+    // Penalize structured bottoms in extreme heat
+    if (main === 'Bottoms' && formality >= 6) {
+      score -= 0.6;
+    }
+
+    // Penalize heavy fabrics
+    if (material.includes('wool') || material.includes('cashmere')) {
+      score -= 1.0;
+    }
+  }
+
+  // Amplify the dominant constraint signal so intent (loafer / sneaker /
+  // blazer / brown / dress-code) drives ranking over ambient style
+  // noise. Uniform multiplier preserves the original sign + ordering
+  // of the shared constraint scorer while widening the spread.
+  const CONSTRAINT_AMP = 1.8;
+  return (
+    constraints * CONSTRAINT_AMP + styleNudge + weatherNudge + tierNudge + score
+  );
 }
 
 /**
@@ -108,10 +170,17 @@ export function scoreStudioOutfit(
     total += scoreStudioItem(item, ctx);
   }
 
+  // Expand the dynamic range so strong outfits separate cleanly from
+  // weak ones (typical good score ≈ 5–10, weak ≈ < 2) rather than
+  // clustering around ±0.5. Uniform multiplier — signal ordering is
+  // preserved, only the spread grows.
+  const OUTFIT_AMP = 3;
+  let amplified = total * OUTFIT_AMP;
+
   // Slot-completeness bonus (layer / accessory present when appropriate).
-  if (slots.layer) total += 0.2;
-  if (slots.accessory) total += 0.1;
+  if (slots.layer) amplified += 0.4;
+  if (slots.accessory) amplified += 0.2;
 
   // Clamp to keep scores interpretable.
-  return Math.round(total * 100) / 100;
+  return Math.round(amplified * 100) / 100;
 }

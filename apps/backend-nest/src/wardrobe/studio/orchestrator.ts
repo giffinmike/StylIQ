@@ -55,15 +55,31 @@ export function runStudioOrchestrator(
   // Universal shoe-ownership guarantee. Runs across every tier because
   // the invariant below must represent "user owns zero shoes" — never
   // "filtering removed all shoes". The fallback inspects the ORIGINAL
-  // catalog (not the filtered / gated pool), picks the best-ranked
-  // shoe via scoreStudioItem, and injects it into the pool exactly
-  // once. Compatibility, exclusion, and tier-specific drop rules in
-  // the builder remain authoritative for what actually gets selected.
+  // catalog (not the filtered / gated pool) and prefers a shoe that
+  // still passes the environment hard gate for the current tier, so
+  // physics is respected whenever the user's wardrobe allows it.
+  // Only if zero tier-compatible shoes exist does the fallback widen
+  // to any owned shoe, protecting the invariant without silently
+  // degrading stylist quality in HEAT / COLD / ATHLETIC / FORMAL.
+  // Compatibility, exclusion, and tier-specific drop rules in the
+  // builder remain authoritative for what actually gets selected.
   if (partitioned.shoes.length === 0) {
     const originalPartitioned = partitionBySlot(catalog);
 
     if (originalPartitioned.shoes.length > 0) {
-      const bestShoe = originalPartitioned.shoes
+      // Reuse applyEnvironmentalHardGate so tier physics is enforced
+      // by the single source of truth — no duplicated drop rules.
+      const tierCompatibleShoes = applyEnvironmentalHardGate(
+        originalPartitioned.shoes,
+        enrichedCtx,
+      );
+
+      const preferredPool =
+        tierCompatibleShoes.length > 0
+          ? tierCompatibleShoes
+          : originalPartitioned.shoes;
+
+      const bestShoe = preferredPool
         .slice()
         .sort(
           (a, b) =>
@@ -71,11 +87,15 @@ export function runStudioOrchestrator(
         )[0];
 
       if (!pool.find((p) => p.id === bestShoe.id)) {
-        console.warn('[STUDIO] No shoes after gating — injecting best-ranked shoe from original catalog', {
-          tier: environmentTier,
-          id: bestShoe.id,
-          label: bestShoe.label,
-        });
+        console.warn(
+          '[STUDIO] No shoes after gating — injecting best-ranked shoe from original catalog',
+          {
+            tier: environmentTier,
+            tierCompatible: tierCompatibleShoes.length > 0,
+            id: bestShoe.id,
+            label: bestShoe.label,
+          },
+        );
         pool = [...pool, bestShoe];
         partitioned = partitionBySlot(pool);
       }
@@ -119,7 +139,7 @@ export function runStudioOrchestrator(
     needsTopReuse || needsBottomReuse || needsShoesReuse;
 
   for (let i = 0; i < TARGET_OUTFITS; i++) {
-    const { outfit, usedIds } = buildStrictOutfit(pool, enrichedCtx, {
+    const result = buildStrictOutfit(pool, enrichedCtx, {
       excludeTopIds: excludeTops,
       excludeBottomIds: excludeBottoms,
       excludeShoesIds: excludeShoes,
@@ -128,6 +148,15 @@ export function runStudioOrchestrator(
       allowMandatoryReuse,
       slateIndex: i + 1,
     });
+
+    // Early-exit signal from the builder: no more meaningful (positive-
+    // scoring) combinations remain. Stop the slate rather than fabricate
+    // a zero-score filler outfit.
+    if (result === null) {
+      break;
+    }
+
+    const { outfit, usedIds } = result;
 
     // Track diversity: never reuse a top across outfits unless wardrobe
     // literally cannot support it.
@@ -166,10 +195,10 @@ export function runStudioOrchestrator(
     }
   }
 
-  if (outfits.length !== TARGET_OUTFITS) {
+  if (outfits.length === 0) {
     throw new StudioInvariantError(
-      'STUDIO_SLOT_INVARIANT_FAILED',
-      `Studio produced ${outfits.length} outfits; expected ${TARGET_OUTFITS}`,
+      'WARDROBE_INSUFFICIENT_COMPATIBLE',
+      'No viable outfit combinations.',
       { requestId: meta.requestId, userId: meta.userId },
     );
   }
