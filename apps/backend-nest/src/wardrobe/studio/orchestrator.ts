@@ -139,14 +139,26 @@ export function runStudioOrchestrator(
     needsTopReuse || needsBottomReuse || needsShoesReuse;
 
   for (let i = 0; i < TARGET_OUTFITS; i++) {
+    const slateIndex = i + 1;
+
+    // Pool-size aware exclusion relaxation for slates beyond the first.
+    // When a mandatory-slot pool is effectively a single item, enforcing
+    // cross-slate exclusion artificially locks the builder out and forces
+    // a zero-score filler (or a null early-exit) instead of a usable
+    // outfit. Generalized across all environment tiers — no tier- or
+    // occasion-specific branches.
+    const relaxTops = slateIndex > 1 && partitioned.tops.length <= 1;
+    const relaxBottoms = slateIndex > 1 && partitioned.bottoms.length <= 1;
+    const relaxShoes = slateIndex > 1 && partitioned.shoes.length <= 1;
+
     const result = buildStrictOutfit(pool, enrichedCtx, {
-      excludeTopIds: excludeTops,
-      excludeBottomIds: excludeBottoms,
-      excludeShoesIds: excludeShoes,
+      excludeTopIds: relaxTops ? undefined : excludeTops,
+      excludeBottomIds: relaxBottoms ? undefined : excludeBottoms,
+      excludeShoesIds: relaxShoes ? undefined : excludeShoes,
       excludeLayerIds: excludeLayer,
       excludeAccessoryIds: excludeAccessory,
       allowMandatoryReuse,
-      slateIndex: i + 1,
+      slateIndex,
     });
 
     // Early-exit signal from the builder: no more meaningful (positive-
@@ -157,6 +169,13 @@ export function runStudioOrchestrator(
     }
 
     const { outfit, usedIds } = result;
+
+    // Quality gate: a non-positive score means the wardrobe can no longer
+    // produce a viable outfit for this context. Return what we have — one
+    // strong outfit beats two filler ones.
+    if (outfit.score <= 0) {
+      break;
+    }
 
     // Track diversity: never reuse a top across outfits unless wardrobe
     // literally cannot support it.
