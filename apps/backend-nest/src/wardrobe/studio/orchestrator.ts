@@ -33,6 +33,22 @@ import {
   validateOutfitStructural,
 } from './postAssemblyValidation';
 import { isExplicitBeachIntent } from './context';
+// Elite quality layer — additive, read-only imports from shared modules.
+// None of these modules are modified by Studio; they are used as pure
+// scorers to enrich candidate ranking before diversity + post-assembly.
+import {
+  scoreOutfit as eliteScoreOutfit,
+  normalizeStudioOutfit,
+  deterministicHash,
+  type StyleContext as EliteStyleContext,
+  type EliteEnv,
+  type QueryContext as EliteQueryContext,
+} from '../../ai/elite/eliteScoring';
+import {
+  validateOutfit as eliteValidateOutfit,
+  type ValidatorItem,
+  type ValidatorContext,
+} from '../../ai/elite/tasteValidator';
 
 const TARGET_OUTFITS = 3;
 
@@ -231,8 +247,15 @@ function buildGuaranteedOutfits(
 
   // Pass D (LAST RESORT) — clone best emit entry with deterministic
   // variation token. Core triple repeats; each clone carries a unique
-  // id derived from the source id + slate index, and a slate-indexed
-  // title. Loop is bounded by TARGET_OUTFITS; no infinite path.
+  // id derived from the source id + slate index, and a deterministic
+  // mood-framed title so the slate reads as three intentional
+  // interpretations of the same core rather than literal duplicates.
+  // Loop is bounded by TARGET_OUTFITS; no infinite path.
+  const FALLBACK_MOODS = [
+    'Day Interpretation',
+    'Evening Interpretation',
+    'Relaxed Interpretation',
+  ];
   while (emit.length < TARGET_OUTFITS) {
     const source = emit[0];
     const slateIdx = emit.length + 1;
@@ -243,9 +266,13 @@ function buildGuaranteedOutfits(
       layer: source.outfit.slots.layer,
       accessory: source.outfit.slots.accessory,
     };
+    const moodIdx =
+      Math.abs(deterministicHash(source.outfit.slots.top.id) + slateIdx) %
+      FALLBACK_MOODS.length;
+    const mood = FALLBACK_MOODS[moodIdx];
     const clone: StudioOutfit = {
       outfit_id: `${source.outfit.outfit_id}-clone-${slateIdx}`,
-      title: buildTitle(cloneSlots.top, cloneSlots.bottom, slateIdx),
+      title: `Look ${slateIdx} — ${mood}`,
       why: source.outfit.why,
       reasoning: source.outfit.reasoning,
       score: source.outfit.score,
@@ -284,10 +311,42 @@ export function runStudioOrchestrator(
   const environmentTier = deriveEnvironmentTier(ctx);
   const enrichedCtx: StudioBuildContext = { ...ctx, environmentTier };
 
+  // Studio-local HOT_FORMAL override. The single-axis tier system in
+  // filters.ts resolves FORMAL_EVENT before EXTREME_HEAT, so a formal
+  // event in hot weather never receives heat-driven fabric relaxation.
+  // For destination weddings / outdoor summer galas this is the most
+  // visible premium-client failure mode. Apply an additive Studio-local
+  // pre-filter that drops heavy-weather fabrics and heavy outerwear
+  // BEFORE the existing hard gate runs. The formality floor enforced
+  // downstream by FORMAL_EVENT gating is preserved unchanged.
+  const HOT_FORMAL_REGEX = /(summer|hot|tropical|destination|outdoor wedding)/i;
+  const hotFormal =
+    environmentTier === 'FORMAL_EVENT' &&
+    ((typeof enrichedCtx.weather?.tempF === 'number' &&
+      enrichedCtx.weather.tempF >= 88) ||
+      HOT_FORMAL_REGEX.test(enrichedCtx.effectiveQuery ?? ''));
+  let preGatePool = filteredPool;
+  if (hotFormal) {
+    const HOT_FORMAL_MATERIAL = /wool|cashmere|tweed|flannel/i;
+    const HOT_FORMAL_OUTER =
+      /puffer|parka|overcoat|trench|peacoat|topcoat/i;
+    preGatePool = filteredPool.filter((it) => {
+      if (HOT_FORMAL_MATERIAL.test(it.material ?? '')) return false;
+      if (HOT_FORMAL_OUTER.test(it.subcategory ?? '')) return false;
+      return true;
+    });
+    console.log('[STUDIO] HOT_FORMAL_OVERRIDE_APPLIED', {
+      tempF: enrichedCtx.weather?.tempF ?? null,
+      tier: environmentTier,
+      before: filteredPool.length,
+      after: preGatePool.length,
+    });
+  }
+
   // Stage 2: physics-dominant feasibility hard gate. Runs BEFORE scoring,
   // compatibility, and slot partitioning. Universal across all users —
   // no profile-specific branches. Priority: Physics > Occasion > Style.
-  let pool = applyEnvironmentalHardGate(filteredPool, enrichedCtx);
+  let pool = applyEnvironmentalHardGate(preGatePool, enrichedCtx);
 
   // First partition the gated pool
   let partitioned = partitionBySlot(pool);
@@ -519,6 +578,177 @@ export function runStudioOrchestrator(
       candidateExcludeAccessory.add(result.outfit.slots.accessory.id);
   }
 
+  // ── ELITE COMPOSITE RANKING ───────────────────────────────────────
+  //
+  // Additive, Studio-local quality uplift. Combines three deterministic
+  // sources:
+  //   1) baseScore  — existing scoreStudioOutfit output (authoritative)
+  //   2) eliteScore — shared elite scoreOutfit (clamped ±20, weight 1.2)
+  //   3) taste      — eliteValidateOutfit totalPenalty (≤0, additive)
+  //
+  // + monochrome compensation (+0.5) when the three core items share a
+  //   single color family, offsetting the all-neutral penalty baked into
+  //   scoreStudioOutfit so an intentional tonal look is not demoted.
+  //
+  // `taste.valid === false` hard-rejects only when ≥3 valid candidates
+  // remain after rejection; otherwise the penalty is applied but the
+  // candidate is kept so the 3-outfit guarantee is honored on thin
+  // wardrobes (graceful degradation, not silent failure).
+  //
+  // Runs BEFORE the beach block and diversity phase so every downstream
+  // stage sees composite scores. Replaces the prior median-boost +
+  // hash-jitter reranker — ordering is now purely deterministic and
+  // taste-driven.
+  const eliteStyleCtx: EliteStyleContext = {
+    presentation: enrichedCtx.userPresentation,
+    styleProfile: enrichedCtx.styleProfile
+      ? {
+          fit_preferences: enrichedCtx.styleProfile.fit_preferences ?? [],
+          fabric_preferences:
+            enrichedCtx.styleProfile.fabric_preferences ?? [],
+          favorite_colors: enrichedCtx.styleProfile.favorite_colors ?? [],
+          style_preferences:
+            enrichedCtx.styleProfile.style_preferences ?? [],
+          disliked_styles: enrichedCtx.styleProfile.disliked_styles ?? [],
+          avoid_colors: enrichedCtx.styleProfile.avoid_colors ?? [],
+          avoid_materials: enrichedCtx.styleProfile.avoid_materials ?? [],
+          pattern_preferences: [],
+        }
+      : undefined,
+    preferredBrands: enrichedCtx.styleProfile?.preferred_brands ?? [],
+  };
+  const eliteEnv: EliteEnv = {
+    mode: 'studio',
+    weather: enrichedCtx.weather,
+    requestId: meta.requestId,
+  };
+  const eliteQueryCtx: EliteQueryContext = {
+    rawQuery: enrichedCtx.effectiveQuery ?? '',
+    derivedOccasion: null,
+    derivedFormality: null,
+    keywordTags: [],
+  };
+  const validatorCtx: ValidatorContext = {
+    userPresentation: enrichedCtx.userPresentation,
+    climateZone: (() => {
+      const t = enrichedCtx.weather?.tempF;
+      if (typeof t !== 'number') return undefined;
+      if (t <= 32) return 'freezing';
+      if (t <= 50) return 'cold';
+      if (t <= 60) return 'cool';
+      if (t <= 72) return 'mild';
+      if (t <= 82) return 'warm';
+      return 'hot';
+    })(),
+    requestedDressCode: enrichedCtx.parsedConstraints?.dressWanted ?? undefined,
+    styleProfile: enrichedCtx.styleProfile
+      ? {
+          fit_preferences: enrichedCtx.styleProfile.fit_preferences ?? [],
+          fabric_preferences:
+            enrichedCtx.styleProfile.fabric_preferences ?? [],
+          style_preferences:
+            enrichedCtx.styleProfile.style_preferences ?? [],
+          disliked_styles: enrichedCtx.styleProfile.disliked_styles ?? [],
+          coverage_no_go: [],
+          avoid_colors: enrichedCtx.styleProfile.avoid_colors ?? [],
+          avoid_materials: enrichedCtx.styleProfile.avoid_materials ?? [],
+          formality_floor:
+            enrichedCtx.styleProfile.formality_floor != null
+              ? String(enrichedCtx.styleProfile.formality_floor)
+              : null,
+          walkability_requirement: null,
+          avoid_patterns: enrichedCtx.styleProfile.avoid_patterns ?? [],
+          silhouette_preference:
+            enrichedCtx.styleProfile.silhouette_preference ?? null,
+        }
+      : null,
+  };
+
+  // Monochrome detection — three core items share a single base family
+  // (including all-neutral). Inline here to avoid exporting new symbols
+  // from colorHarmony.ts.
+  const MONOCHROME_FAMILIES = [
+    'black', 'white', 'gray', 'grey', 'beige', 'cream', 'ivory', 'navy',
+    'charcoal', 'khaki', 'tan', 'red', 'orange', 'yellow', 'brown',
+    'cognac', 'burgundy', 'maroon', 'coral', 'peach', 'rust', 'gold',
+    'blue', 'green', 'purple', 'teal', 'olive', 'mint', 'cyan',
+    'lavender', 'magenta', 'pink',
+  ];
+  const NEUTRAL_FAMILIES = new Set([
+    'black', 'white', 'gray', 'grey', 'beige', 'cream', 'ivory',
+    'navy', 'charcoal', 'khaki', 'tan',
+  ]);
+  const familyTokenOf = (it: StudioItem): string =>
+    (it.color_family ?? it.color ?? '').toLowerCase().trim();
+  const baseFamilyOf = (token: string): string | null => {
+    if (!token) return null;
+    for (const f of MONOCHROME_FAMILIES) {
+      if (token.includes(f)) return f;
+    }
+    return null;
+  };
+  const isMonochromeCore = (o: StudioOutfit): boolean => {
+    const famTop = baseFamilyOf(familyTokenOf(o.slots.top));
+    const famBot = baseFamilyOf(familyTokenOf(o.slots.bottom));
+    const famSh = baseFamilyOf(familyTokenOf(o.slots.shoes));
+    if (!famTop || !famBot || !famSh) return false;
+    if (famTop === famBot && famBot === famSh) return true;
+    if (
+      NEUTRAL_FAMILIES.has(famTop) &&
+      NEUTRAL_FAMILIES.has(famBot) &&
+      NEUTRAL_FAMILIES.has(famSh)
+    ) {
+      return true;
+    }
+    return false;
+  };
+
+  // First pass: compute composite and mark taste-invalid candidates.
+  const eliteAnnotated = candidateOutfits.map((cand) => {
+    const baseScore = cand.outfit.score;
+    const elite = eliteScoreOutfit(
+      normalizeStudioOutfit(cand.outfit),
+      eliteStyleCtx,
+      eliteEnv,
+      eliteQueryCtx,
+    );
+    const eliteContribution =
+      Math.max(-20, Math.min(20, elite.score ?? 0)) * 1.2;
+    const taste = eliteValidateOutfit(
+      cand.outfit.items as unknown as ValidatorItem[],
+      validatorCtx,
+    );
+    let composite = baseScore + eliteContribution + (taste.totalPenalty ?? 0);
+    if (isMonochromeCore(cand.outfit)) composite += 0.5;
+    return { cand, composite, tasteValid: taste.valid };
+  });
+
+  // Graceful taste rejection: only hard-reject when ≥3 candidates remain
+  // after rejection. Otherwise keep the candidate (penalty already
+  // applied via totalPenalty) so the slate has a viable pool.
+  const tasteValidCount = eliteAnnotated.filter((e) => e.tasteValid).length;
+  const canRejectInvalid = tasteValidCount >= TARGET_OUTFITS;
+  const surviving = canRejectInvalid
+    ? eliteAnnotated.filter((e) => e.tasteValid)
+    : eliteAnnotated;
+
+  // Write composite back onto the outfit score so downstream phases
+  // (beach enforcement, diversity, formal-spread, tier backfills) all
+  // operate on taste-aware scores.
+  for (const e of surviving) e.cand.outfit.score = e.composite;
+
+  candidateOutfits = surviving.map((e) => e.cand);
+
+  console.log('[STUDIO] ELITE_COMPOSITE_RANKING_APPLIED', {
+    requestId: meta.requestId,
+    total: eliteAnnotated.length,
+    tasteValid: tasteValidCount,
+    rejected: canRejectInvalid
+      ? eliteAnnotated.length - surviving.length
+      : 0,
+    hotFormal,
+  });
+
   // ── ELITE BEACH SILHOUETTE HARD RULES ─────────────────────────────
   //
   // Beach enforcement requires BOTH an explicit beach-intent word
@@ -602,49 +832,20 @@ export function runStudioOrchestrator(
     }
   }
 
-  // ── PHASE B: sort candidates by outfit score descending ────────────
-  candidateOutfits.sort((a, b) => b.outfit.score - a.outfit.score);
-
-  // ── PHASE B.5: joint rerank boost ──────────────────────────────────
-  // Separate the top half from the mid cluster by nudging above-median
-  // candidates by +0.5 so small gaps become decision-relevant without
-  // re-entering scoring.ts. Uniform boost preserves ordering within each
-  // half; only the gap between halves grows.
-  if (candidateOutfits.length > 0) {
-    const sortedScores = candidateOutfits
-      .map((c) => c.outfit.score)
-      .slice()
-      .sort((a, b) => a - b);
-    const mid = Math.floor(sortedScores.length / 2);
-    const medianScore =
-      sortedScores.length % 2 === 0
-        ? (sortedScores[mid - 1] + sortedScores[mid]) / 2
-        : sortedScores[mid];
-    for (const cand of candidateOutfits) {
-      if (cand.outfit.score > medianScore) {
-        cand.outfit.score += 0.5;
-      }
-    }
-  }
-
-  // ── PHASE B.6: deterministic tie-break jitter ──────────────────────
-  // Apply a per-outfit jitter in [0, 0.030] derived from a deterministic
-  // hash of the top id. Ensures stable ordering across runs and breaks
-  // exact-tie scores without introducing randomness.
-  const stringHash = (s: string): number => {
-    let h = 5381;
-    for (let i = 0; i < s.length; i++) {
-      h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
-    }
-    return h;
-  };
-  for (const cand of candidateOutfits) {
-    const jitter = (stringHash(cand.outfit.slots.top.id) % 31) / 1000;
-    cand.outfit.score += jitter;
-  }
-
-  // Re-sort so the boost + jitter act as tiebreakers on near-equal scores.
-  candidateOutfits.sort((a, b) => b.outfit.score - a.outfit.score);
+  // ── PHASE B: deterministic composite-driven sort ───────────────────
+  // Median boost and hash jitter removed — ranking is now driven
+  // entirely by elite composite scoring (baseScore + eliteContribution +
+  // taste.totalPenalty + monochrome bonus) computed above. Ties break
+  // by top.id ascending for stability across runs.
+  candidateOutfits.sort((a, b) => {
+    const d = b.outfit.score - a.outfit.score;
+    if (d !== 0) return d;
+    return a.outfit.slots.top.id < b.outfit.slots.top.id
+      ? -1
+      : a.outfit.slots.top.id > b.outfit.slots.top.id
+        ? 1
+        : 0;
+  });
 
   // ── PHASE C: structural diversity + hero reuse suppression ────────
   // structuralSimilarity returns a single 0-1 score. Full-triple match
@@ -915,28 +1116,55 @@ export function runStudioOrchestrator(
     );
   }
 
-  const outfits: StudioOutfit[] = emitFinal.map((s) => s.outfit);
+  let outfits: StudioOutfit[] = emitFinal.map((s) => s.outfit);
 
   // Final slot validation gate — every outfit MUST report
-  // hasTop/hasBottom/hasShoes = true. Physical slot failure is the only
-  // condition that throws here; post-assembly quality failures are
-  // handled by the tiered backfill above.
-  const validation = outfits.map((o) => ({
-    hasTop: !!o.slots.top,
-    hasBottom: !!o.slots.bottom,
-    hasShoes: !!o.slots.shoes,
-  }));
-  console.log('AI_OUTFIT_STUDIO_SLOT_VALIDATION:', validation);
+  // hasTop/hasBottom/hasShoes = true AND slate length must equal
+  // TARGET_OUTFITS. If either invariant fails we log
+  // CRITICAL_STUDIO_INVARIANT, rerun the guaranteed fallback, and
+  // re-validate. A last-ditch throw is retained for the pathological
+  // case where rerunning still fails to produce a valid slate — the
+  // contract "≥1 top/bottom/shoe → always 3 outfits" is upheld by the
+  // upstream WARDROBE_INSUFFICIENT_* preconditions, so this final
+  // throw should be unreachable in practice but is preserved so silent
+  // degradation cannot occur.
+  const validateSlate = (slate: StudioOutfit[]) => ({
+    lengthOk: slate.length === TARGET_OUTFITS,
+    perOutfit: slate.map((o) => ({
+      hasTop: !!o.slots.top,
+      hasBottom: !!o.slots.bottom,
+      hasShoes: !!o.slots.shoes,
+    })),
+  });
+  let slateCheck = validateSlate(outfits);
+  const allSlotsOk = (v: ReturnType<typeof validateSlate>): boolean =>
+    v.lengthOk && v.perOutfit.every((x) => x.hasTop && x.hasBottom && x.hasShoes);
+  console.log('AI_OUTFIT_STUDIO_SLOT_VALIDATION:', slateCheck.perOutfit);
 
-  for (let i = 0; i < outfits.length; i++) {
-    const v = validation[i];
-    if (!v.hasTop || !v.hasBottom || !v.hasShoes) {
-      throw new StudioInvariantError(
-        'STUDIO_SLOT_INVARIANT_FAILED',
-        `Studio outfit ${i} missing mandatory slot after assembly`,
-        { validation, requestId: meta.requestId, userId: meta.userId },
-      );
-    }
+  if (!allSlotsOk(slateCheck)) {
+    console.warn('[STUDIO] CRITICAL_STUDIO_INVARIANT', {
+      requestId: meta.requestId,
+      userId: meta.userId,
+      tier: environmentTier,
+      slateCheck,
+    });
+    emitFinal = buildGuaranteedOutfits(
+      partitioned,
+      enrichedCtx,
+      emitFinal,
+      candidateExcludeLayer,
+      candidateExcludeAccessory,
+    );
+    outfits = emitFinal.map((s) => s.outfit);
+    slateCheck = validateSlate(outfits);
+  }
+
+  if (!allSlotsOk(slateCheck)) {
+    throw new StudioInvariantError(
+      'STUDIO_SLOT_INVARIANT_FAILED',
+      'Studio slate failed slot invariant after guaranteed-fallback rerun',
+      { slateCheck, requestId: meta.requestId, userId: meta.userId },
+    );
   }
 
   // Single-line diagnostic summary: enough to reproduce any future
