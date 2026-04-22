@@ -181,6 +181,170 @@ export function scoreStudioOutfit(
   if (slots.layer) amplified += 0.4;
   if (slots.accessory) amplified += 0.2;
 
+  // Composite aesthetic score: deterministic stylist-level signals on top
+  // of per-item ranking. Generalized — no occasion / brand / gender
+  // branches. Applied post-amplification at face value so the calibrated
+  // deltas below are not scaled by OUTFIT_AMP.
+  let aestheticScore = 0;
+  const core: StudioItem[] = [slots.top, slots.bottom, slots.shoes];
+
+  // Full-look evaluation set for color harmony, formality cohesion,
+  // texture variation, and dress-code coherence. Hero / proportion /
+  // athletic / heat signals stay core-only (slot-specific semantics).
+  const evalSet: StudioItem[] = [
+    slots.top,
+    slots.bottom,
+    slots.shoes,
+    ...(slots.layer ? [slots.layer] : []),
+    ...(slots.accessory ? [slots.accessory] : []),
+  ];
+
+  // HERO PIECE STRUCTURE
+  // A "hero" piece is any item with formality_score >= 7 — matches the
+  // definition already used in buildStrictOutfit's triple metadata.
+  const heroCount = core.reduce((n, it) => {
+    return n + (Number(it.formality_score ?? 0) >= 7 ? 1 : 0);
+  }, 0);
+  if (ctx.environmentTier === 'FORMAL_EVENT') {
+    if (heroCount >= 2) aestheticScore += 1.2;
+    else aestheticScore -= 0.8;
+  } else {
+    if (heroCount === 1) aestheticScore += 1.2;
+    else if (heroCount > 1) aestheticScore -= 0.6;
+    else aestheticScore -= 0.4;
+  }
+
+  // COLOR HARMONY BALANCE
+  const NEUTRAL_FAMILIES = new Set([
+    'black',
+    'white',
+    'gray',
+    'grey',
+    'beige',
+    'tan',
+    'brown',
+    'cream',
+    'ivory',
+    'khaki',
+    'navy',
+  ]);
+  const evalColors = evalSet.map((it) => {
+    const fam = (it.color_family ?? it.color ?? '').toLowerCase().trim();
+    return { fam, isNeutral: NEUTRAL_FAMILIES.has(fam) };
+  });
+  const neutralCount = evalColors.filter((c) => c.isNeutral).length;
+  const loudCount = evalColors.filter((c) => c.fam && !c.isNeutral).length;
+  if (neutralCount === evalSet.length) {
+    aestheticScore -= 0.5;
+  } else if (loudCount === 1 && neutralCount === evalSet.length - 1) {
+    aestheticScore += 1.0;
+  } else if (loudCount >= 2) {
+    aestheticScore -= 0.7;
+  }
+
+  // FORMALITY COHESION
+  const formalities = evalSet.map((it) => Number(it.formality_score ?? 5));
+  const formalityDiff =
+    Math.max(...formalities) - Math.min(...formalities);
+  if (formalityDiff <= 2) aestheticScore += 1.0;
+  else if (formalityDiff >= 5) aestheticScore -= 1.2;
+
+  // TEXTURE VARIATION BONUS
+  const materials = evalSet.map((it) =>
+    (it.material ?? '').toLowerCase().trim(),
+  );
+  const uniqueMaterials = new Set(materials.filter(Boolean));
+  const allCotton =
+    materials.length > 0 && materials.every((m) => m === 'cotton');
+  if (uniqueMaterials.size > 1 && !allCotton) aestheticScore += 0.6;
+
+  // DRESS-CODE COHERENCE
+  // More than two distinct dress codes across the look reads as
+  // chaotic (e.g. UltraCasual + Formal + SmartCasual in one outfit).
+  const distinctDressCodes = new Set(
+    evalSet
+      .map((it) => (it.dress_code ?? '').toLowerCase().trim())
+      .filter((d) => d.length > 0),
+  );
+  if (distinctDressCodes.size > 2) {
+    aestheticScore -= 1.5;
+  }
+
+  // PROPORTION LOGIC
+  const topSub = (slots.top.subcategory ?? '').toLowerCase();
+  const bottomSub = (slots.bottom.subcategory ?? '').toLowerCase();
+  const bottomIsShorts = bottomSub.includes('shorts');
+  const topIsOversizedLayer = /hoodie|sweater/.test(topSub);
+  const topIsTeeOrTank = /tee|t[-\s]?shirt|tank/.test(topSub);
+  if (bottomIsShorts && topIsOversizedLayer) aestheticScore -= 0.6;
+  if (bottomIsShorts && topIsTeeOrTank) aestheticScore += 0.6;
+
+  // ATHLETIC FUNCTION BONUS
+  const shoesSub = (slots.shoes.subcategory ?? '').toLowerCase();
+  if (
+    ctx.environmentTier === 'ATHLETIC' &&
+    shoesSub.includes('sneakers') &&
+    (bottomSub.includes('shorts') || bottomSub.includes('joggers'))
+  ) {
+    aestheticScore += 1.0;
+  }
+
+  // EXTREME_HEAT LIGHTNESS BONUS
+  if (ctx.environmentTier === 'EXTREME_HEAT') {
+    const hasHeavy = core.some((it) => {
+      const m = (it.material ?? '').toLowerCase();
+      return m.includes('wool') || m.includes('cashmere');
+    });
+    if (!hasHeavy && bottomIsShorts) aestheticScore += 0.8;
+  }
+
+  // ACCESSORY RESTRAINT BIAS
+  // A metal accessory layered onto an already-loud core (more than one
+  // non-neutral core item) reads as flashy overload. Penalize.
+  if (
+    slots.accessory &&
+    (slots.accessory.material ?? '').toLowerCase() === 'metal'
+  ) {
+    let coreLoudCount = 0;
+    for (const it of core) {
+      const fam = (it.color_family ?? it.color ?? '').toLowerCase().trim();
+      if (fam && !NEUTRAL_FAMILIES.has(fam)) coreLoudCount++;
+    }
+    if (coreLoudCount > 1) {
+      aestheticScore -= 0.5;
+    }
+  }
+
+  // BREAK ASYMMETRY PENALTY
+  // Items are individually strong but the composite is negative —
+  // "good pieces, bad composition". Amplify the aesthetic penalty so
+  // composition failure is not masked by item-level quality.
+  if (aestheticScore < 0 && total > 0) {
+    aestheticScore *= 1.4;
+  }
+
+  const AESTHETIC_AMP = 8;
+  amplified += aestheticScore * AESTHETIC_AMP;
+
+  if (process.env.STUDIO_ELITE_AUDIT === 'true') {
+    const requestId =
+      (ctx as unknown as { requestId?: string }).requestId ?? null;
+    console.log('STUDIO_OUTFIT_SCORE_BREAKDOWN', {
+      outfitId: requestId,
+      tier: ctx.environmentTier,
+      topId: slots.top?.id,
+      bottomId: slots.bottom?.id,
+      shoesId: slots.shoes?.id,
+      finalScore: amplified,
+    });
+    console.log('STUDIO_FOOTWEAR_REALISM', {
+      tier: ctx.environmentTier,
+      shoeSubcategory: slots.shoes?.subcategory,
+      shoeMaterial: slots.shoes?.material,
+      shoeFormality: slots.shoes?.formality_score,
+    });
+  }
+
   // Clamp to keep scores interpretable.
   return Math.round(amplified * 100) / 100;
 }

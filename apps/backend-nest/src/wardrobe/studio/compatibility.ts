@@ -4,6 +4,7 @@
 // No shared scoring logic is imported. Output is a simple score + reason.
 
 import { mapMainCategoryToSlot } from '../logic/categoryMapping';
+import { harmonyScore } from './colorHarmony';
 import type { StudioItem, StudioBuildContext } from './types';
 
 const lc = (s?: string) => (s ?? '').toLowerCase();
@@ -134,12 +135,19 @@ export function topBottomCompatibility(
   bottom: StudioItem,
   ctx: StudioBuildContext,
 ): CompatibilityResult {
+  const isBeachHeat =
+    ctx.environmentTier === 'EXTREME_HEAT' &&
+    /beach|sand|ocean|miami|resort|tropical|coastal/i.test(
+      ctx.effectiveQuery ?? '',
+    );
+
   let score = 0;
-  score += colorClashScore(colorOf(top), colorOf(bottom));
+  score += harmonyScore(top, bottom);
   score += formalityScore(top, bottom);
   score += dressCodeScore(top, bottom);
 
   // Silhouette guardrail: hoodie + formal trousers is a structural clash.
+  // Beach-heat does NOT relax structural clashes.
   if (isHoodie(top) && isFormalBottom(bottom)) {
     return result(false, -2, 'HOODIE_WITH_FORMAL_BOTTOM');
   }
@@ -155,12 +163,14 @@ export function topBottomCompatibility(
   }
 
   // Formal context must not pair with shorts.
+  // Beach-heat does NOT relax structural clashes.
   if (ctx.studio.isFormalContext && isShort(bottom)) {
     return result(false, -2, 'SHORTS_IN_FORMAL');
   }
 
-  // Hard drop if formality gap is huge.
-  if (formalityDelta(top, bottom) >= 4) {
+  // Formality delta hard-drop. Beach-heat relaxes threshold 4 → 5.
+  const formalityDeltaThreshold = isBeachHeat ? 5 : 4;
+  if (formalityDelta(top, bottom) >= formalityDeltaThreshold) {
     return result(false, score, 'FORMALITY_GAP_TOP_BOTTOM');
   }
 
@@ -174,11 +184,17 @@ export function shoesCompatibility(
   shoes: StudioItem,
   ctx: StudioBuildContext,
 ): CompatibilityResult {
+  const isBeachHeat =
+    ctx.environmentTier === 'EXTREME_HEAT' &&
+    /beach|sand|ocean|miami|resort|tropical|coastal/i.test(
+      ctx.effectiveQuery ?? '',
+    );
+
   let score = 0;
-  score += colorClashScore(colorOf(shoes), colorOf(bottom));
+  score += harmonyScore(shoes, bottom);
   score += formalityScore(bottom, shoes);
 
-  // Formal bottom demands a dress shoe; sneakers with formal bottoms clash.
+  // Formal bottom demands a dress shoe. Structural; no beach override.
   if (isFormalBottom(bottom) && isSneaker(shoes)) {
     return result(false, -2, 'SNEAKERS_WITH_FORMAL_BOTTOM');
   }
@@ -188,7 +204,7 @@ export function shoesCompatibility(
     score -= 0.5;
   }
 
-  // Formal context requires dress shoes.
+  // Formal context requires dress shoes. Structural; no beach override.
   if (ctx.studio.isFormalContext && !isDressShoe(shoes)) {
     return result(false, -2, 'NON_DRESS_SHOE_IN_FORMAL');
   }
@@ -198,8 +214,8 @@ export function shoesCompatibility(
     return result(false, -2, 'NON_ATHLETIC_SHOE_IN_GYM');
   }
 
-  // Hard-drop sneakers when both top is hoodie AND bottom is trousers
-  // (already blocked by top-bottom, but guard anyway).
+  // Hard-drop when top is hoodie AND bottom is formal trouser.
+  // Structural; no beach override.
   if (isHoodie(top) && isFormalBottom(bottom)) {
     return result(false, -2, 'HOODIE_WITH_FORMAL_BOTTOM');
   }
@@ -230,8 +246,9 @@ export function shoesCompatibility(
     return result(false, -1, 'EXCLUDED_BOOTS');
   }
 
-  // Hard drop if formality gap bottom↔shoes is huge.
-  if (formalityDelta(bottom, shoes) >= 4) {
+  // Formality delta bottom↔shoes hard-drop. Beach-heat relaxes 4 → 5.
+  const formalityDeltaThreshold = isBeachHeat ? 5 : 4;
+  if (formalityDelta(bottom, shoes) >= formalityDeltaThreshold) {
     return result(false, score, 'FORMALITY_GAP_BOTTOM_SHOES');
   }
 
@@ -242,6 +259,7 @@ export function shoesCompatibility(
 export function selectLayer(
   top: StudioItem,
   bottom: StudioItem,
+  shoes: StudioItem,
   pool: StudioItem[],
   ctx: StudioBuildContext,
   excludeIds: Set<string>,
@@ -251,8 +269,40 @@ export function selectLayer(
   const candidates = pool.filter((item) => !excludeIds.has(item.id));
   if (!candidates.length) return null;
 
+  // Full-core average formality for the proximity gate. Missing values
+  // default to 5 so a single unknown item does not skew the gate.
+  const avgCoreFormality =
+    (Number(top.formality_score ?? 5) +
+      Number(bottom.formality_score ?? 5) +
+      Number(shoes.formality_score ?? 5)) /
+    3;
+
   let best: { item: StudioItem; score: number } | null = null;
   for (const layer of candidates) {
+    // Tier gates — reject categorically inappropriate layers before scoring.
+    if (
+      ctx.environmentTier === 'ATHLETIC' &&
+      /blazer|sport\s*coat|overcoat|suit/i.test(layer.subcategory ?? '')
+    ) {
+      continue;
+    }
+    if (
+      ctx.environmentTier === 'EXTREME_HEAT' &&
+      /wool|cashmere|leather|down|fleece/i.test(layer.material ?? '')
+    ) {
+      continue;
+    }
+    // Formality proximity: layer must sit within ±2 of core average.
+    // Skip the check when the layer has no formality_score so unlabeled
+    // items are not silently dropped.
+    const layerFormality = Number(layer.formality_score ?? NaN);
+    if (
+      Number.isFinite(layerFormality) &&
+      Math.abs(layerFormality - avgCoreFormality) > 2
+    ) {
+      continue;
+    }
+
     let score = 1;
     score += colorClashScore(colorOf(layer), colorOf(top));
     score += colorClashScore(colorOf(layer), colorOf(bottom));
@@ -272,6 +322,7 @@ export function selectLayer(
 export function selectAccessory(
   top: StudioItem,
   bottom: StudioItem,
+  shoes: StudioItem,
   pool: StudioItem[],
   ctx: StudioBuildContext,
   excludeIds: Set<string>,
@@ -280,11 +331,40 @@ export function selectAccessory(
   const candidates = pool.filter((item) => !excludeIds.has(item.id));
   if (!candidates.length) return null;
 
+  // Full-core average formality and ultracasual sniff drive the gates
+  // below. Missing formalities default to 5 per the proximity convention.
+  const avgCoreFormality =
+    (Number(top.formality_score ?? 5) +
+      Number(bottom.formality_score ?? 5) +
+      Number(shoes.formality_score ?? 5)) /
+    3;
+  const coreIsUltraCasual =
+    /ultracasual/i.test(top.dress_code ?? '') ||
+    /ultracasual/i.test(bottom.dress_code ?? '') ||
+    /ultracasual/i.test(shoes.dress_code ?? '');
+
   let best: { item: StudioItem; score: number } | null = null;
   for (const acc of candidates) {
+    // Formality gate — never pair a hero-tier accessory on a low-formality look.
+    const accFormality = Number(acc.formality_score ?? NaN);
+    if (
+      avgCoreFormality < 5 &&
+      Number.isFinite(accFormality) &&
+      accFormality >= 7
+    ) {
+      continue;
+    }
+    // Dress-code gate — a tie or pocket square is wrong on an ultracasual core.
+    if (
+      coreIsUltraCasual &&
+      /tie|pocket\s*square/i.test(acc.subcategory ?? '')
+    ) {
+      continue;
+    }
+
     let score = 1;
-    score += colorClashScore(colorOf(acc), colorOf(top));
-    score += colorClashScore(colorOf(acc), colorOf(bottom));
+    score += harmonyScore(acc, top);
+    score += harmonyScore(acc, bottom);
     // Formal context prefers structured accessories.
     if (ctx.studio.isFormalContext) {
       const sub = lc(acc.subcategory);

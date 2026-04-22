@@ -6,6 +6,7 @@
 
 import { isFeminineItem } from '../logic/presentationFilter';
 import { mapMainCategoryToSlot, type Slot } from '../logic/categoryMapping';
+import { isExplicitBeachIntent } from './context';
 import type { StudioItem, StudioBuildContext } from './types';
 
 const lc = (s?: string) => (s ?? '').toLowerCase();
@@ -291,10 +292,13 @@ export function deriveEnvironmentTier(
 
     // Extreme heat: require an EXPLICIT signal. Climate / profile
     // defaults must NOT auto-trigger EXTREME_HEAT — a beach context in
-    // 60°F weather is not heat. The prompt regex catches resort / pool
-    // / tropical phrasing; tempF >= HEAT_TEMP_F is the objective trigger.
-    const explicitBeachSignal =
-      /beach|sand|tropical|miami|hawaii|resort|pool/i.test(q);
+    // 60°F weather is not heat. The explicit beach-intent detector uses
+    // word-boundary matching so proper nouns ("Miami", "Hawaii") cannot
+    // trigger beach physics; tempF >= HEAT_TEMP_F remains the objective
+    // temperature trigger.
+    const explicitBeachSignal = isExplicitBeachIntent(
+      ctx.effectiveQuery ?? '',
+    );
     const hotWeather = tempF != null && tempF >= HEAT_TEMP_F;
     if (explicitBeachSignal || hotWeather) {
       return 'EXTREME_HEAT';

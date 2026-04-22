@@ -1939,6 +1939,24 @@ export class WardrobeService {
         { requestId: reqId, userId },
       );
 
+      // Elite mode may legitimately return zero outfits.
+      // This is valid behavior — do NOT crash downstream logic.
+      if (!studioOutfits || studioOutfits.length === 0) {
+        console.warn('[STUDIO] ZERO_OUTFITS_GUARD generateOutfits', {
+          requestId: reqId,
+          userId,
+        });
+
+        return {
+          request_id: reqId,
+          outfit_id: null,
+          items: [],
+          why: null,
+          missing: undefined,
+          outfits: [],
+        };
+      }
+
       logOutput(reqId, {
         outfits: studioOutfits.map((o) => ({
           id: o.outfit_id,

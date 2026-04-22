@@ -32,6 +32,15 @@ export interface StudioItem {
   layering?: string;
   waterproof_rating?: number | string;
   rain_ok?: boolean;
+  pattern?:
+    | 'solid'
+    | 'stripe'
+    | 'check'
+    | 'plaid'
+    | 'floral'
+    | 'geometric'
+    | 'animal'
+    | 'other';
 }
 
 /**
@@ -107,6 +116,7 @@ export type StudioInvariantCode =
   | 'WARDROBE_INSUFFICIENT_BOTTOMS'
   | 'WARDROBE_INSUFFICIENT_SHOES'
   | 'WARDROBE_INSUFFICIENT_COMPATIBLE'
+  | 'WARDROBE_PROFILE_BLOCKS_SHOES'
   | 'STUDIO_SLOT_INVARIANT_FAILED';
 
 /**

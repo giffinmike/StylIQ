@@ -139,6 +139,16 @@ export function buildStrictOutfit(
 ): StrictBuildResult | null {
   const partitioned = partitionBySlot(pool);
 
+  console.log('[STRICT_BUILDER_PARTITIONS]', {
+    requestId: (ctx as any).requestId,
+    environmentTier: ctx.environmentTier,
+    tops: partitioned.tops?.length ?? 0,
+    bottoms: partitioned.bottoms?.length ?? 0,
+    shoes: partitioned.shoes?.length ?? 0,
+    layers: partitioned.outerwear?.length ?? 0,
+    accessories: partitioned.accessories?.length ?? 0,
+  });
+
   const excludeTop = opts.excludeTopIds ?? new Set<string>();
   const excludeBottom = opts.excludeBottomIds ?? new Set<string>();
   const excludeShoes = opts.excludeShoesIds ?? new Set<string>();
@@ -201,17 +211,23 @@ export function buildStrictOutfit(
   // FIX 3 — slot depth safety: when any mandatory pool is shallow, widen
   // the K-slice for every slot to the full eligible pool so combinatorics
   // are never artificially starved. Global K constants stay untouched.
+  //
+  // Phase 3 — unified K-slice formula: K scales with pool size (20%),
+  // floors at 3, caps at 8, and never exceeds the eligible pool. Widens
+  // candidate consideration for large wardrobes without changing ranking.
+  const computeK = (size: number) =>
+    Math.min(size, Math.min(8, Math.max(3, Math.ceil(size * 0.2))));
   const depthShallow =
     eligibleBottoms.length < 3 || eligibleShoes.length < 2;
   const K_TOPS = depthShallow
     ? eligibleTops.length
-    : Math.min(eligibleTops.length, 6);
+    : computeK(eligibleTops.length);
   const K_BOTTOMS = depthShallow
     ? eligibleBottoms.length
-    : Math.min(eligibleBottoms.length, 6);
+    : computeK(eligibleBottoms.length);
   const K_SHOES = depthShallow
     ? eligibleShoes.length
-    : Math.min(eligibleShoes.length, 8);
+    : computeK(eligibleShoes.length);
 
   interface TripleCandidate {
     top: StudioItem;
@@ -239,6 +255,8 @@ export function buildStrictOutfit(
   const shoesFreshAvailable = eligibleShoes.some(
     (s) => !excludeShoes.has(s.id),
   );
+
+  console.log('[STRICT_TRIPLE_GENERATION_START]');
 
   for (let ti = 0; ti < K_TOPS; ti++) {
     const top = eligibleTops[ti];
@@ -382,10 +400,22 @@ export function buildStrictOutfit(
 
     // Optional layer.
     let layer: StudioItem | null = null;
-    if (!shouldSuppressLayer(ctx)) {
+
+    const isBeachHeat =
+      ctx.environmentTier === 'EXTREME_HEAT' &&
+      /beach|sand|ocean|miami|resort|tropical|coastal/i.test(
+        ctx.effectiveQuery ?? '',
+      );
+
+    if (isBeachHeat) {
+      layer = null;
+    }
+
+    if (!isBeachHeat && !shouldSuppressLayer(ctx)) {
       layer = selectLayer(
         chosenTop,
         chosenBottom,
+        chosenShoes,
         partitioned.outerwear,
         ctx,
         new Set<string>([...excludeLayer, ...alreadyUsed]),
@@ -399,6 +429,7 @@ export function buildStrictOutfit(
       accessory = selectAccessory(
         chosenTop,
         chosenBottom,
+        chosenShoes,
         partitioned.accessories,
         ctx,
         new Set<string>([...excludeAccessory, ...alreadyUsed]),
@@ -436,16 +467,7 @@ export function buildStrictOutfit(
   };
 
   const viable = candidates.filter((c) => c.score > 0);
-  const slateIndex = opts.slateIndex ?? 1;
-
   if (viable.length === 0) {
-    if (slateIndex === 1 && candidates.length > 0) {
-      // Allow neutral baseline for first outfit only
-      const best = candidates[0];
-      return finalizeStrictOutfit(best);
-    }
-
-    // Iteration 2+ with no strictly positive candidates
     return null;
   }
 
