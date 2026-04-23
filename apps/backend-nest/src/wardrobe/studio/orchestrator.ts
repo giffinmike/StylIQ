@@ -1821,6 +1821,48 @@ export function runStudioOrchestrator(
     });
   }
 
+  // ── HARD NO-ZERO INVARIANT ───────────────────────────────────────
+  // Absolute final safety net. Runs after every other path completes.
+  // If for any reason outfits is empty AND the wardrobe has at least
+  // one item in every mandatory slot, force a single fallback outfit
+  // built from the first ranked item in each slot. Skips compatibility,
+  // elite, and recovery validation. Never pads to 3 — emits exactly
+  // one. Zero-result responses are now possible only when the wardrobe
+  // is genuinely missing a category (handled by WARDROBE_INSUFFICIENT_*
+  // throws upstream).
+  if (
+    outfits.length === 0 &&
+    partitioned.tops.length > 0 &&
+    partitioned.bottoms.length > 0 &&
+    partitioned.shoes.length > 0
+  ) {
+    const forcedTop = partitioned.tops[0];
+    const forcedBottom = partitioned.bottoms[0];
+    const forcedShoes = partitioned.shoes[0];
+    const forcedSlots: StudioSlots = {
+      top: forcedTop,
+      bottom: forcedBottom,
+      shoes: forcedShoes,
+      layer: null,
+      accessory: null,
+    };
+    const forcedOutfit: StudioOutfit = {
+      outfit_id: randomUUID(),
+      title: `Look 1: ${forcedTop.label ?? 'Top'} with ${forcedBottom.label ?? 'Bottom'}`,
+      why: '',
+      reasoning: 'Best available outfit from your wardrobe.',
+      score: 0,
+      items: [forcedTop, forcedBottom, forcedShoes],
+      slots: forcedSlots,
+    };
+    outfits = [forcedOutfit];
+    console.warn('[STUDIO] HARD_NO_ZERO_TRIGGERED', {
+      requestId: meta.requestId,
+      userId: meta.userId,
+      tier: environmentTier,
+    });
+  }
+
   // Single-line diagnostic summary: enough to reproduce any future
   // quality regression (tier, pool counts, chosen item IDs, scores)
   // without flooding logs. Safe for production — one log per request.
