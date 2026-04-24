@@ -28,6 +28,8 @@ import { GenerateOutfitsDto } from './dto/generate-outfits.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Storage } from '@google-cloud/storage';
 import { getSecret, getSecretJson, secretExists } from '../config/secrets';
+import { generateLegacyFebOutfits } from './legacyFeb/legacyFebOutfits';
+import { adaptLegacyFebToStudioShape } from './legacyFeb/legacyFebAdapter';
 
 type GCPServiceAccount = {
   project_id: string;
@@ -165,6 +167,25 @@ export class WardrobeController {
     const userId = req.user.userId;
     const weatherArg = body.useWeather === false ? undefined : body.weather;
     const userStyle = normalizeUserStyle(body.style_profile);
+
+    // ── LEGACY FEB OUTFITS — isolated containment branch.
+    //    Behavior when USE_LEGACY_FEB is unset or any value other than 'true'
+    //    is byte-identical to the existing Studio path (nothing below is
+    //    reached). All legacyFeb logic lives under ./legacyFeb/ and never
+    //    imports from wardrobe/logic/*, wardrobe/studio/*, or ai/*.
+    if (process.env.USE_LEGACY_FEB === 'true') {
+      const raw = await generateLegacyFebOutfits({
+        userId,
+        query: body.query,
+        refinementPrompt: body.refinementPrompt,
+        lockedItemIds: body.lockedItemIds ?? [],
+        topK: body.topK,
+        userStyle,
+        weather: weatherArg,
+        vertex: this.vertex,
+      });
+      return adaptLegacyFebToStudioShape(raw);
+    }
 
     // ── Studio hard-lock: the /outfits endpoint is the Studio surface.
     //    Elite slow path is authoritative for Studio. Fast path (including
