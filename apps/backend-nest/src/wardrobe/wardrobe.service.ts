@@ -46,6 +46,7 @@ import {
 } from './prompts/outfitPlanPrompt';
 import { extractStrictJson } from './logic/json';
 import { applyContextualFilters } from './logic/contextFilters';
+import { parseEnvContext, type EnvContext } from './logic/envContext';
 import {
   resolveUserPresentation,
   isFeminineItem,
@@ -290,6 +291,49 @@ function buildUserPrefsFromRules(
     if (hit(it)) m.set(id, -5); // -5 raw → scaled to ~ -0.2 in reranker
   }
   return m;
+}
+
+// Phase 2 containment: legacy-path-only environment gate.
+// Pure, local helper. Does not mutate inputs; preserves locked/forceKeep items;
+// safety-valve returns the original catalog when filtering would leave < 6 items.
+function applyEnvironmentalFilters(catalog: any[], env: EnvContext): any[] {
+  if (!Array.isArray(catalog) || catalog.length === 0) return catalog;
+  if (
+    env.climate !== 'hot' &&
+    env.climate !== 'cold' &&
+    env.climate !== 'extreme'
+  ) {
+    return catalog;
+  }
+
+  const COLD_OUTERWEAR =
+    /\b(parka|puffer|down\s+jacket|peacoat|pea\s+coat|overcoat|topcoat|trench(?:\s+coat)?|wool\s+coat|fur\s+coat|sherpa|fleece|heavy\s+coat|winter\s+coat|ski\s+jacket)\b/i;
+  const HEAVY_ITEMS =
+    /\b(turtleneck|cable\s*knit|chunky\s*knit|heavy\s*sweater|wool\s*sweater|thermal|long\s*johns|corduroy|tweed|flannel|wool\s*pants|wool\s*trousers)\b/i;
+  const SHORTS = /\bshorts?\b/i;
+  const SANDALS = /\b(sandals?|flip[\s-]?flops?|slides?|espadrilles?)\b/i;
+
+  const blob = (it: any): string =>
+    `${String(it?.main_category ?? '')} ${String(it?.subcategory ?? '')} ${String(it?.label ?? '')}`.toLowerCase();
+
+  const isHeavyForHot = (it: any): boolean => {
+    const b = blob(it);
+    return COLD_OUTERWEAR.test(b) || HEAVY_ITEMS.test(b);
+  };
+
+  const isShortsOrSandals = (it: any): boolean => {
+    const b = blob(it);
+    return SHORTS.test(b) || SANDALS.test(b);
+  };
+
+  const filtered = catalog.filter((it: any) => {
+    if (it?.__locked || it?.forceKeep) return true;
+    if (env.climate === 'hot') return !isHeavyForHot(it);
+    return !isShortsOrSandals(it);
+  });
+
+  if (filtered.length < 6) return catalog;
+  return filtered;
 }
 
 @Injectable()
@@ -1464,6 +1508,10 @@ export class WardrobeService {
           );
         }
       }
+
+      // Phase 2: legacy-path environment gate (catalog stage only)
+      const env = parseEnvContext(effectiveQuery, opts?.weather);
+      catalog = applyEnvironmentalFilters(catalog, env);
 
       // 3b) Feedback filters / soft prefs
       let feedbackRows: any[] = [];
