@@ -1867,11 +1867,45 @@ ${lockedLines}
       const orderRank = (c: CatalogItem) =>
         isTop(c) ? 1 : isBottom(c) ? 2 : isShoes(c) ? 3 : 4;
 
-      const firstBottom = reranked.find(isBottom);
-      const firstShoes = reranked.find(isShoes);
+      // Phase 3: legacy-path environment fitness check for repair lookups.
+      // Pure, local. Does not mutate; respects __locked / forceKeep.
+      const envFitsItem = (it: any, e: EnvContext): boolean => {
+        if (!it) return false;
+        if (it.__locked || it.forceKeep) return true;
+        if (
+          e.climate !== 'hot' &&
+          e.climate !== 'cold' &&
+          e.climate !== 'extreme'
+        ) {
+          return true;
+        }
+        const main = String(it.main_category ?? '').toLowerCase();
+        const sub = String(it.subcategory ?? '').toLowerCase();
+        const lbl = String(it.label ?? '').toLowerCase();
+        const blob = `${main} ${sub} ${lbl}`;
+        if (e.climate === 'hot') {
+          const COLD_OUTERWEAR =
+            /\b(parka|puffer|down\s+jacket|peacoat|pea\s+coat|overcoat|topcoat|trench(?:\s+coat)?|wool\s+coat|fur\s+coat|sherpa|fleece|heavy\s+coat|winter\s+coat|ski\s+jacket)\b/i;
+          const HEAVY_ITEMS =
+            /\b(turtleneck|cable\s*knit|chunky\s*knit|heavy\s*sweater|wool\s*sweater|thermal|long\s*johns|corduroy|tweed|flannel|wool\s*pants|wool\s*trousers)\b/i;
+          return !COLD_OUTERWEAR.test(blob) && !HEAVY_ITEMS.test(blob);
+        }
+        const SHORTS = /\bshorts?\b/i;
+        const SANDALS = /\b(sandals?|flip[\s-]?flops?|slides?|espadrilles?)\b/i;
+        return !SHORTS.test(blob) && !SANDALS.test(blob);
+      };
+
+      const firstBottom =
+        reranked.find((it) => isBottom(it) && envFitsItem(it, env)) ??
+        reranked.find(isBottom);
+      const firstShoes =
+        reranked.find((it) => isShoes(it) && envFitsItem(it, env)) ??
+        reranked.find(isShoes);
       const firstSneaker = reranked.find(isSneaker);
       const firstShorts = reranked.find(isShorts);
-      const firstTop = reranked.find(isTop);
+      const firstTop =
+        reranked.find((it) => isTop(it) && envFitsItem(it, env)) ??
+        reranked.find(isTop);
 
       outfits = outfits.map((o) => {
         const haveBottom = o.items.some(isBottom);
