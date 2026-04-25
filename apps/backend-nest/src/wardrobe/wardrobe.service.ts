@@ -993,7 +993,7 @@ export class WardrobeService {
       // Build effectiveQuery (what we actually embed and parse for constraints)
       let effectiveQuery = baseQuery;
       if (refinement) {
-        effectiveQuery = `${baseQuery}. User refinement: ${refinement}`;
+        effectiveQuery = refinement;
       } else if (sessionId) {
         const sess = await this.getSession(sessionId);
         if (sess && sess.refinements.length) {
