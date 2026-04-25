@@ -853,7 +853,7 @@ export const skins = {
       input2: '#EAEAEA',
       inputText1: 'rgba(180,180,200,1)',
       imageBackground: '#e9e9e9',
-      surface: '#1A0033', // fallback solid color
+      surface: '#1A0033', // /fallback solid color
       surface2: '#26004A',
       surface3: '#320060',
       surfaceBorder: 'rgba(255,255,255,0.05)',
