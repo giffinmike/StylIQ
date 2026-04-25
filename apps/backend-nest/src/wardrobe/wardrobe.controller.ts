@@ -161,6 +161,13 @@ export class WardrobeController {
   @Post('outfits')
   async generateOutfits(@Req() req, @Body() body: GenerateOutfitsDto) {
     const userId = req.user.userId;
+
+    // ── STUDIO CONTAINMENT: force legacy generateOutfits() pipeline for all
+    //    standard generation requests. Every fast-path branch in this handler
+    //    gates on `body.useFastMode && !body.aaaaMode`, so forcing useFastMode
+    //    to false makes them unreachable without modifying any shared logic.
+    body.useFastMode = false;
+
     const weatherArg = body.useWeather === false ? undefined : body.weather;
     const userStyle = normalizeUserStyle(body.style_profile);
 
@@ -264,6 +271,7 @@ export class WardrobeController {
       });
     }
 
+    console.log('🔥 SLOW PATH EXECUTED');
     return this.service.generateOutfits(userId, body.query, body.topK || 5, {
       userStyle,
       weather: weatherArg,
