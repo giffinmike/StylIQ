@@ -532,10 +532,13 @@ export default function OutfitSuggestionScreen({navigate}: Props) {
     if (style !== 'Any') parts.push(style);
     if (useWeather && weather !== 'auto') parts.push(`${weather} weather`);
     if (lastSpeech.trim().length) parts.push(lastSpeech.trim());
-    return parts.join(' ').trim() || 'smart casual, balanced neutrals';
+    return parts.join(' ').trim();
   }, [occasion, style, weather, lastSpeech, useWeather]);
 
-  const canGenerate = useMemo(() => lastSpeech.trim().length > 0, [lastSpeech]);
+  const canGenerate =
+    outfitPrompt?.trim().length > 0 ||
+    lastSpeech.trim().length > 0 ||
+    builtQuery.trim().length > 0;
 
   const chipWeatherContext = useMemo(() => {
     switch (weather) {
@@ -574,6 +577,7 @@ export default function OutfitSuggestionScreen({navigate}: Props) {
   // Generate / Refine
   // ──────────────────────────────────────────────────────────────
   const handleGenerate = () => {
+    console.log('🔥 HANDLE GENERATE FIRED');
     if (!userId) return;
     if (!canGenerate) return;
 
@@ -593,7 +597,11 @@ export default function OutfitSuggestionScreen({navigate}: Props) {
 
     const useStyle = useStylePrefs && weights.styleWeight > 0;
 
-    regenerate(builtQuery, {
+    const finalQuery = outfitPrompt?.trim().length
+      ? outfitPrompt.trim()
+      : builtQuery;
+
+    regenerate(finalQuery, {
       topK: 25,
       useWeather,
       sessionId: sid,
@@ -623,7 +631,11 @@ export default function OutfitSuggestionScreen({navigate}: Props) {
         (id: any): id is string => typeof id === 'string' && id.length > 0,
       );
 
-    regenerate(builtQuery, {
+    const finalQuery = outfitPrompt?.trim().length
+      ? outfitPrompt.trim()
+      : builtQuery;
+
+    regenerate(finalQuery, {
       topK: 25,
       sessionId,
       refinementPrompt: refinement,
@@ -694,7 +706,9 @@ export default function OutfitSuggestionScreen({navigate}: Props) {
       : '';
     const queryToUse = lockedItem
       ? `outfit built around my ${lockedItemCategory}${buildAroundPrompt ? `: ${buildAroundPrompt}` : ''}`
-      : builtQuery;
+      : (outfitPrompt?.trim().length
+          ? outfitPrompt.trim()
+          : builtQuery);
 
     // Use existing builtQuery logic (legacy behavior preservation)
     // If user selected a mood before generating, incorporate it
@@ -810,8 +824,12 @@ export default function OutfitSuggestionScreen({navigate}: Props) {
 
       const useStyle = useStylePrefs && weights.styleWeight > 0;
 
+      const finalQuery = outfitPrompt?.trim().length
+        ? outfitPrompt.trim()
+        : builtQuery;
+
       // Trigger refinement with ALL relevant items locked
-      regenerate(builtQuery, {
+      regenerate(finalQuery, {
         topK: 25,
         useWeather,
         sessionId, // Reuse existing session
@@ -1122,6 +1140,7 @@ export default function OutfitSuggestionScreen({navigate}: Props) {
     );
   }
 
+  console.log('canGenerate:', canGenerate);
   return (
     <View
       style={[

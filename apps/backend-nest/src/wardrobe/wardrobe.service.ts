@@ -2426,7 +2426,7 @@ ${lockedLines}
           //   }),
           // );
         }
-        eliteOutfits = _coherentSlow.length >= 3 ? _coherentSlow : _coherentSlow;
+        eliteOutfits = _coherentSlow.length >= 3 ? _coherentSlow : eliteOutfits;
       }
 
       // ── Style Judge: curate best outfits by holistic taste scoring ──
