@@ -2526,6 +2526,13 @@ ${lockedLines}
       }
 
       // ── Style Judge: curate best outfits by holistic taste scoring ──
+      // ─────────────────────────────────────────────────────────────────────
+      // AI Outfit Studio v1 – Elite Structural Stable
+      // Studio baseline is locked — do not tune weights/selection without
+      // isolated A/B test.
+      // Do NOT modify shared ai/* logic for Studio tuning; changes must
+      // remain Studio-scoped.
+      // ─────────────────────────────────────────────────────────────────────
       const _judgeCtxSlow = {
         requestedDressCode: vCtx?.requestedDressCode,
         query,
