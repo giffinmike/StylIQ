@@ -605,7 +605,7 @@ export function scoreOutfit(
     (it) => typeof it.role === 'string' && it.role.toLowerCase() === 'hero',
   ).length;
   if (heroCount === 1) {
-    bonuses.push({ rule: 'hero_balance', points: 6 });
+    bonuses.push({ rule: 'hero_balance', points: 8 });
   } else {
     penalties.push({ rule: 'hero_balance', points: -4 });
   }
@@ -616,7 +616,7 @@ export function scoreOutfit(
     for (const f of getItemColorFamilies(it)) allFamilies.add(f);
   }
   if (allFamilies.size === 2) {
-    bonuses.push({ rule: 'color_intentionality', points: 5 });
+    bonuses.push({ rule: 'color_intentionality', points: 7 });
   } else if (allFamilies.size === 3 && allFamilies.has('neutral')) {
     bonuses.push({ rule: 'color_intentionality', points: 3 });
   }
@@ -643,7 +643,7 @@ export function scoreOutfit(
       (a === 'tailored' && b === 'casual') ||
       (a === 'casual' && b === 'tailored')
     ) {
-      bonuses.push({ rule: 'silhouette_balance_bonus', points: 5 });
+      bonuses.push({ rule: 'silhouette_balance_bonus', points: 7 });
     }
   }
 
@@ -673,13 +673,54 @@ export function selectTopOutfits<T extends JudgeOutfit>(
     return a.index - b.index;
   });
 
+  // Structural diversity filter — never let the Top N collapse to one shape.
+  const bottomSub = (o: JudgeOutfit): string => {
+    const it = o.items.find((i) => /^bottoms?$/.test(getSlot(i)));
+    return (it?.subcategory ?? '').toLowerCase().trim();
+  };
+  const dominantFamily = (o: JudgeOutfit): string => {
+    const counts = new Map<string, number>();
+    for (const it of o.items)
+      for (const f of getItemColorFamilies(it))
+        counts.set(f, (counts.get(f) ?? 0) + 1);
+    if (counts.size === 0) return '';
+    return [...counts.entries()].sort(
+      (a, b) => b[1] - a[1] || a[0].localeCompare(b[0]),
+    )[0][0];
+  };
+  const silhouette = (o: JudgeOutfit): string => {
+    const sub = (re: RegExp): string =>
+      (o.items.find((i) => re.test(getSlot(i)))?.subcategory ?? '')
+        .toLowerCase()
+        .trim();
+    return `${sub(/^tops?$/)}|${sub(/^bottoms?$/)}|${sub(/^shoes$/)}`;
+  };
+  const selected: typeof scored = [];
+  for (const c of scored) {
+    if (selected.length >= count) break;
+    if (selected.length >= 1 && selected.length === count - 1) {
+      const group = [...selected, c];
+      const allSame = (fn: (o: JudgeOutfit) => string): boolean => {
+        const v = fn(group[0].outfit);
+        return v !== '' && group.every((s) => fn(s.outfit) === v);
+      };
+      if (allSame(bottomSub) || allSame(dominantFamily) || allSame(silhouette))
+        continue;
+    }
+    selected.push(c);
+  }
+  for (const c of scored) {
+    if (selected.length >= count) break;
+    if (!selected.includes(c)) selected.push(c);
+  }
+
   console.log(
     JSON.stringify({
       _tag: 'STYLIST_JUDGE_SCORES',
       scores: scored.map((s) => s.score.total),
-      keptIndexes: scored.slice(0, count).map((s) => s.index),
+      keptIndexes: selected.map((s) => s.index),
     }),
   );
 
-  return scored.slice(0, count).map((s) => s.outfit);
+  return selected.map((s) => s.outfit);
 }
