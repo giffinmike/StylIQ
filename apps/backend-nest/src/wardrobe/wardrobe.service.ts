@@ -1705,6 +1705,7 @@ export class WardrobeService {
         opts?.styleAgent,
         opts?.userStyle,
         buildGenderDirective(userPresentation),
+        env,
       );
       // ── Oversize candidate pool: request more so valid-only gate still yields 3 ──
       fullPrompt = fullPrompt.replace(
