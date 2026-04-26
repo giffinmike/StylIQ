@@ -152,6 +152,16 @@ function isWorkBoot(item: JudgeItem): boolean {
   return WORK_BOOT_RE.test(text);
 }
 
+const BUSINESS_SHOE_RE =
+  /\b(loafers?|oxfords?|derbys?|brogues?|monk\s?straps?|heels?|pumps?|dress\s?(shoes?|boots?))\b/i;
+
+function isBusinessShoe(item: JudgeItem): boolean {
+  const slot = getSlot(item);
+  if (slot !== 'shoes') return false;
+  const text = `${item.subcategory ?? ''} ${item.name ?? ''} ${item.shoe_style ?? ''}`;
+  return BUSINESS_SHOE_RE.test(text);
+}
+
 // ── Material tier detection ───────────────────────────────────────────────
 
 const TAILORING_MAT_RE =
@@ -336,11 +346,18 @@ function penaltyFormalityCoherence(
   if (formalities.length >= 2) {
     const spread = Math.max(...formalities) - Math.min(...formalities);
     if (spread >= 4) penalty -= 20;
+    if (spread >= 6) penalty -= 8;
   }
 
   const hasAthletic = items.some(isAthletic);
   const hasTailored = items.some(isTailored);
   if (hasAthletic && hasTailored) penalty -= 25;
+
+  const hasJeansBottom = items.some((it) => {
+    const slot = getSlot(it);
+    return (slot === 'bottom' || slot === 'bottoms') && isJeans(it);
+  });
+  if (hasJeansBottom && items.some(isBusinessShoe)) penalty -= 8;
 
   const requested = detectRequestedFormality(ctx);
   if (requested === 'formal') {
@@ -473,7 +490,8 @@ function penaltyColorHarmony(items: JudgeItem[]): {
   if (allFamilies.has('neon') && allFamilies.has('earth')) penalty -= 10;
 
   const nonNeutral = Array.from(allFamilies).filter((f) => f !== 'neutral');
-  if (allFamilies.has('neutral') && nonNeutral.length <= 1) bonus += 5;
+  if (allFamilies.has('neutral') && nonNeutral.length === 1) bonus += 5;
+  if (allFamilies.size === 1 && items.length >= 3) penalty -= 4;
 
   return { penalty: Math.max(-15, penalty), bonus: Math.min(5, bonus) };
 }
@@ -580,7 +598,56 @@ export function scoreOutfit(
   if (p6 < 0)
     penalties.push({ rule: 'occasion_appropriateness', points: p6 });
 
-  let total = 100;
+  // ── Positive ranking signals ────────────────────────────────────────────
+
+  // A) Hero Balance: exactly one anchor piece is rewarded; 0 or >1 is dinged.
+  const heroCount = items.filter(
+    (it) => typeof it.role === 'string' && it.role.toLowerCase() === 'hero',
+  ).length;
+  if (heroCount === 1) {
+    bonuses.push({ rule: 'hero_balance', points: 6 });
+  } else {
+    penalties.push({ rule: 'hero_balance', points: -4 });
+  }
+
+  // B) Color Intentionality: reward considered palettes (no penalty branch).
+  const allFamilies = new Set<string>();
+  for (const it of items) {
+    for (const f of getItemColorFamilies(it)) allFamilies.add(f);
+  }
+  if (allFamilies.size === 2) {
+    bonuses.push({ rule: 'color_intentionality', points: 5 });
+  } else if (allFamilies.size === 3 && allFamilies.has('neutral')) {
+    bonuses.push({ rule: 'color_intentionality', points: 3 });
+  }
+
+  // C) Silhouette Balance: reward tailored/casual contrast on a 1-top + 1-bottom pair.
+  const tops = items.filter((it) => {
+    const s = getSlot(it);
+    return s === 'top' || s === 'tops';
+  });
+  const bottoms = items.filter((it) => {
+    const s = getSlot(it);
+    return s === 'bottom' || s === 'bottoms';
+  });
+  if (tops.length === 1 && bottoms.length === 1) {
+    const label = (it: JudgeItem): 'tailored' | 'casual' | null => {
+      const t = `${it.dress_code ?? ''} ${it.subcategory ?? ''}`.toLowerCase();
+      if (/\b(tailored|fitted)\b/.test(t)) return 'tailored';
+      if (/\b(casual|relaxed)\b/.test(t)) return 'casual';
+      return null;
+    };
+    const a = label(tops[0]);
+    const b = label(bottoms[0]);
+    if (
+      (a === 'tailored' && b === 'casual') ||
+      (a === 'casual' && b === 'tailored')
+    ) {
+      bonuses.push({ rule: 'silhouette_balance_bonus', points: 5 });
+    }
+  }
+
+  let total = 80;
   for (const p of penalties) total += p.points;
   for (const b of bonuses) total += b.points;
   total = Math.max(0, Math.min(100, total));
