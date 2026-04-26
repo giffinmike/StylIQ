@@ -6,7 +6,7 @@ export function useStyleProfile(userId: string) {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ['styleProfile', userId],
+    queryKey: ['styleProfile'],
     enabled: !!userId,
     queryFn: async () => {
       const response = await apiClient.get('/style-profile');
@@ -19,8 +19,10 @@ export function useStyleProfile(userId: string) {
       const response = await apiClient.put('/style-profile', updatedProfile);
       return response.data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({queryKey: ['styleProfile', userId]});
+    onSuccess: (data) => {
+      queryClient.setQueryData(['styleProfile'], data);
+      queryClient.invalidateQueries({queryKey: ['styleProfile']});
+      queryClient.invalidateQueries({queryKey: ['favoriteBrands']});
     },
   });
 
@@ -29,9 +31,14 @@ export function useStyleProfile(userId: string) {
     mutation.mutate({ [field]: value });
   };
 
+  const updateProfileAsync = (field: string, value: any) => {
+    return mutation.mutateAsync({ [field]: value });
+  };
+
   return {
-    styleProfile: query.data,
+    styleProfile: queryClient.getQueryData(['styleProfile']) ?? query.data,
     updateProfile,
+    updateProfileAsync,
     refetch: query.refetch,
     isLoading: query.isLoading,
     isUpdating: mutation.isPending,

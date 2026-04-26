@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Dimensions,
   FlatList,
+  SectionList,
   Animated,
   TextInput,
   TouchableOpacity,
@@ -15,6 +16,8 @@ import {
   Modal,
   TouchableWithoutFeedback,
   Keyboard,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 
 import * as Animatable from 'react-native-animatable';
@@ -30,17 +33,199 @@ import {useGlobalStyles} from '../styles/useGlobalStyles';
 import {tokens} from '../styles/tokens/tokens';
 import {getData} from 'country-list';
 import {Chip} from '../components/Chip/Chip';
+import {useShoppingStore} from '../../../../store/shoppingStore';
+import brandsData from '../data/brands.json';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 type Props = {navigate: (screen: string, params?: any) => void};
 
 const {width} = Dimensions.get('window');
 const ONBOARDING_KEY = 'stylhelpr_onboarding_complete';
 
+type BrandEntry = {id: string; name: string};
+
+function getBrandBucket(name: string): string {
+  const first = name.charAt(0);
+  return /[a-zA-Z]/.test(first) ? first.toUpperCase() : '#';
+}
+
+function buildBrandSections(brands: BrandEntry[]) {
+  const map = new Map<string, BrandEntry[]>();
+  for (const b of brands) {
+    const bucket = getBrandBucket(b.name);
+    if (!map.has(bucket)) map.set(bucket, []);
+    map.get(bucket)!.push(b);
+  }
+  const keys = [...map.keys()].sort((a, b) => {
+    if (a === '#') return -1;
+    if (b === '#') return 1;
+    return a.localeCompare(b);
+  });
+  return keys.map(k => ({title: k, data: map.get(k)!}));
+}
+
+function BrandPickerModal({
+  visible,
+  initialSelected,
+  onDone,
+  onCancel,
+  theme,
+  topInset,
+}: {
+  visible: boolean;
+  initialSelected: string[];
+  onDone: (brands: string[]) => void;
+  onCancel: () => void;
+  theme: any;
+  topInset: number;
+}) {
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState('');
+
+  // Reset selection state each time modal opens
+  useEffect(() => {
+    if (visible) {
+      const set = new Set<string>();
+      for (const name of initialSelected) {
+        set.add(name.toLowerCase());
+      }
+      setSelected(set);
+      setSearch('');
+    }
+  }, [visible, initialSelected]);
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return brandsData as BrandEntry[];
+    const q = search.toLowerCase();
+    return (brandsData as BrandEntry[]).filter(b =>
+      b.name.toLowerCase().includes(q),
+    );
+  }, [search]);
+
+  const sections = useMemo(() => buildBrandSections(filtered), [filtered]);
+
+  const toggle = (name: string) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      const key = name.toLowerCase();
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
+
+  const handleDone = () => {
+    // Build final list: use display name from master list for master brands
+    const masterMap = new Map<string, string>();
+    for (const b of brandsData as BrandEntry[]) {
+      masterMap.set(b.name.toLowerCase(), b.name);
+    }
+    const masterLower = new Set(masterMap.keys());
+
+    const finalBrands: string[] = [];
+    const seen = new Set<string>();
+
+    for (const key of selected) {
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const masterMatch = masterMap.get(key);
+      // For brands from master list use display name; for custom brands preserve original
+      const originalMatch = initialSelected.find(s => s.toLowerCase() === key);
+      finalBrands.push(masterMatch ?? originalMatch ?? key);
+    }
+
+    // Also preserve custom brands from initialSelected that aren't in master list
+    // and were still selected
+    for (const b of initialSelected) {
+      const key = b.toLowerCase();
+      if (!masterLower.has(key) && selected.has(key) && !seen.has(key)) {
+        seen.add(key);
+        finalBrands.push(b);
+      }
+    }
+
+    onDone(finalBrands);
+  };
+
+  const colors = theme.colors;
+
+  return (
+    <Modal visible={visible} animationType="slide">
+      <View style={{flex: 1, backgroundColor: colors.background}}>
+        <View style={{height: topInset, backgroundColor: colors.background}} />
+        <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12}}>
+          <TouchableOpacity onPress={onCancel}>
+            <Text style={{color: colors.primary, fontSize: 16}}>Cancel</Text>
+          </TouchableOpacity>
+          <Text style={{fontSize: 17, fontWeight: '600', color: colors.foreground}}>All Brands</Text>
+          <TouchableOpacity onPress={handleDone}>
+            <Text style={{color: colors.primary, fontSize: 16, fontWeight: '600'}}>
+              Done ({selected.size})
+            </Text>
+          </TouchableOpacity>
+        </View>
+        <View style={{paddingHorizontal: 16, paddingBottom: 8}}>
+          <TextInput
+            placeholder="Search brands..."
+            placeholderTextColor={colors.muted}
+            style={{
+              borderWidth: StyleSheet.hairlineWidth,
+              borderRadius: 10,
+              borderColor: colors.inputBorder,
+              backgroundColor: colors.input2,
+              color: colors.foreground,
+              padding: 10,
+              fontSize: 16,
+            }}
+            value={search}
+            onChangeText={setSearch}
+            autoCorrect={false}
+            autoCapitalize="none"
+            clearButtonMode="while-editing"
+          />
+        </View>
+        <SectionList
+          sections={sections}
+          keyExtractor={item => item.id}
+          renderSectionHeader={({section}) => (
+            <View style={{backgroundColor: colors.background, paddingHorizontal: 16, paddingVertical: 6}}>
+              <Text style={{fontSize: 14, fontWeight: '700', color: colors.muted}}>{section.title}</Text>
+            </View>
+          )}
+          renderItem={({item}) => {
+            const checked = selected.has(item.name.toLowerCase());
+            return (
+              <TouchableOpacity
+                style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 13}}
+                onPress={() => toggle(item.name)}
+                activeOpacity={0.6}>
+                <Text style={{fontSize: 16, color: colors.foreground}}>{item.name}</Text>
+                {checked && <Text style={{color: colors.primary, fontSize: 18}}>✓</Text>}
+              </TouchableOpacity>
+            );
+          }}
+          ItemSeparatorComponent={() => (
+            <View style={{height: StyleSheet.hairlineWidth, backgroundColor: colors.inputBorder, marginLeft: 16}} />
+          )}
+          stickySectionHeadersEnabled
+          keyboardShouldPersistTaps="handled"
+        />
+      </View>
+    </Modal>
+  );
+}
+
 export default function OnboardingScreen({navigate}: Props) {
   const {theme, setSkin} = useAppTheme();
   const globalStyles = useGlobalStyles();
+  const insets = useSafeAreaInsets();
   const {user} = useAuth0();
   const userId = useUUID();
+  const quickShopSites = useShoppingStore(s => s.quickShopSites);
+  const presetBrandNames = useMemo(() => quickShopSites.map(s => s.name), [quickShopSites]);
 
   // -----------------------------------------------------
   // STYLES
@@ -1151,6 +1336,7 @@ export default function OnboardingScreen({navigate}: Props) {
   // State for favorite brands
   const [favoriteBrands, setFavoriteBrands] = useState<string[]>([]);
   const [newBrandInput, setNewBrandInput] = useState('');
+  const [showBrandPicker, setShowBrandPicker] = useState(false);
 
   // Navigation helper
   const goToSlide = (slideIndex: number) => {
@@ -2083,6 +2269,21 @@ export default function OnboardingScreen({navigate}: Props) {
     setFavoriteBrands(favoriteBrands.filter(b => b !== brand));
   };
 
+  const toggleBrand = (brand: string) => {
+    if (favoriteBrands.includes(brand)) {
+      setFavoriteBrands(favoriteBrands.filter(b => b !== brand));
+    } else {
+      setFavoriteBrands([...favoriteBrands, brand]);
+    }
+  };
+
+  // Merge preset brands + any manually added brands not already in presets
+  const allBrandTiles = useMemo(() => {
+    const presetLower = new Set(presetBrandNames.map(b => b.toLowerCase()));
+    const customBrands = favoriteBrands.filter(b => !presetLower.has(b.toLowerCase()));
+    return [...presetBrandNames, ...customBrands];
+  }, [presetBrandNames, favoriteBrands]);
+
   const FavoriteBrandsSlideElement = (
     <View style={styles.onboardingContainer}>
       <View style={styles.onboardingHeader}>
@@ -2093,70 +2294,124 @@ export default function OnboardingScreen({navigate}: Props) {
           <Text style={styles.skipButtonText}>Skip</Text>
         </TouchableOpacity>
       </View>
-      <ScrollView
-        style={styles.onboardingContent}
-        contentContainerStyle={{paddingBottom: 20}}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}>
-        <Text style={styles.onboardingTitle}>What are your favorite brands?</Text>
-        <Text style={{color: theme.colors.muted, fontSize: 14, marginBottom: 16, textAlign: 'center'}}>
-          Enter a brand name and press Enter
-        </Text>
-        <TextInput
-          placeholder="Add a brand"
-          placeholderTextColor={theme.colors.muted}
-          style={{
-            borderWidth: 1,
-            borderColor: theme.colors.inputBorder,
-            borderRadius: 8,
-            padding: 12,
-            fontSize: 16,
-            backgroundColor: theme.colors.input2,
-            color: theme.colors.foreground,
-            width: '100%',
-            marginBottom: 8,
-          }}
-          value={newBrandInput}
-          onChangeText={setNewBrandInput}
-          onSubmitEditing={handleAddBrand}
-          blurOnSubmit={false}
-          returnKeyType="done"
-        />
-        <TouchableOpacity
-          onPress={handleAddBrand}
-          style={{
-            alignSelf: 'center',
-            paddingVertical: 8,
-            paddingHorizontal: 16,
-            marginBottom: 16,
-          }}>
-          <Text style={{color: theme.colors.primary, fontSize: 15, fontWeight: '600'}}>
-            + Add More
+      <KeyboardAvoidingView
+        style={{flex: 1}}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={20}>
+        <ScrollView
+          style={styles.onboardingContent}
+          contentContainerStyle={{paddingBottom: 20}}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}>
+          <Text style={styles.onboardingTitle}>What are your favorite brands?</Text>
+          <Text style={{color: theme.colors.muted, fontSize: 14, marginBottom: 16, textAlign: 'center'}}>
+            Tap to select, or add your own below
           </Text>
-        </TouchableOpacity>
-        <View style={globalStyles.pillContainer}>
-          {favoriteBrands.length === 0 && (
-            <Text style={{color: theme.colors.muted, marginBottom: 8}}>
-              No brands yet — add one above.
+        
+          <View style={{flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between'}}>
+            {allBrandTiles.map(brand => {
+              const isSelected = favoriteBrands.some(
+                b => b.toLowerCase() === brand.toLowerCase(),
+              );
+              return (
+                <TouchableOpacity
+                  key={brand}
+                  onPress={() => toggleBrand(brand)}
+                  style={{
+                    width: '48%',
+                    borderWidth: 1.5,
+                    borderRadius: 10,
+                    borderColor: isSelected ? theme.colors.primary : theme.colors.inputBorder,
+                    backgroundColor: isSelected ? theme.colors.foreground + '15' : theme.colors.background,
+                    paddingVertical: 14,
+                    paddingHorizontal: 8,
+                    marginBottom: 10,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}>
+                  <Text
+                    style={{
+                      fontSize: 14,
+                      fontWeight: '500',
+                      color: isSelected ? theme.colors.background : theme.colors.foreground,
+                      textAlign: 'center',
+                    }}
+                    numberOfLines={1}>
+                    {brand}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+            <TouchableOpacity
+            onPress={() => setShowBrandPicker(true)}
+            style={{
+              borderWidth: 1.5,
+              borderColor: theme.colors.primary,
+              borderRadius: 10,
+              paddingVertical: 12,
+              alignItems: 'center',
+              marginBottom: 16,
+            }}>
+            <Text style={{color: theme.colors.primary, fontWeight: '600', fontSize: 15}}>
+              Browse All Brands
             </Text>
-          )}
-          {favoriteBrands.map(brand => (
-            <Chip
-              key={brand}
-              label={brand}
-              selected={true}
-              onPress={() => removeBrand(brand)}
+          </TouchableOpacity>
+          <View style={{marginTop: 12}}>
+            <TextInput
+              placeholder="Add a brand"
+              placeholderTextColor={theme.colors.muted}
+              style={{
+                borderWidth: 1,
+                borderColor: theme.colors.inputBorder,
+                borderRadius: 8,
+                padding: 12,
+                fontSize: 16,
+                backgroundColor: theme.colors.input2,
+                color: theme.colors.foreground,
+                width: '100%',
+                marginBottom: 8,
+              }}
+              value={newBrandInput}
+              onChangeText={setNewBrandInput}
+              onSubmitEditing={handleAddBrand}
+              blurOnSubmit={false}
+              returnKeyType="done"
             />
-          ))}
+            <TouchableOpacity
+              onPress={handleAddBrand}
+              style={{
+                alignSelf: 'center',
+                paddingVertical: 8,
+                paddingHorizontal: 16,
+              }}>
+              <Text style={{color: theme.colors.primary, fontSize: 15, fontWeight: '600'}}>
+                + Add More
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+        <View style={styles.bottomButtonContainer}>
+          <TouchableOpacity
+            style={styles.primaryButton}
+            onPress={goToNextSlide}>
+            <Text style={styles.primaryButtonText}>Next</Text>
+          </TouchableOpacity>
         </View>
-      </ScrollView>
-      <View style={styles.bottomButtonContainer}>
-        <TouchableOpacity
-          style={styles.primaryButton}
-          onPress={goToNextSlide}>
-          <Text style={styles.primaryButtonText}>Next</Text>
-        </TouchableOpacity>
-      </View>
+      </KeyboardAvoidingView>
+
+      {/* All Brands Picker Modal */}
+      <BrandPickerModal
+        visible={showBrandPicker}
+        initialSelected={favoriteBrands}
+        onDone={(brands) => {
+          setFavoriteBrands(brands);
+          setShowBrandPicker(false);
+        }}
+        onCancel={() => setShowBrandPicker(false)}
+        theme={theme}
+        topInset={insets.top}
+      />
     </View>
   );
 

@@ -449,7 +449,19 @@ export class AiService {
         messages: [
           {
             role: 'system',
-            content: `You are an expert fashion analyst. Analyze the outfit in the image and identify EVERY clothing piece and accessory visible. Look carefully from head to toe.
+            content: `You are an expert fashion analyst. Analyze the image and identify EVERY clothing piece and accessory visible. Look carefully from head to toe.
+
+CRITICAL: The image may contain a full outfit OR a single accessory shown on its own (e.g., a product shot of a handbag, a close-up of a necklace, a watch on a wrist, a pair of sunglasses, a belt, a ring). You MUST recognize and return standalone accessories as structured items — do NOT treat accessory-only images as "no outfit" and do NOT return an empty array when a recognizable accessory is present.
+
+Accessories you MUST detect whenever clearly visible, whether part of a full outfit or shown alone:
+- Bags and purses (handbags, totes, clutches, crossbody, shoulder bags, backpacks, belt bags, mini bags)
+- Jewelry (necklaces, pendants, chokers, earrings, studs, hoops, bracelets, bangles, cuffs, rings, anklets, brooches)
+- Watches (analog, digital, smartwatches, luxury timepieces)
+- Belts (leather belts, chain belts, statement buckles, fabric belts)
+- Sunglasses and eyewear (aviators, wayfarers, cat-eye, shield, oversized, optical frames)
+- Other standalone accessories (scarves, hats, hair accessories, ties, pocket squares, gloves)
+
+If ANY of the above is clearly visible — even as the ONLY subject of the image — it MUST appear as an entry in the "pieces" array. Accessories must not be ignored or omitted.
 
 For EACH piece, extract:
 - category: Item type (Top, Bottom, Outerwear, Shoes, Accessories, Hat, Bag, Jewelry, Eyewear)
@@ -473,7 +485,9 @@ IMPORTANT: Return a JSON object with "pieces" array containing ALL visible items
 - Dresses/Jumpsuits (if applicable, categorize as "Top" or separate category)
 - Shoes (heels, flats, boots, sneakers, sandals, loafers)
 - Outerwear (blazers, jackets, coats, vests, cardigans)
-- Accessories (bags, belts, jewelry, scarves, hats, sunglasses, watches)
+- Accessories (bags, purses, belts, jewelry, necklaces, earrings, bracelets, rings, watches, scarves, hats, sunglasses, eyewear)
+
+Never return an empty "pieces" array if a recognizable garment OR accessory is present in the image. A single visible bag, watch, ring, belt, or pair of sunglasses is a valid, complete response on its own.
 
 ${genderContext}
 
@@ -542,6 +556,49 @@ Return format:
         { category: 'Bottom', item: 'pants', color: 'neutral' },
         { category: 'Shoes', item: 'shoes', color: 'neutral' },
       ];
+    }
+  }
+
+  /**
+   * 🔍 Classify product image presentation as masculine/feminine/neutral/unknown.
+   * Used ONLY by recreate() vision guard. Fail-open: returns 'unknown' on any error.
+   */
+  public async classifyProductPresentation(
+    imageUrl: string,
+  ): Promise<'masculine' | 'feminine' | 'neutral' | 'unknown'> {
+    const ALLOWED = new Set(['masculine', 'feminine', 'neutral', 'unknown']);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+    try {
+      const resp = await this.openai.chat.completions.create(
+        {
+          model: 'gpt-4o',
+          messages: [
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'text',
+                  text: 'Look at this product photo. Based ONLY on the model/mannequin/presentation visible, classify the presentation as one of: masculine, feminine, neutral. If you cannot determine, respond unknown. Respond with exactly one word.',
+                },
+                { type: 'image_url', image_url: { url: imageUrl } },
+              ],
+            },
+          ],
+          max_tokens: 5,
+        },
+        { signal: controller.signal },
+      );
+      const word = (resp.choices[0]?.message?.content ?? '')
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z]/g, '');
+      return ALLOWED.has(word) ? (word as any) : 'unknown';
+    } catch (err: any) {
+      console.warn('⚠️ [recreate] vision guard classification error:', err.message);
+      return 'unknown';
+    } finally {
+      clearTimeout(timer);
     }
   }
 
@@ -657,15 +714,27 @@ Return format:
       }
     }
 
-    // 🧩 Normalize gender
+    // 🧩 Normalize gender — order matters: female-like FIRST (since 'female' contains 'male')
+    const genderLower = (user_gender ?? '').toLowerCase().trim();
     const normalizedGender =
-      user_gender?.toLowerCase().includes('female') ||
-      user_gender?.toLowerCase().includes('woman')
+      genderLower.includes('female') || genderLower.includes('woman') || genderLower.includes('feminine') || genderLower === 'fem'
         ? 'female'
-        : user_gender?.toLowerCase().includes('male') ||
-            user_gender?.toLowerCase().includes('man')
+        : genderLower.includes('male') || genderLower.includes('man') || genderLower.includes('masculine') || genderLower === 'masc'
           ? 'male'
-          : process.env.DEFAULT_GENDER || 'neutral';
+          : process.env.DEFAULT_GENDER === 'male' || process.env.DEFAULT_GENDER === 'female'
+            ? process.env.DEFAULT_GENDER
+            : 'neutral';
+
+    const searchGender: 'male' | 'female' | 'unisex' =
+      normalizedGender === 'male' ? 'male' : normalizedGender === 'female' ? 'female' : 'unisex';
+
+    const targetPresentation: 'masculine' | 'feminine' | 'neutral' =
+      normalizedGender === 'male' ? 'masculine' : normalizedGender === 'female' ? 'feminine' : 'neutral';
+
+    const mismatchRe: RegExp | null =
+      targetPresentation === 'masculine' ? /(women|woman|female|ladies|girls|womens|women's|womenswear)/i :
+      targetPresentation === 'feminine' ? /(\bmen\b|\bmale\b|mens|men's|menswear|gentleman)/i :
+      null;
 
     // 🧠 Build stylist prompt (base)
     const prompt = `
@@ -805,12 +874,94 @@ ${prompt}
       outfit.map(async (o: any) => {
         const query =
           `${normalizedGender} ${o.item || o.category || ''} ${o.color || ''}`.trim();
-        const products = await this.productSearch.search(query);
-        let top = products[0];
+        const products = await this.productSearch.search(query, searchGender);
+        const passesTextFilter = (p: any) => !mismatchRe || !mismatchRe.test(`${p.name ?? ''} ${p.title ?? ''} ${p.product_title ?? ''} ${p.shopUrl ?? ''} ${p.link ?? ''} ${p.image ?? ''}`.toLowerCase());
+        let top = mismatchRe
+          ? products.find(passesTextFilter) ?? null
+          : products[0];
+
+        // 🔄 Retry with stronger gendered prefix if ALL primary candidates were mismatched
+        if (!top && mismatchRe && targetPresentation !== 'neutral') {
+          const retryPrefix = targetPresentation === 'masculine' ? 'mens' : 'womens';
+          const retryQuery = `${retryPrefix} ${query}`;
+          console.log(`🔄 [recreate] all ${products.length} candidates mismatched for target=${targetPresentation}, retrying: "${retryQuery}"`);
+          const retryProducts = await this.productSearch.search(retryQuery, searchGender);
+          top = retryProducts.find(passesTextFilter) ?? null;
+          if (!top) {
+            console.warn(`⚠️ [recreate] retry still mismatched (${retryProducts.length} candidates), using safe fallback for "${query}"`);
+          }
+        }
+
+        // 🛡️ Vision guard: classify top candidate images to catch presentation mismatches
+        const visionGuardOn = process.env.ENABLE_RECREATE_VISION_GUARD === 'true' && targetPresentation !== 'neutral';
+        const visionMaxChecks = Math.max(1, parseInt(process.env.RECREATE_VISION_GUARD_MAX_CHECKS || '2', 10) || 2);
+
+        if (visionGuardOn && top?.image && top.image.startsWith('http')) {
+          const textPassCandidates = products.filter(p => p.image && p.image.startsWith('http') && passesTextFilter(p));
+          const toCheck = textPassCandidates.slice(0, visionMaxChecks);
+          let accepted = false;
+          for (const candidate of toCheck) {
+            const detected = await this.classifyProductPresentation(candidate.image!);
+            if (detected === targetPresentation || detected === 'neutral' || detected === 'unknown') {
+              top = candidate;
+              accepted = true;
+              break;
+            }
+            console.log(`🛡️ [recreate] vision guard skipped candidate "${candidate.name ?? '?'}" — detected=${detected}, target=${targetPresentation}`);
+          }
+          if (!accepted) {
+            console.warn(`🚫 [recreate] vision guard: all ${toCheck.length} candidates had opposite presentation → fallback`);
+            top = null;
+          }
+        }
 
         if (!top?.image || top.image.includes('No_image')) {
-          const serp = await this.productSearch.searchSerpApi(query);
-          if (serp?.[0]) top = { ...serp[0], source: 'SerpAPI' };
+          const serp = await this.productSearch.searchSerpApi(query, searchGender);
+          let serpPick = mismatchRe
+            ? serp.find(passesTextFilter) ?? null
+            : serp[0];
+
+          // 🔄 SerpAPI retry with gendered prefix if all serp results mismatched
+          if (!serpPick && mismatchRe && targetPresentation !== 'neutral') {
+            const retryPrefix = targetPresentation === 'masculine' ? 'mens' : 'womens';
+            const serpRetryQuery = `${retryPrefix} ${query}`;
+            console.log(`🔄 [recreate] all ${serp.length} serp candidates mismatched, retrying: "${serpRetryQuery}"`);
+            const retrySerp = await this.productSearch.searchSerpApi(serpRetryQuery, searchGender);
+            serpPick = retrySerp.find(passesTextFilter) ?? null;
+            if (!serpPick) {
+              console.warn(`⚠️ [recreate] serp retry still mismatched (${retrySerp.length} candidates), using safe fallback`);
+            }
+          }
+
+          if (visionGuardOn && serpPick?.image && serpPick.image.startsWith('http')) {
+            const serpTextPass = serp.filter(p => p.image && p.image.startsWith('http') && passesTextFilter(p));
+            const serpToCheck = serpTextPass.slice(0, visionMaxChecks);
+            let serpAccepted = false;
+            for (const candidate of serpToCheck) {
+              const detected = await this.classifyProductPresentation(candidate.image!);
+              if (detected === targetPresentation || detected === 'neutral' || detected === 'unknown') {
+                serpPick = candidate;
+                serpAccepted = true;
+                break;
+              }
+              console.log(`🛡️ [recreate] vision guard skipped serp candidate "${candidate.name ?? '?'}" — detected=${detected}, target=${targetPresentation}`);
+            }
+            if (!serpAccepted) {
+              console.warn(`🚫 [recreate] vision guard: all ${serpToCheck.length} serp candidates had opposite presentation → fallback`);
+              serpPick = null;
+            }
+          }
+
+          if (serpPick) top = { ...serpPick, source: 'SerpAPI' };
+        }
+
+        // 🛡️ FINAL GUARD: never return a gendered-mismatched product
+        if (top && mismatchRe) {
+          const finalCombined = `${top.name ?? ''} ${(top as any).title ?? ''} ${(top as any).product_title ?? ''} ${top.shopUrl ?? ''} ${(top as any).link ?? ''} ${top.image ?? ''}`.toLowerCase();
+          if (mismatchRe.test(finalCombined)) {
+            console.warn(`🚫 [recreate] FINAL GUARD blocked mismatched product "${top.name ?? (top as any).title ?? '?'}" for target=${targetPresentation}`);
+            top = null;
+          }
         }
 
         const materialHint =
@@ -823,6 +974,8 @@ ${prompt}
           query.match(/(slim|regular|relaxed|oversized|tailored)/i)?.[0] ||
           'regular';
 
+        const safeFallbackUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}&tbm=shop`;
+
         return {
           category: o.category,
           item: o.item,
@@ -833,9 +986,7 @@ ${prompt}
             top?.image && top.image.startsWith('http')
               ? top.image
               : 'https://upload.wikimedia.org/wikipedia/commons/a/ac/No_image_available.svg',
-          shopUrl:
-            top?.shopUrl ||
-            `https://www.google.com/search?q=${encodeURIComponent(query)}&tbm=shop`,
+          shopUrl: top?.shopUrl || safeFallbackUrl,
           source: top?.source || 'ASOS / Fallback',
           material: materialHint,
           seasonality: seasonalityHint,

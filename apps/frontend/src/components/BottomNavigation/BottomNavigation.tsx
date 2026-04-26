@@ -251,19 +251,18 @@ const BottomNavigation = ({current, navigate, scrollY}: Props) => {
               onPress={() => current !== 'Home' && navigate('Home')}
               isActive={current === 'Home'}
             />
+             <TabButton
+                icon="auto-awesome"
+                label="OUTFITS"
+                onPress={() => current !== 'Outfits' && navigate('Outfits')}
+                isActive={current === 'Outfits'}
+              />
                <TabButton
                 icon="style"
                 label="WARDROBE"
                 onPress={() => current !== 'Wardrobe' && navigate('Wardrobe')}
                 isActive={current === 'Wardrobe'}
               />
-          <TabButton
-                icon="auto-awesome"
-                label="OUTFITS"
-                onPress={() => current !== 'Outfits' && navigate('Outfits')}
-                isActive={current === 'Outfits'}
-              />
-
                 <TabButton
                 icon="checkroom"
                 label="SAVED"

@@ -136,8 +136,6 @@ export default function WardrobePickerModal({
       justifyContent: 'space-between',
       paddingHorizontal: 20,
       paddingVertical: 16,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.colors.surfaceBorder,
     },
     headerTitle: {
       fontSize: 18,
@@ -146,10 +144,14 @@ export default function WardrobePickerModal({
     },
     closeButton: {
       padding: 4,
+      borderColor: 'black',
+      borderRadius: 50,
+      borderWidth: tokens.borderWidth.hairline,
+      backgroundColor: 'white'
     },
     subtitle: {
       fontSize: 14,
-      color: theme.colors.muted,
+      color: theme.colors.foreground,
       textAlign: 'center',
       paddingHorizontal: 20,
       paddingTop: 12,
@@ -159,15 +161,13 @@ export default function WardrobePickerModal({
       flexDirection: 'row',
       paddingHorizontal: 12,
       paddingVertical: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.colors.surfaceBorder,
     },
     categoryTab: {
       paddingHorizontal: 14,
       paddingVertical: 8,
       borderRadius: 20,
       marginRight: 8,
-      backgroundColor: theme.colors.surface3,
+      backgroundColor: theme.colors.surface,
     },
     categoryTabActive: {
       backgroundColor: theme.colors.foreground,
@@ -193,11 +193,9 @@ export default function WardrobePickerModal({
     itemWrapper: {
       width: 90,
       height: 90,
-      borderRadius: 12,
+      borderRadius: tokens.borderRadius.switch1,
       overflow: 'hidden',
-      backgroundColor: theme.colors.surface,
-      borderWidth: 1,
-      borderColor: theme.colors.surfaceBorder || 'rgba(0,0,0,0.1)',
+      backgroundColor: theme.colors.imageBackground,
     },
     itemImage: {
       width: '100%',
@@ -253,7 +251,7 @@ export default function WardrobePickerModal({
               <MaterialIcons
                 name="close"
                 size={24}
-                color={theme.colors.foreground}
+                color={'black'}
               />
             </TouchableOpacity>
           </View>
@@ -266,7 +264,7 @@ export default function WardrobePickerModal({
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            style={[styles.categoryTabs, {minHeight: 57, maxHeight: 58, backgroundColor: theme.colors.surface}]}>
+            style={[styles.categoryTabs, {minHeight: 57, maxHeight: 58}]}>
             {CATEGORY_TABS.map(tab => (
               <TouchableOpacity
                 key={tab.value}

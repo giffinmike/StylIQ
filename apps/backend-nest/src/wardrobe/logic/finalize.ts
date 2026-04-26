@@ -214,8 +214,9 @@ export function finalizeOutfitSlots(
     }
 
     if (!hasBottom) {
+      const isBeach = /\b(beach|pool|swim|resort|tropical|yacht|cruise)\b/i.test(q);
       const bottom = pickBest(
-        (x) => isBottom(x) && subOf(x) !== 'shorts',
+        (x) => isBottom(x) && (isBeach || subOf(x) !== 'shorts'),
         preferBottoms,
       );
       if (bottom) items.push(bottom);

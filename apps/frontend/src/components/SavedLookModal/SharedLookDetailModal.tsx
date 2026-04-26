@@ -21,7 +21,7 @@ export default function SharedLookDetailModal({visible, look, onClose}: Props) {
       <Pressable
         style={{
           flex: 1,
-          backgroundColor: 'rgba(0,0,0,0.9)',
+          backgroundColor: theme.colors.background,
           justifyContent: 'center',
           alignItems: 'center',
         }}
@@ -38,6 +38,8 @@ export default function SharedLookDetailModal({visible, look, onClose}: Props) {
             height: 32,
             borderRadius: 16,
             backgroundColor: 'white',
+            borderColor: 'black',
+            borderWidth: theme.borderWidth.hairline,
             justifyContent: 'center',
             alignItems: 'center',
           }}>
@@ -45,8 +47,7 @@ export default function SharedLookDetailModal({visible, look, onClose}: Props) {
         </Pressable>
         <Pressable
           onPress={e => e.stopPropagation()}
-          style={{
-            backgroundColor: theme.colors.surface,
+          style={{  
             overflow: 'hidden',
             width: '100%',
             maxWidth: 500,
@@ -78,7 +79,7 @@ export default function SharedLookDetailModal({visible, look, onClose}: Props) {
               <Text
                 style={{
                   fontSize: 14,
-                  color: theme.colors.muted,
+                  color: theme.colors.foreground2,
                   marginTop: 6,
                 }}>
                 {look.description}

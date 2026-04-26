@@ -88,7 +88,7 @@ function ProductCard({
 
   const handlePress = useCallback(() => {
     if (item.link) {
-      ReactNativeHapticFeedback.trigger('impactMedium');
+      // ReactNativeHapticFeedback.trigger('impactMedium');
       onPress(item.link);
     }
   }, [item.link, onPress]);
@@ -100,9 +100,8 @@ function ProductCard({
       style={{
         width: cardWidth,
         marginBottom: 12,
-        marginRight: small ? 4 : 0,
-        // backgroundColor: theme.colors.surface,
-        borderRadius: tokens.borderRadius.sm,
+        marginRight: small ? 8 : 0,
+         borderRadius: tokens.borderRadius.switch1,
         overflow: 'hidden',
       }}>
       {item.image ? (
@@ -128,7 +127,7 @@ function ProductCard({
           />
         </View>
       )}
-      <View style={{padding: small ? 8 : 10}}>
+      <View style={{paddingVertical: small ? 8 : 10}}>
         <Text
           numberOfLines={2}
           style={{
@@ -143,7 +142,7 @@ function ProductCard({
           <Text
             numberOfLines={1}
             style={{
-              color: theme.colors.muted,
+              color: theme.colors.foreground2,
               fontSize: small ? 9 : 11,
               marginTop: 2,
             }}>
@@ -205,9 +204,8 @@ function PieceSection({
         style={{
           flexDirection: 'row',
           alignItems: 'center',
-          marginBottom: 12,
+          marginBottom: 6,
           paddingBottom: 8,
-          borderBottomWidth: 1,
           borderBottomColor: theme.colors.surface2,
         }}>
         <View
@@ -215,7 +213,7 @@ function PieceSection({
             width: 36,
             height: 36,
             borderRadius: 18,
-            backgroundColor: theme.colors.button1 + '20',
+            backgroundColor: theme.colors.foreground + '20',
             justifyContent: 'center',
             alignItems: 'center',
             marginRight: 12,
@@ -223,7 +221,7 @@ function PieceSection({
           <MaterialIcons
             name={iconName}
             size={20}
-            color={theme.colors.buttonText1}
+            color={'theme.colors.buttonText1'}
           />
         </View>
         <View style={{flex: 1}}>
@@ -239,9 +237,10 @@ function PieceSection({
           </Text>
           <Text
             style={{
-              color: theme.colors.muted,
+              color: theme.colors.foreground3,
               fontSize: 12,
               marginTop: 2,
+              fontWeight: '500',
             }}>
             {piece.color} {piece.item}
             {piece.material ? ` • ${piece.material}` : ''}
@@ -280,7 +279,7 @@ function PieceSection({
           />
           <Text
             style={{
-              color: theme.colors.muted,
+              color: theme.colors.foreground,
               fontSize: 12,
               marginTop: 8,
               textAlign: 'center',
@@ -338,7 +337,7 @@ export default function VisualRecreateModal({
   }, []);
 
   const handleClose = useCallback(() => {
-    ReactNativeHapticFeedback.trigger('impactLight');
+    // ReactNativeHapticFeedback.trigger('impactLight');
     setSaved(false); // Reset saved state on close
     onClose();
   }, [onClose]);
@@ -456,7 +455,7 @@ export default function VisualRecreateModal({
       <View
         style={{
           flex: 1,
-          backgroundColor: 'rgba(0, 0, 0, 1)',
+          backgroundColor: theme.colors.background,
           justifyContent: 'flex-end',
         }}>
         <View
@@ -480,7 +479,7 @@ export default function VisualRecreateModal({
             }}>
             <View style={{flex: 1}}>
               <Text style={[globalStyles.sectionTitle, {marginTop: 8}]}>
-                RECREATE THIS STYLE
+                SAVED RECREATED STYLE
               </Text>
             </View>
 
@@ -488,9 +487,9 @@ export default function VisualRecreateModal({
             <TouchableOpacity
               onPress={handleClose}
               style={{
-                backgroundColor: 'white',
                 borderRadius: 20,
                 borderWidth: tokens.borderWidth.hairline,
+                backgroundColor: 'white',
                 borderColor: theme.colors.muted,
                 padding: 6,
                 marginLeft: 12,
@@ -498,7 +497,7 @@ export default function VisualRecreateModal({
               <MaterialIcons
                 name="close"
                 size={20}
-                color={theme.colors.background}
+                color={'black'}
               />
             </TouchableOpacity>
           </View>
@@ -509,6 +508,7 @@ export default function VisualRecreateModal({
               alignItems: 'center',
               gap: 12,
               paddingHorizontal: 16,
+              marginBottom: 10
             }}>
               
             {/* Save Button */}
@@ -517,12 +517,10 @@ export default function VisualRecreateModal({
                 onPress={handleSave}
                 disabled={saving || saved}
                 style={{
-                  // backgroundColor: saved
-                  //   ? theme.colors.primary
-                  //   : theme.colors.surface,
                   borderRadius: tokens.borderRadius.sm,
                   borderColor: theme.colors.muted,
                   borderWidth: tokens.borderWidth.hairline,
+                  backgroundColor: theme.colors.button1,
                   paddingHorizontal: 14,
                   paddingVertical: 8,
                   flexDirection: 'row',
@@ -541,15 +539,15 @@ export default function VisualRecreateModal({
                       size={18}
                       color={
                         saved
-                          ? theme.colors.background
-                          : theme.colors.foreground
+                          ? theme.colors.buttonText1
+                          : theme.colors.buttonText1
                       }
                     />
                     <Text
                       style={{
                         color: saved
-                          ? theme.colors.background
-                          : theme.colors.foreground,
+                          ? theme.colors.buttonText1
+                          : theme.colors.buttonText1,
                         fontSize: 12,
                         fontWeight: '600',
                         marginLeft: 4,
@@ -572,6 +570,7 @@ export default function VisualRecreateModal({
                   borderRadius: tokens.borderRadius.sm,
                   borderColor: theme.colors.muted,
                   borderWidth: tokens.borderWidth.hairline,
+                   backgroundColor: theme.colors.button1,
                   paddingHorizontal: 14,
                   paddingVertical: 8,
                   flexDirection: 'row',
@@ -581,11 +580,11 @@ export default function VisualRecreateModal({
                 <MaterialIcons
                   name="edit"
                   size={18}
-                  color={theme.colors.primary}
+                  color={theme.colors.buttonText1}
                 />
                 <Text
                   style={{
-                    color: theme.colors.primary,
+                    color: theme.colors.buttonText1,
                     fontSize: 12,
                     fontWeight: '600',
                   }}>
@@ -605,6 +604,7 @@ export default function VisualRecreateModal({
                   borderRadius: tokens.borderRadius.sm,
                   borderColor: theme.colors.muted,
                   borderWidth: tokens.borderWidth.hairline,
+                   backgroundColor: theme.colors.error,
                   paddingHorizontal: 14,
                   paddingVertical: 8,
                   flexDirection: 'row',
@@ -614,11 +614,11 @@ export default function VisualRecreateModal({
                 <MaterialIcons
                   name="delete-outline"
                   size={18}
-                  color="#ef4444"
+                  color="white"
                 />
                 <Text
                   style={{
-                    color: theme.colors.error,
+                    color: theme.colors.buttonText1,
                     fontSize: 12,
                     fontWeight: '600',
                   }}>
@@ -639,7 +639,7 @@ export default function VisualRecreateModal({
             {hasPieces && (
               <Text
                 style={{
-                  color: theme.colors.muted,
+                  color: theme.colors.foreground2,
                   fontSize: 12,
                   marginBottom: 22,
                 }}>
@@ -647,6 +647,7 @@ export default function VisualRecreateModal({
                 found
               </Text>
             )}
+
             {/* Source Image Preview */}
             {source_image && (
               <View style={{marginBottom: 24, alignItems: 'center'}}>
@@ -657,7 +658,7 @@ export default function VisualRecreateModal({
                     // height: screenWidth * 0.45,
                     width: screenWidth * 0.4,
                     height: screenWidth * 0.5,
-                    borderRadius: tokens.borderRadius.sm,
+                    borderRadius: tokens.borderRadius.switch1,
                   }}
                   resizeMode="cover"
                 />
@@ -747,10 +748,11 @@ export default function VisualRecreateModal({
                     )}
                     <Text
                       style={{
-                        color: theme.colors.muted,
-                        fontSize: 11,
+                        color: theme.colors.foreground,
+                        fontSize: 12,
                         marginTop: lookName ? 4 : 8,
                         textAlign: 'center',
+                        fontWeight: '600',
                       }}>
                       Your Inspired Style
                     </Text>

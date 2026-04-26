@@ -791,7 +791,7 @@ export const useShoppingStore = create<ShoppingState>()(
         {id: '3', name: 'Versace', url: 'https://www.versace.com'},
         {id: '4', name: 'Gucci', url: 'https://www.gucci.com'},
         {id: '5', name: 'Chanel', url: 'https://www.chanel.com'},
-         {id: '6', name: 'Amazon', url: 'https://www.amazon.com'},
+        {id: '6', name: 'Amazon', url: 'https://www.amazon.com'},
         {id: '7', name: 'ASOS', url: 'https://www.asos.com'},
         {id: '8', name: 'Zara', url: 'https://www.zara.com'},
         {id: '9', name: 'H&M', url: 'https://www.hm.com'},  

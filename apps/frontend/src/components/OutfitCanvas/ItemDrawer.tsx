@@ -24,6 +24,8 @@ import {useWardrobeItems} from '../../hooks/useWardrobeItems';
 import CategoryTabs, {Category} from './CategoryTabs';
 import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import {useGlobalStyles} from '../../styles/useGlobalStyles';
+import {tokens} from '../../styles/tokens/tokens';
 
 const {height: SCREEN_HEIGHT} = Dimensions.get('window');
 const DRAWER_COLLAPSED_HEIGHT = 150;
@@ -98,7 +100,8 @@ const categorizeItem = (item: WardrobeItem): Category => {
 };
 
 export default function ItemDrawer({onAddItem, placedItemIds}: Props) {
-  const {theme} = useAppTheme();
+    const {theme} = useAppTheme();
+    const globalStyles = useGlobalStyles();
   const userId = useUUID();
   const [selectedCategory, setSelectedCategory] = useState<Category>('All');
   const [isExpanded, setIsExpanded] = useState(false);
@@ -239,21 +242,20 @@ export default function ItemDrawer({onAddItem, placedItemIds}: Props) {
     itemsContainer: {
       paddingHorizontal: 12,
       paddingBottom: 20,
+     
     },
     itemsRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: 10,
+      justifyContent: 'center'
     },
     itemWrapper: {
       width: ITEM_SIZE,
       height: ITEM_SIZE,
-      borderRadius: 10,
+      borderRadius: tokens.borderRadius.switch1,
       overflow: 'hidden',
-      // backgroundColor: theme.colors.surface,
       backgroundColor: theme.colors.imageBackground,
-      borderWidth: 1,
-      borderColor: theme.colors.surfaceBorder || 'rgba(0,0,0,0.1)',
     },
     itemWrapperDisabled: {
       opacity: 0.4,
@@ -304,7 +306,7 @@ export default function ItemDrawer({onAddItem, placedItemIds}: Props) {
 
           {isLoading ? (
             <View style={styles.loading}>
-              <ActivityIndicator size="small" color={theme.colors.primary} />
+              <ActivityIndicator size="small" color={theme.colors.foreground} />
             </View>
           ) : filteredItems.length === 0 ? (
             <Text style={styles.emptyText}>No items in this category</Text>

@@ -36,14 +36,13 @@ export default function CategoryTabs({
       paddingHorizontal: 12,
       gap: 8,
       flexDirection: 'row',
+      marginBottom: 4
     },
     tab: {
       paddingHorizontal: 16,
       paddingVertical: 8,
       borderRadius: 20,
-      backgroundColor: 'transparent',
-      borderWidth: 1,
-      borderColor: theme.colors.surfaceBorder || 'rgba(0,0,0,0.15)',
+      backgroundColor: theme.colors.surface,
     },
     tabSelected: {
       backgroundColor: theme.colors.button1,

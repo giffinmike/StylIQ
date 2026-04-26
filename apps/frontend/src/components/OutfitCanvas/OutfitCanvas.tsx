@@ -120,11 +120,11 @@ export default function OutfitCanvas({
           ))}
 
         {showGrid && (
-          <View pointerEvents="none" style={StyleSheet.absoluteFillObject}>
-            <View style={{position: 'absolute', left: '33.333%', top: 0, width: 1, height: '100%', backgroundColor: `${theme.colors.primary}1A`}} />
-            <View style={{position: 'absolute', left: '66.666%', top: 0, width: 1, height: '100%', backgroundColor: `${theme.colors.primary}1A`}} />
-            <View style={{position: 'absolute', top: '33.333%', left: 0, height: 1, width: '100%', backgroundColor: `${theme.colors.primary}1A`}} />
-            <View style={{position: 'absolute', top: '66.666%', left: 0, height: 1, width: '100%', backgroundColor: `${theme.colors.primary}1A`}} />
+          <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+            <View style={{position: 'absolute', left: '33.333%', top: 0, width: 1, height: '100%', backgroundColor: `${theme.colors.background}1A`}} />
+            <View style={{position: 'absolute', left: '66.666%', top: 0, width: 1, height: '100%', backgroundColor: `${theme.colors.background}1A`}} />
+            <View style={{position: 'absolute', top: '33.333%', left: 0, height: 1, width: '100%', backgroundColor: `${theme.colors.background}1A`}} />
+            <View style={{position: 'absolute', top: '66.666%', left: 0, height: 1, width: '100%', backgroundColor: `${theme.colors.background}1A`}} />
           </View>
         )}
 

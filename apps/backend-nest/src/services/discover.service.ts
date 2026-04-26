@@ -894,16 +894,16 @@ function validateSetCoherence(
   }
 
   // --- Single summary log ---
-  if (DEBUG_RECOMMENDED_BUYS) {
-    console.log('COHERENCE_ADMISSION_COUNTS', {
-      eligible: eligible.length,
-      admitted: admitted.length,
-      brandCounts,
-      colorCounts,
-      clusterCounts,
-      qualityFloorApplied: MIN_ACCEPTABLE_SCORE,
-    });
-  }
+  // if (DEBUG_RECOMMENDED_BUYS) {
+  //   console.log('COHERENCE_ADMISSION_COUNTS', {
+  //     eligible: eligible.length,
+  //     admitted: admitted.length,
+  //     brandCounts,
+  //     colorCounts,
+  //     clusterCounts,
+  //     qualityFloorApplied: MIN_ACCEPTABLE_SCORE,
+  //   });
+  // }
 
   return admitted;
 }
@@ -926,8 +926,8 @@ export class DiscoverService {
   // ==================== MAIN ENTRY POINT ====================
 
   async getRecommended(userId: string, timezone = 'UTC'): Promise<DiscoverProduct[]> {
-    console.log('🔥🔥🔥 GET RECOMMENDED ENTERED 🔥🔥🔥');
-    console.log('DEBUG_RECOMMENDED_BUYS =', process.env.DEBUG_RECOMMENDED_BUYS);
+    // console.log('🔥🔥🔥 GET RECOMMENDED ENTERED 🔥🔥🔥');
+    // console.log('DEBUG_RECOMMENDED_BUYS =', process.env.DEBUG_RECOMMENDED_BUYS);
     // this.log.log(`🛒 getRecommended called for userId: ${userId}`);
 
     const batchDate = computeUserBatchDate(timezone);
@@ -941,12 +941,12 @@ export class DiscoverService {
 
     // this.log.log(`🛒 Cache status: valid=${cacheValid}, cached count=${cached.length}`);
 
-    console.log('🔥 Cache validity evaluated 🔥', { cacheValid, cachedCount: cached.length });
+    // console.log('🔥 Cache validity evaluated 🔥', { cacheValid, cachedCount: cached.length });
 
     // HARDLOCK: If cache is valid (within 24 hours) AND we have products, return them. NO API CALLS.
     // If cache is "valid" but empty, we should still try to fetch.
     if (cacheValid && cached.length > 0) {
-      console.log('🔥 Returning from CACHE PATH 🔥');
+      // console.log('🔥 Returning from CACHE PATH 🔥');
       this.emitRecommendedBuysServed(userId, cached);
       return cached;
     }
@@ -1199,7 +1199,7 @@ export class DiscoverService {
   private async fetchPersonalizedProducts(
     userId: string,
   ): Promise<DiscoverProduct[]> {
-    console.log('🔥 ENTERED fetchPersonalizedProducts 🔥');
+    // console.log('🔥 ENTERED fetchPersonalizedProducts 🔥');
     this.log.log(`fetchPersonalizedProducts starting for ${userId}`);
 
     let profile: UserProfile;
@@ -1340,18 +1340,18 @@ export class DiscoverService {
       }
     }
 
-    if (DEBUG_RECOMMENDED_BUYS) {
-      console.log('COLOR ENRICHMENT DEBUG:');
-      allProducts.slice(0, 5).forEach((p: any) => {
-        console.log({
-          title: p.title,
-          thumbnail: p.thumbnail,
-          enriched_color: p.enriched_color,
-        });
-      });
-    }
+    // if (DEBUG_RECOMMENDED_BUYS) {
+    //   console.log('COLOR ENRICHMENT DEBUG:');
+    //   allProducts.slice(0, 5).forEach((p: any) => {
+    //     console.log({
+    //       title: p.title,
+    //       thumbnail: p.thumbnail,
+    //       enriched_color: p.enriched_color,
+    //     });
+    //   });
+    // }
 
-    console.log('🔥 ENTERING SCORING BLOCK 🔥', { candidateCount: allProducts.length });
+    // console.log('🔥 ENTERING SCORING BLOCK 🔥', { candidateCount: allProducts.length });
 
     // --- Stage 1c: Hard Veto Filter (Tier 4 — uses discover-veto.ts) ---
     const vetoCtx = buildVetoCtx(profile);
@@ -1401,13 +1401,13 @@ export class DiscoverService {
       vetoPassed.push(raw);
     }
 
-    if (DEBUG_RECOMMENDED_BUYS) {
-      console.log('🚫 VETO FILTER RESULTS', {
-        before: allProducts.length,
-        after: vetoPassed.length,
-        dropped: vetoStats,
-      });
-    }
+    // if (DEBUG_RECOMMENDED_BUYS) {
+    //   console.log('🚫 VETO FILTER RESULTS', {
+    //     before: allProducts.length,
+    //     after: vetoPassed.length,
+    //     dropped: vetoStats,
+    //   });
+    // }
 
     // --- Stage 2: Scoring ---
     // Transform raw products, then score each against profile signals
@@ -1422,30 +1422,30 @@ export class DiscoverService {
     const wardrobeStats = { lowOwnedCategories };
     const behavior = { recentBrands: browserSignals.brands };
 
-    if (DEBUG_RECOMMENDED_BUYS) {
-      console.log('🧥 LOW OWNED CATEGORIES', wardrobeStats.lowOwnedCategories);
-    }
+    // if (DEBUG_RECOMMENDED_BUYS) {
+    //   console.log('🧥 LOW OWNED CATEGORIES', wardrobeStats.lowOwnedCategories);
+    // }
 
     // --- Auto-infer color defaults from candidate pool when profile lacks them ---
-    if (DEBUG_RECOMMENDED_BUYS) {
-      console.log('🔬 RAW color_preferences FROM DB', {
-        raw: profile.color_preferences,
-        type: typeof profile.color_preferences,
-        length: profile.color_preferences?.length,
-      });
-    }
+    // if (DEBUG_RECOMMENDED_BUYS) {
+    //   console.log('🔬 RAW color_preferences FROM DB', {
+    //     raw: profile.color_preferences,
+    //     type: typeof profile.color_preferences,
+    //     length: profile.color_preferences?.length,
+    //   });
+    // }
     let effectiveFavoriteColors = profile.color_preferences.filter(c => {
       const n = normalize(c);
       return n.length > 0 && n !== 'null' && n !== 'undefined' && n !== 'none';
     });
     const hasUsableColors = effectiveFavoriteColors.length > 0;
-    if (DEBUG_RECOMMENDED_BUYS) {
-      console.log('🔬 COLOR FILTER RESULT', {
-        effectiveFavoriteColors,
-        hasUsableColors,
-        inferenceWillRun: !hasUsableColors,
-      });
-    }
+    // if (DEBUG_RECOMMENDED_BUYS) {
+    //   console.log('🔬 COLOR FILTER RESULT', {
+    //     effectiveFavoriteColors,
+    //     hasUsableColors,
+    //     inferenceWillRun: !hasUsableColors,
+    //   });
+    // }
     if (!hasUsableColors) {
       const colorFreq = new Map<string, number>();
       for (const raw of allProducts) {
@@ -1491,13 +1491,13 @@ export class DiscoverService {
     const fitTokens = tokenSet(profile.fit_preferences);
     const negativeTokens = tokenSet(learnedPrefs.negative_features);
 
-    if (DEBUG_RECOMMENDED_BUYS) {
-      console.log('🎨 STYLE VOCABULARY EXPANSION', {
-        rawKeywords: profile.style_keywords,
-        expandedCount: expandedStyles.size,
-        expandedTokens: [...expandedStyles],
-      });
-    }
+    // if (DEBUG_RECOMMENDED_BUYS) {
+    //   console.log('🎨 STYLE VOCABULARY EXPANSION', {
+    //     rawKeywords: profile.style_keywords,
+    //     expandedCount: expandedStyles.size,
+    //     expandedTokens: [...expandedStyles],
+    //   });
+    // }
 
     // Build brand frequency map for saturation penalty
     const brandFreqMap = new Map<string, number>();
@@ -1576,11 +1576,11 @@ export class DiscoverService {
       const raw = vetoPassed[idx];
 
       // STEP 1 — Forensic: dump first raw product object
-      if (idx === 0 && process.env.DEBUG_RECOMMENDED_BUYS === 'true') {
-        console.log('🔬 RAW PRODUCT OBJECT [0]');
-        console.dir(raw, { depth: 5 });
-        console.log('🔬 PROFILE COLORS (effective)', [...profileColors]);
-      }
+      // if (idx === 0 && process.env.DEBUG_RECOMMENDED_BUYS === 'true') {
+      //   console.log('🔬 RAW PRODUCT OBJECT [0]');
+      //   console.dir(raw, { depth: 5 });
+      //   console.log('🔬 PROFILE COLORS (effective)', [...profileColors]);
+      // }
 
       const textParts: (string | null | undefined)[] = [
         p.title, p.brand, p.source, p.category, inferredCategory,
@@ -1628,17 +1628,17 @@ export class DiscoverService {
         return { hits, score01, literalTokens, expandedTokens, bridgeApplied };
       })();
 
-      if (DEBUG_RECOMMENDED_BUYS && idx < 5) {
-        console.log('STYLE DEBUG', {
-          title: p.title,
-          matches: styleMatch.hits,
-          categoryBridge: styleMatch.bridgeApplied,
-          cappedStyle01: +styleMatch.score01.toFixed(4),
-          weightedStyleContribution: +(16 * styleMatch.score01).toFixed(2),
-          literalTokens: styleMatch.literalTokens,
-          expandedTokens: styleMatch.expandedTokens,
-        });
-      }
+      // if (DEBUG_RECOMMENDED_BUYS && idx < 5) {
+      //   console.log('STYLE DEBUG', {
+      //     title: p.title,
+      //     matches: styleMatch.hits,
+      //     categoryBridge: styleMatch.bridgeApplied,
+      //     cappedStyle01: +styleMatch.score01.toFixed(4),
+      //     weightedStyleContribution: +(16 * styleMatch.score01).toFixed(2),
+      //     literalTokens: styleMatch.literalTokens,
+      //     expandedTokens: styleMatch.expandedTokens,
+      //   });
+      // }
 
       // --- COLOR UPGRADE: enriched color (thumbnail) → structured fields → title fallback ---
       const COLOR_MATCH_CAP = 2;
@@ -1679,14 +1679,14 @@ export class DiscoverService {
         ? clamp01(colorHits / COLOR_MATCH_CAP)
         : 0;
 
-      if (DEBUG_RECOMMENDED_BUYS && idx < 5) {
-        console.log('🎨 COLOR DEBUG', {
-          title: p.title,
-          matchedColors,
-          color01: +color01.toFixed(4),
-          weightedColorContribution: +(10 * color01).toFixed(2),
-        });
-      }
+      // if (DEBUG_RECOMMENDED_BUYS && idx < 5) {
+      //   console.log('🎨 COLOR DEBUG', {
+      //     title: p.title,
+      //     matchedColors,
+      //     color01: +color01.toFixed(4),
+      //     weightedColorContribution: +(10 * color01).toFixed(2),
+      //   });
+      // }
 
       // --- GAP UPGRADE: soft-scaled wardrobe gap intelligence ---
       let gapBonus = 0;
@@ -1807,12 +1807,12 @@ export class DiscoverService {
       }
       const learningScore = brandLearningWeight * LEARNING_MULTIPLIER;
 
-      console.log('🧠 LEARNING DEBUG', {
-        brand: p.brand,
-        normalizedProductBrand,
-        brandLearningWeight,
-        learningScore,
-      });
+      // console.log('🧠 LEARNING DEBUG', {
+      //   brand: p.brand,
+      //   normalizedProductBrand,
+      //   brandLearningWeight,
+      //   learningScore,
+      // });
 
       // Weighted score: brand(7, tier-adjusted, max 10) + behavior(3) + gap(clamped) + style(16) + color(10)
       //   + fit(4) + elevation(5) + styleDepth(3) + authority(-2..+3) - negativePenalty(4) - brandSatPenalty + basicDamp(-2) + casualInflation(-2) + fashionState(±4) + learning
@@ -1885,12 +1885,12 @@ export class DiscoverService {
         ...(casualInflationPenalty < 0 ? ['casualInflationPenalty:-2'] : []),
       ];
 
-      if (DEBUG_RECOMMENDED_BUYS) {
-        console.log('🎨 CURATOR DEBUG', {
-          title: p.title,
-          ...curatorResult,
-        });
-      }
+      // if (DEBUG_RECOMMENDED_BUYS) {
+      //   console.log('🎨 CURATOR DEBUG', {
+      //     title: p.title,
+      //     ...curatorResult,
+      //   });
+      // }
 
       // --- EXPLANATION LAYER: build match reasons (literal tokens only) ---
       const reasons: string[] = [];
@@ -1981,35 +1981,35 @@ export class DiscoverService {
       }
     }
 
-    if (DEBUG_RECOMMENDED_BUYS) {
-      const scores = scored.map(s => s.score);
-      const max = Math.max(...scores);
-      const min = Math.min(...scores);
-      const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
-
-      console.log('📊 SCORE SUMMARY', {
-        candidateCount: scored.length,
-        max,
-        min,
-        avg,
-      });
-
-      console.log('🏆 TOP 15 BEFORE DIVERSITY');
-      scored.slice(0, 15).forEach((s, i) => {
-        console.log(`#${i + 1}`, {
-          title: s.product.title,
-          brand: s.product.brand,
-          finalScore: +s.score.toFixed(2),
-          baseScore: (s.breakdown as any).baseScore,
-          curatorTotal: (s.breakdown as any).curatorTotal,
-          curatorWeighted: (s.breakdown as any).curatorWeighted,
-          learningScore: (s.breakdown as any).learningScore,
-          confidence: (s.breakdown as any).confidence,
-          brandTier: (s.breakdown as any).brandTier,
-          debugTags: (s.breakdown as any).curatorDebugTags,
-        });
-      });
-    }
+    // if (DEBUG_RECOMMENDED_BUYS) {
+    //   const scores = scored.map(s => s.score);
+    //   const max = Math.max(...scores);
+    //   const min = Math.min(...scores);
+    //   const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+    //
+    //   console.log('📊 SCORE SUMMARY', {
+    //     candidateCount: scored.length,
+    //     max,
+    //     min,
+    //     avg,
+    //   });
+    //
+    //   console.log('🏆 TOP 15 BEFORE DIVERSITY');
+    //   scored.slice(0, 15).forEach((s, i) => {
+    //     console.log(`#${i + 1}`, {
+    //       title: s.product.title,
+    //       brand: s.product.brand,
+    //       finalScore: +s.score.toFixed(2),
+    //       baseScore: (s.breakdown as any).baseScore,
+    //       curatorTotal: (s.breakdown as any).curatorTotal,
+    //       curatorWeighted: (s.breakdown as any).curatorWeighted,
+    //       learningScore: (s.breakdown as any).learningScore,
+    //       confidence: (s.breakdown as any).confidence,
+    //       brandTier: (s.breakdown as any).brandTier,
+    //       debugTags: (s.breakdown as any).curatorDebugTags,
+    //     });
+    //   });
+    // }
 
     const rankedProducts = scored.map((s) => s.product);
 
@@ -2038,21 +2038,21 @@ export class DiscoverService {
       }
     }
 
-    if (DEBUG_RECOMMENDED_BUYS) {
-      console.log('🧩 AFTER DIVERSITY', {
-        remaining: diversified.length,
-      });
-    }
+    // if (DEBUG_RECOMMENDED_BUYS) {
+    //   console.log('🧩 AFTER DIVERSITY', {
+    //     remaining: diversified.length,
+    //   });
+    // }
 
     // --- Stage 4: Coherence Validator ---
     const coherent = validateSetCoherence(diversified, profile);
 
-    if (DEBUG_RECOMMENDED_BUYS) {
-      console.log('🧪 AFTER COHERENCE', {
-        beforeCoherence: diversified.length,
-        afterCoherence: coherent.length,
-      });
-    }
+    // if (DEBUG_RECOMMENDED_BUYS) {
+    //   console.log('🧪 AFTER COHERENCE', {
+    //     beforeCoherence: diversified.length,
+    //     afterCoherence: coherent.length,
+    //   });
+    // }
 
     // --- Stage 5: Shared Brain Gate ---
     // Invoke shared Tier 4 modules (styleVeto, tasteValidator, stylistQualityGate)
@@ -2123,36 +2123,36 @@ export class DiscoverService {
       }
     }
 
-    if (DEBUG_RECOMMENDED_BUYS) {
-      const topReasons = [...brainFailReasons.entries()]
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5);
-      console.log('🧠 SHARED BRAIN GATE', {
-        beforeCount: coherent.length,
-        afterCount: brainGated.length,
-        topFailReasons: topReasons,
-        fillsFromBelowCutLine: fillCount,
-      });
-    }
+    // if (DEBUG_RECOMMENDED_BUYS) {
+    //   const topReasons = [...brainFailReasons.entries()]
+    //     .sort((a, b) => b[1] - a[1])
+    //     .slice(0, 5);
+    //   console.log('🧠 SHARED BRAIN GATE', {
+    //     beforeCount: coherent.length,
+    //     afterCount: brainGated.length,
+    //     topFailReasons: topReasons,
+    //     fillsFromBelowCutLine: fillCount,
+    //   });
+    // }
 
     // Final slice to target count, re-assign positions
     const finalProducts = brainGated
       .slice(0, TARGET_PRODUCTS)
       .map((p, i) => ({ ...p, position: i + 1 }));
 
-    if (DEBUG_RECOMMENDED_BUYS) {
-      console.log('✅ FINAL SELECTED');
-      finalProducts.forEach((p, i) => {
-        console.log(`#${i + 1}`, {
-          title: p.title,
-          brand: p.brand,
-          score_total: p.score_total,
-          baseScore: (p.score_breakdown as any)?.baseScore,
-          brandTier: (p.score_breakdown as any)?.brandTier,
-          match_reasons: p.match_reasons,
-        });
-      });
-    }
+    // if (DEBUG_RECOMMENDED_BUYS) {
+    //   console.log('✅ FINAL SELECTED');
+    //   finalProducts.forEach((p, i) => {
+    //     console.log(`#${i + 1}`, {
+    //       title: p.title,
+    //       brand: p.brand,
+    //       score_total: p.score_total,
+    //       baseScore: (p.score_breakdown as any)?.baseScore,
+    //       brandTier: (p.score_breakdown as any)?.brandTier,
+    //       match_reasons: p.match_reasons,
+    //     });
+    //   });
+    // }
 
     // Track shown products (P0-A: save/timestamp handled ONLY by getRecommended caller)
     await this.trackShownProducts(
@@ -2160,7 +2160,7 @@ export class DiscoverService {
       finalProducts.map((p) => p.product_id),
     );
 
-    console.log('🔥 FINAL PRODUCTS COUNT 🔥', finalProducts.length);
+    // console.log('🔥 FINAL PRODUCTS COUNT 🔥', finalProducts.length);
     return finalProducts;
   }
 

@@ -359,12 +359,12 @@ export default function NoteDetailScreen({navigate, params}: Props) {
       width: 40,
       height: 40,
       borderRadius: 8,
-      backgroundColor: 'blue',
       justifyContent: 'center',
       alignItems: 'center',
+      backgroundColor: theme.colors.button1,
     },
     deleteBtn: {
-      backgroundColor: theme.colors.surface,
+      backgroundColor: theme.colors.error,
       flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',
@@ -383,12 +383,12 @@ export default function NoteDetailScreen({navigate, params}: Props) {
       backgroundColor: theme.colors.button1,
     },
     saveBtnInactive: {
-      backgroundColor: theme.colors.muted + '30',
+      backgroundColor: theme.colors.button1 + '30',
     },
     saveBtnText: {
       fontSize: 15,
       fontWeight: '600',
-      color: hasChanges ? '#FFFFFF' : colors.muted,
+      color: hasChanges ? '#FFFFFF' : colors.buttonText1,
     },
     dateContainer: {
       alignItems: 'center',
@@ -598,7 +598,7 @@ export default function NoteDetailScreen({navigate, params}: Props) {
                 <MaterialIcons
                   name="ios-share"
                   size={20}
-                  color={theme.colors.primary}
+                  color={theme.colors.buttonText1}
                 />
               </Pressable>
               <Animated.View style={{transform: [{scale: deleteBtnScaleAnim}]}}>
@@ -610,9 +610,9 @@ export default function NoteDetailScreen({navigate, params}: Props) {
                   <MaterialIcons
                     name="delete-outline"
                     size={22}
-                    color="#FF3B30"
+                    color={theme.colors.buttonText1}
                   />
-                  <Text style={{color: '#FF3B30'}}>Delete</Text>
+                  <Text style={{color: theme.colors.buttonText1}}>Delete</Text>
                 </Pressable>
               </Animated.View>
               <Animated.View style={{transform: [{scale: saveBtnScaleAnim}]}}>

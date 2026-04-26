@@ -322,9 +322,10 @@ const HeroCarousel = React.memo(
         }}
         style={{
           width: '100%',
-          height: 300,
+          height: 350,
           overflow: 'hidden',
-          borderRadius: tokens.borderRadius.lg,
+          // borderRadius: tokens.borderRadius.lg,
+          // paddingHorizontal: 6
         }}>
         <Animated.View
           pointerEvents="none"
@@ -333,6 +334,7 @@ const HeroCarousel = React.memo(
             height: '100%',
             borderRadius: tokens.borderRadius.lg,
             opacity: heroFadeAnim,
+            
           }}>
           <FastImage
               source={{
@@ -343,7 +345,7 @@ const HeroCarousel = React.memo(
               style={{
                 width: '100%',
                 height: '100%',
-                borderRadius: tokens.borderRadius.lg,
+                // borderRadius: tokens.borderRadius.lg,
                 backgroundColor: '#e5e1de'
               }}
               resizeMode={FastImage.resizeMode.cover}
@@ -359,7 +361,7 @@ const HeroCarousel = React.memo(
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.25)',
+            // backgroundColor: 'rgba(0, 0, 0, 0.25)',
             borderRadius: tokens.borderRadius.lg,
           }}
         />
@@ -1726,7 +1728,7 @@ const HomeScreen: React.FC<Props> = ({navigate, wardrobe}) => {
                   }}>
                   <View
                     style={{
-                      backgroundColor: 'rgba(0,0,0,0.5)',
+                      backgroundColor: 'rgba(0,0,0,0.4)',
                       paddingHorizontal: 32,
                       paddingVertical: 16,
                       borderRadius: 40,
@@ -1871,7 +1873,7 @@ const HomeScreen: React.FC<Props> = ({navigate, wardrobe}) => {
             showsVerticalScrollIndicator={false}>
 
      {/* Header Row: Greeting + Menu */}
-            <View
+            {/* <View
               style={{
                 flexDirection: 'row',
                 justifyContent: 'space-between',
@@ -1894,10 +1896,10 @@ const HomeScreen: React.FC<Props> = ({navigate, wardrobe}) => {
                 numberOfLines={1}
                 ellipsizeMode="tail">
                 {firstName
-                  ? `Hi ${firstName}, let’s make getting dressed easy!`
+                  ? `Hi ${firstName}, let’s get you styled today!`
                   : 'Hi there, let’s make getting dressed easy!'}
               </Animatable.Text>
-            </View>
+            </View> */}
 
             {/* Hero Carousel - Memoized to prevent re-renders from interval */}
             <View style={{paddingBottom: 4}}>
@@ -1922,6 +1924,7 @@ const HomeScreen: React.FC<Props> = ({navigate, wardrobe}) => {
                   fontSize: fontScale(tokens.fontSize.md),
                   fontWeight: tokens.fontWeight.bold,
                   color: theme.colors.foreground,
+                  // textTransform: 'uppercase'
                 }}
                 >
             Today's Inspiration
@@ -2294,24 +2297,40 @@ const HomeScreen: React.FC<Props> = ({navigate, wardrobe}) => {
                     justifyContent: 'space-between',
                     alignItems: 'center',
                   }}>
-                  <Text style={[globalStyles.sectionTitle, {}]}>
-                    Today's Recommended Buys
+                  <Text style={[globalStyles.sectionTitle]}>
+                    Recommended Buys
                   </Text>
                     <Pressable
                     onPress={() => {
                       ReactNativeHapticFeedback.trigger('impactLight');
                       setSavedRecommendationsModalVisible(true);
                     }}>
-                    <Text
+                    {/* <Text
                       style={{
                         fontSize: fontScale(tokens.fontSize.sm),
                         color: theme.colors.foreground,
                         fontWeight: tokens.fontWeight.bold,
                         marginTop: -5,
-                        marginRight: moderateScale(tokens.spacing.sm),         
+                        marginRight: moderateScale(tokens.spacing.sm),    
+                         textDecorationLine: 'underline'     
                       }}>
                       See All Liked
-                    </Text>
+                    </Text> */}
+                      <Text
+                        style={{
+                          fontSize: fontScale(tokens.fontSize.sm),
+                          color: theme.colors.input,
+                          fontWeight: tokens.fontWeight.semiBold,
+                          marginTop: -5,
+                          marginRight: moderateScale(tokens.spacing.sm),
+
+                          // borderBottomWidth: 1,
+                          // borderBottomColor: theme.colors.foreground,
+                          // paddingBottom: 0
+                        }}
+                      >
+                        See All Liked
+                      </Text>
                   </Pressable>
                 </View>
                 <DiscoverCarousel
@@ -2349,14 +2368,30 @@ const HomeScreen: React.FC<Props> = ({navigate, wardrobe}) => {
                         ReactNativeHapticFeedback.trigger('impactLight');
                         setImageModalVisible(true);
                       }}>
-                      <Text
+                      {/* <Text
                         style={{
                           fontSize: fontScale(tokens.fontSize.sm),
                           color: theme.colors.foreground,
                           fontWeight: tokens.fontWeight.bold,
                           marginTop: -5,
                           marginRight: moderateScale(tokens.spacing.md),
+                          textDecorationLine: 'underline'
                         }}>
+                        See All Saved
+                      </Text> */}
+                          <Text
+                        style={{
+                          fontSize: fontScale(tokens.fontSize.sm),
+                          color: theme.colors.input,
+                          fontWeight: tokens.fontWeight.semiBold,
+                          marginTop: -5,
+                          marginRight: moderateScale(tokens.spacing.sm),
+
+                          // borderBottomWidth: 1,
+                          // borderBottomColor: theme.colors.foreground,
+                          // paddingBottom: 0
+                        }}
+                      >
                         See All Saved
                       </Text>
                     </Pressable>
@@ -2394,7 +2429,8 @@ const HomeScreen: React.FC<Props> = ({navigate, wardrobe}) => {
                                 <Image
                                   source={img}
                                   style={[globalStyles.image8]}
-                                  resizeMode="cover"
+                                  // resizeMode="cover"
+                                  resizeMode="contain"
                                 />
                                 <View
                                   style={{
@@ -2447,11 +2483,11 @@ const HomeScreen: React.FC<Props> = ({navigate, wardrobe}) => {
                                   setSelectedLook(look);
                                   setPreviewVisible(true);
                                 }}
-                                style={{alignItems: 'center'}}>
+                              >
                                 <View>
                                   <Image
                                     source={{uri: look.image_url}}
-                                    style={[globalStyles.image8, {backgroundColor: 'white'}]}
+                                    style={[globalStyles.image8, {backgroundColor: theme.colors.imageBackground}]}
                                     resizeMode="cover"
                                     // resizeMode="contain"
                                   />
@@ -2460,15 +2496,15 @@ const HomeScreen: React.FC<Props> = ({navigate, wardrobe}) => {
                                   onPress={() => handleShareVibe(look)}
                                   style={{
                                     position: 'absolute',
-                                    top: 6,
-                                    right: 6,
-                                    backgroundColor: 'rgba(0,0,0,0.4)',
+                                    top: 4,
+                                    right: 4,
+                                    backgroundColor: 'rgba(0,0,0,0.7)',
                                     borderRadius: 20,
                                     padding: 6,
                                   }}>
                                   <Icon
                                     name="ios-share"
-                                    size={20}
+                                    size={14}
                                     color={theme.colors.buttonText1}
                                   />
                                 </TouchableOpacity>
@@ -2476,7 +2512,7 @@ const HomeScreen: React.FC<Props> = ({navigate, wardrobe}) => {
                                 <Text
                                   style={[
                                     globalStyles.cardSubLabel,
-                                    {marginTop: 4, textAlign: 'center'},
+                                    {marginTop: 4, textAlign: 'left'},
                                   ]}
                                   numberOfLines={1}>
                                   {look.name}
@@ -2562,7 +2598,6 @@ const HomeScreen: React.FC<Props> = ({navigate, wardrobe}) => {
                                   key={`demo-recreated-${index}`}
                                   style={[
                                     globalStyles.outfitCard,
-                                    globalStyles.image8,
                                     {height: 'auto', borderWidth: 0},
                                   ]}>
                                   <Pressable
@@ -2646,24 +2681,24 @@ const HomeScreen: React.FC<Props> = ({navigate, wardrobe}) => {
                                     <View>
                                       <Image
                                         source={{uri: c.source_image_url}}
-                                        style={[globalStyles.image8, {backgroundColor: 'white'}]}
-                                        // resizeMode="cover"
-                                         resizeMode="cover"
+                                        style={[globalStyles.image8, {backgroundColor: theme.colors.imageBackground}]}
+                                        resizeMode="cover"
+                                        //  resizeMode="contain"
                                       />
                                     </View>
                                     <TouchableOpacity
                                       onPress={() => handleShareVibe(c)}
                                       style={{
                                         position: 'absolute',
-                                        top: 6,
-                                        right: 6,
-                                        backgroundColor: 'rgba(0,0,0,0.4)',
+                                        top: 4,
+                                        right: 4,
+                                        backgroundColor: 'rgba(0,0,0,0.7)',
                                         borderRadius: 20,
                                         padding: 6,
                                       }}>
                                       <Icon
                                         name="ios-share"
-                                        size={20}
+                                        size={14}
                                         color={theme.colors.buttonText1}
                                       />
                                     </TouchableOpacity>
@@ -2675,7 +2710,7 @@ const HomeScreen: React.FC<Props> = ({navigate, wardrobe}) => {
                                         globalStyles.cardSubLabel,
                                         {
                                           marginTop: 4,
-                                          textAlign: 'center',
+                                          textAlign: 'left',
                                           width: '100%',
                                         },
                                       ]}>
@@ -2751,14 +2786,14 @@ const HomeScreen: React.FC<Props> = ({navigate, wardrobe}) => {
                                   ReactNativeHapticFeedback.trigger('impactLight');
                                 }}
                                 style={{
-                                  width: 130,
-                                  height: 130,
-                                  borderRadius: tokens.borderRadius.md,
+                                  width: 120,
+                                  height: 120,
+                                  borderRadius: tokens.borderRadius.switch1,
                                   overflow: 'hidden',
                                 }}>
                                 <Image
                                   source={img}
-                                  style={{width: 130, height: 130}}
+                                  style={{width: 120, height: 120,}}
                                   resizeMode="cover"
                                 />
                                 <View
@@ -2808,25 +2843,25 @@ const HomeScreen: React.FC<Props> = ({navigate, wardrobe}) => {
                             .map((look: any) => (
                               <View
                                 key={look.id}
-                                style={[globalStyles.outfitCard]}>
+                              >
                                 <Pressable
                                   onPress={() => {
                                     setSelectedSharedLook(look);
                                     setIsSharedLookModalVisible(true);
-                                  }}
-                                  style={{
-                                    width: 130,
-                                    height: 130,
-                                    borderRadius: tokens.borderRadius.md,
-                                    overflow: 'hidden',
-                                    backgroundColor: '#F5F5F5',
                                   }}>
-                                  <View>
+                       
+                                <View style={{
+                                  borderRadius: tokens.borderRadius.switch1,
+                                  backgroundColor: theme.colors.imageBackground,
+                                  overflow: 'hidden',
+                                  marginRight: 8
+                                }}>
                                     {look.image_url ? (
                                       <Image
                                         source={{uri: look.image_url}}
-                                        style={{width: 130, height: 130, backgroundColor: '#F5F5F5'}}
+                                        style={[globalStyles.image8]}
                                         resizeMode="cover"
+                                        //  resizeMode="contain"
                                       />
                                     ) : null}
                                     <Pressable
@@ -2850,16 +2885,18 @@ const HomeScreen: React.FC<Props> = ({navigate, wardrobe}) => {
                                       }}
                                       style={{
                                         position: 'absolute',
-                                        bottom: 4,
+                                        top: 4,
                                         right: 4,
-                                        width: 20,
-                                        height: 20,
-                                        borderRadius: 10,
-                                        backgroundColor: 'rgba(220, 38, 38, 0.9)',
+                                        width: 24,
+                                        height: 24,
+                                        borderRadius: 50,
+                                        backgroundColor: 'rgba(0,0,0,0.7)',
                                         justifyContent: 'center',
                                         alignItems: 'center',
+                                        // borderWidth: theme.borderWidth.sm, 
+                                        // borderColor: 'black'
                                       }}>
-                                      <Icon name="close" size={14} color="#fff" />
+                                      <Icon name="close" size={16} color="white" />
                                     </Pressable>
                                   </View>
                                 </Pressable>
@@ -2867,7 +2904,7 @@ const HomeScreen: React.FC<Props> = ({navigate, wardrobe}) => {
                                   style={[
                                     globalStyles.cardSubLabel,
                                     {
-                                      textAlign: 'center',
+                                      textAlign: 'left',
                                       marginTop: 4,
                                       width: 130,
                                     },
@@ -2946,7 +2983,7 @@ const HomeScreen: React.FC<Props> = ({navigate, wardrobe}) => {
                   </Text>
                 </AppleTouchFeedback>
               </Animatable.View> 
-{/* 
+
                <Animatable.View
                 animation={{
                   0: {scale: 1},
@@ -2980,10 +3017,10 @@ const HomeScreen: React.FC<Props> = ({navigate, wardrobe}) => {
                       globalStyles.buttonPrimaryText,
                       {textTransform: 'uppercase', fontWeight: '700'},
                     ]}>
-                    Media Inspo
+                    Inspo Media
                   </Text>
                 </AppleTouchFeedback>
-              </Animatable.View>  */}
+              </Animatable.View> 
              </Animatable.View>
 
         {/* Top Fashion Stories / News Carousel */}
@@ -3074,11 +3111,6 @@ const HomeScreen: React.FC<Props> = ({navigate, wardrobe}) => {
               onClose={() => setShopVisible(false)}
               results={shopResults}
             />
-            {/* <PersonalizedShopModal
-          visible={personalizedVisible}
-          onClose={() => setPersonalizedVisible(false)}
-          purchases={personalizedPurchases}
-        /> */}
             <PersonalizedShopModal
               visible={personalizedVisible}
               onClose={() => setPersonalizedVisible(false)}

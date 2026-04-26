@@ -1669,6 +1669,7 @@ export default function ExploreScreen() {
           </ScrollView>
         </View>
       </Modal>
+      
       {/* 🆙 Scroll-to-top button */}
       <AppleTouchFeedback
         onPress={() => {

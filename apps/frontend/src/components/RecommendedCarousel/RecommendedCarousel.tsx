@@ -26,7 +26,7 @@ import type {CommunityPost} from '../../types/community';
 const CARD_WIDTH = isTablet
   ? 160
   : isLargePhone
-    ? 180
+    ? 160
     : isRegularPhone
       ? 160
       : 160;

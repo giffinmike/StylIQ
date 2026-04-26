@@ -41,6 +41,8 @@ export default function IntegratedShopOverlay({
             zIndex: 999,
             backgroundColor: theme.colors.foreground,
             borderRadius: 24,
+            borderColor: theme.colors.background,
+            borderWidth: theme.borderWidth.hairline,
             padding: 6,
           }}>
           <MaterialIcons

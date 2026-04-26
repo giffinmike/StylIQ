@@ -14,6 +14,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { Throttle } from '@nestjs/throttler';
 import { FastifyRequest } from 'fastify';
 import { AiService } from './ai.service';
+import { DatabaseService } from '../db/database.service';
 import { ChatDto } from './dto/chat.dto';
 import { Readable } from 'stream';
 import { getSecret } from '../config/secrets';
@@ -23,7 +24,10 @@ import { getSecret } from '../config/secrets';
 @Controller('ai')
 export class AiController {
   aiService: any;
-  constructor(private readonly service: AiService) {}
+  constructor(
+    private readonly service: AiService,
+    private readonly db: DatabaseService,
+  ) {}
 
   @Post('chat')
   async chat(
@@ -216,18 +220,45 @@ export class AiController {
    * and searches Google Shopping for matching items for each piece
    */
   @Post('recreate-outfit')
-  async recreateOutfit(@Body() body: { imageUrl: string; gender?: string }) {
+  async recreateOutfit(
+    @Req() req: FastifyRequest & { user: { userId: string } },
+    @Body() body: { imageUrl: string; gender?: string },
+  ) {
     const { imageUrl, gender } = body;
+    console.log('[recreate-outfit] RECEIVED imageUrl:', imageUrl);
     // console.log('👗 [recreate-outfit] Starting outfit recreation for:', imageUrl);
 
     if (!imageUrl) throw new BadRequestException('Missing imageUrl');
 
+    const detectedPresentation =
+      await this.service.classifyProductPresentation(imageUrl);
+
+    let targetPresentation: 'masculine' | 'feminine' | null = null;
+
+    if (detectedPresentation === 'masculine') {
+      targetPresentation = 'masculine';
+    } else if (detectedPresentation === 'feminine') {
+      targetPresentation = 'feminine';
+    } else {
+      // No visible person in image (accessory-only, product shot, etc.)
+      // Skip gender enforcement entirely for this request.
+      targetPresentation = null;
+    }
+
     try {
       // Step 1: Use AI to analyze the image and identify each clothing piece
       // console.log('👗 [recreate-outfit] Step 1: Analyzing outfit with AI...');
+      if (
+        typeof imageUrl !== 'string' ||
+        !imageUrl.startsWith('http') ||
+        imageUrl.includes('farfetch-contents.com')
+      ) {
+        throw new BadRequestException('Invalid recreate imageUrl');
+      }
+
       const outfitPieces = await this.service.analyzeOutfitPieces(
         imageUrl,
-        gender,
+        undefined,
       );
       // console.log('👗 [recreate-outfit] Identified pieces:', outfitPieces);
 
@@ -246,10 +277,76 @@ export class AiController {
           // console.log(`👗 [recreate-outfit] Searching for: "${searchQuery}" (brand: ${piece.brand || 'none'})`);
 
           try {
-            const products = await this.searchGoogleShopping(
+            let products = await this.searchGoogleShopping(
               searchQuery,
-              gender,
+              undefined,
             );
+
+            const textFiltered = products.filter((p: any) => {
+              const text = `${p.title ?? ''} ${p.name ?? ''} ${p.product_title ?? ''}`
+                .toLowerCase();
+
+              if (targetPresentation === 'masculine') {
+                return !/(women|woman|female|ladies|girls|girl|womens|women's|junior|juniors|kids|kid|toddler|youth)/i.test(text);
+              }
+
+              if (targetPresentation === 'feminine') {
+                return !/(men|man|male|mens|men's|boys|boy|youth|junior|juniors|kids|kid|toddler)/i.test(text);
+              }
+
+              return true;
+            });
+
+            let filteredProducts: any[] = textFiltered;
+
+            if (targetPresentation) {
+              const classified = await Promise.all(
+                textFiltered.map(async (product: any) => {
+                  const candidate =
+                    typeof product.image === 'string' && product.image.startsWith('http')
+                      ? product.image
+                      : typeof product.thumbnail === 'string' && product.thumbnail.startsWith('http')
+                      ? product.thumbnail
+                      : null;
+
+                  if (!candidate) {
+                    return { product, keep: false };
+                  }
+
+                  try {
+                    const presentation =
+                      await this.service.classifyProductPresentation(candidate);
+
+                    if (presentation === 'unknown') {
+                      return { product, keep: false };
+                    }
+
+                    if (
+                      targetPresentation === 'masculine' &&
+                      presentation === 'feminine'
+                    ) {
+                      return { product, keep: false };
+                    }
+
+                    if (
+                      targetPresentation === 'feminine' &&
+                      presentation === 'masculine'
+                    ) {
+                      return { product, keep: false };
+                    }
+
+                    return { product, keep: true };
+                  } catch {
+                    return { product, keep: false };
+                  }
+                }),
+              );
+
+              filteredProducts = classified
+                .filter(c => c.keep)
+                .map(c => c.product);
+            }
+
             return {
               category: piece.category,
               item: piece.item,
@@ -258,7 +355,7 @@ export class AiController {
               style: piece.style,
               brand: piece.brand,
               searchQuery,
-              products: products.slice(0, 6), // Top 6 matches per piece
+              products: filteredProducts.slice(0, 6),
             };
           } catch (err) {
             console.error(

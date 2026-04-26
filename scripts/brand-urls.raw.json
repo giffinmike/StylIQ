@@ -1,0 +1,482 @@
+{
+  "3-1-phillip-lim": {
+    "brandId": "3-1-phillip-lim",
+    "name": "3.1 Phillip Lim",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "7-for-all-mankind": {
+    "brandId": "7-for-all-mankind",
+    "name": "7 For All Mankind",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "agolde": {
+    "brandId": "agolde",
+    "name": "AGOLDE",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "armani": {
+    "brandId": "armani",
+    "name": "Armani",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "boohoo": {
+    "brandId": "boohoo",
+    "name": "Boohoo",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "brioni": {
+    "brandId": "brioni",
+    "name": "Brioni",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "canada-goose": {
+    "brandId": "canada-goose",
+    "name": "Canada Goose",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "citizens-of-humanity": {
+    "brandId": "citizens-of-humanity",
+    "name": "Citizens of Humanity",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "clark": {
+    "brandId": "clark",
+    "name": "Clarks",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "david-yurman": {
+    "brandId": "david-yurman",
+    "name": "David Yurman",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "ermenegildo-zegna": {
+    "brandId": "ermenegildo-zegna",
+    "name": "Ermenegildo Zegna",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "faherty": {
+    "brandId": "faherty",
+    "name": "Faherty",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "ferragamo": {
+    "brandId": "ferragamo",
+    "name": "Ferragamo",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "fila": {
+    "brandId": "fila",
+    "name": "FILA",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "frame": {
+    "brandId": "frame",
+    "name": "FRAME",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "guess": {
+    "brandId": "guess",
+    "name": "GUESS",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "helmut-lang": {
+    "brandId": "helmut-lang",
+    "name": "Helmut Lang",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "j-brand": {
+    "brandId": "j-brand",
+    "name": "J Brand",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "keen": {
+    "brandId": "keen",
+    "name": "KEEN",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "kendra-scott": {
+    "brandId": "kendra-scott",
+    "name": "Kendra Scott",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "kenneth-cole": {
+    "brandId": "kenneth-cole",
+    "name": "Kenneth Cole",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "khaite": {
+    "brandId": "khaite",
+    "name": "Khaite",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "laura-ashley": {
+    "brandId": "laura-ashley",
+    "name": "Laura Ashley",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "lauren-ralph-lauren": {
+    "brandId": "lauren-ralph-lauren",
+    "name": "Lauren Ralph Lauren",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "levis": {
+    "brandId": "levis",
+    "name": "Levi's",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "lucky-brand": {
+    "brandId": "lucky-brand",
+    "name": "Lucky Brand",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "lululemon": {
+    "brandId": "lululemon",
+    "name": "Lululemon",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "nili-lotan": {
+    "brandId": "nili-lotan",
+    "name": "Nili Lotan",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "on-running": {
+    "brandId": "on-running",
+    "name": "On Running",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "paige": {
+    "brandId": "paige",
+    "name": "PAIGE",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "perry-ellis": {
+    "brandId": "perry-ellis",
+    "name": "Perry Ellis",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "peter-millar": {
+    "brandId": "peter-millar",
+    "name": "Peter Millar",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "polo-ralph-lauren": {
+    "brandId": "polo-ralph-lauren",
+    "name": "Polo Ralph Lauren",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "rent-the-runway": {
+    "brandId": "rent-the-runway",
+    "name": "Rent the Runway",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "rothy": {
+    "brandId": "rothy",
+    "name": "Rothy's",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "sacai": {
+    "brandId": "sacai",
+    "name": "Sacai",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "saint-laurent": {
+    "brandId": "saint-laurent",
+    "name": "Saint Laurent",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "shein": {
+    "brandId": "shein",
+    "name": "SHEIN",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "spanx": {
+    "brandId": "spanx",
+    "name": "Spanx",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "staud": {
+    "brandId": "staud",
+    "name": "Staud",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "stussy": {
+    "brandId": "stussy",
+    "name": "Stussy",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "ted-baker": {
+    "brandId": "ted-baker",
+    "name": "Ted Baker",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "timberland": {
+    "brandId": "timberland",
+    "name": "Timberland",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "tods": {
+    "brandId": "tods",
+    "name": "Tod's",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "ulla-johnson": {
+    "brandId": "ulla-johnson",
+    "name": "Ulla Johnson",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "uniqlo": {
+    "brandId": "uniqlo",
+    "name": "Uniqlo",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "universal-standard": {
+    "brandId": "universal-standard",
+    "name": "Universal Standard",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  },
+  "veronica-beard": {
+    "brandId": "veronica-beard",
+    "name": "Veronica Beard",
+    "candidates": [],
+    "rawEntries": 0,
+    "chosenUrl": "",
+    "chosenQid": "",
+    "confidence": "NONE",
+    "source": "Wikidata P856 + P31 filter"
+  }
+}

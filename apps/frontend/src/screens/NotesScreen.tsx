@@ -528,7 +528,7 @@ export default function NotesScreen({navigate}: Props) {
       width: 40,
       height: 40,
       borderRadius: 8,
-      backgroundColor: theme.colors.surface3,
+      backgroundColor: theme.colors.button1,
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -536,7 +536,7 @@ export default function NotesScreen({navigate}: Props) {
       width: 40,
       height: 40,
       borderRadius: 8,
-      backgroundColor: theme.colors.surface,
+      backgroundColor: theme.colors.button1,
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -547,7 +547,7 @@ export default function NotesScreen({navigate}: Props) {
       width: 40,
       height: 40,
       borderRadius: 8,
-      backgroundColor: 'blue',
+      backgroundColor: theme.colors.button1,
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -583,7 +583,7 @@ export default function NotesScreen({navigate}: Props) {
     statCard: {
       flex: 1,
       // backgroundColor: '#ff6806',
-      backgroundColor: theme.colors.button1,
+      backgroundColor: theme.colors.surface3,
       borderRadius: 16,
       padding: 16,
       alignItems: 'center',
@@ -1388,7 +1388,7 @@ export default function NotesScreen({navigate}: Props) {
                 <MaterialIcons
                   name="ios-share"
                   size={20}
-                  color={colors.foreground}
+                  color={colors.buttonText1}
                 />
               </Pressable>
             )}
@@ -1404,7 +1404,7 @@ export default function NotesScreen({navigate}: Props) {
                 color={
                   sortMode === 'color'
                     ? theme.colors.buttonText1
-                    : colors.foreground
+                    : colors.buttonText1
                 }
               />
             </Pressable>
@@ -1412,7 +1412,7 @@ export default function NotesScreen({navigate}: Props) {
               <MaterialIcons
                 name={viewMode === 'grid' ? 'view-list' : 'grid-view'}
                 size={22}
-                color={colors.foreground}
+                color={colors.buttonText1}
               />
             </Pressable>
           </View>

@@ -105,7 +105,7 @@ export default function ImportOutfitModal({
       width: 32,
       height: 32,
       borderRadius: 16,
-      backgroundColor: theme.colors.surface,
+      backgroundColor: theme.colors.foreground,
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -215,7 +215,7 @@ export default function ImportOutfitModal({
                   <MaterialIcons
                     name="close"
                     size={20}
-                    color={theme.colors.foreground}
+                    color={theme.colors.background}
                   />
                 </TouchableOpacity>
               </View>

@@ -454,10 +454,9 @@ export default function ItemDetailScreen({route, navigation}: Props) {
     image: {
       width: '100%',
       height: 320,
-      borderRadius: tokens.borderRadius.md,
+      borderRadius: tokens.borderRadius.switch1,
       marginBottom: 20,
-      // backgroundColor: 'white',
-        backgroundColor: theme.colors.imageBackground,
+      backgroundColor: theme.colors.imageBackground,
       padding: 4,
     },
     input: {
@@ -723,9 +722,7 @@ export default function ItemDetailScreen({route, navigation}: Props) {
               style={[
                 useGlobalStyles().buttonPrimary,
                 {
-                  backgroundColor: theme.colors.background,
-                  borderWidth: tokens.borderWidth.md,
-                  borderColor: theme.colors.muted,
+                  backgroundColor: 'black',
                   width: 140,
                 },
               ]}
@@ -753,9 +750,7 @@ export default function ItemDetailScreen({route, navigation}: Props) {
               style={[
                 useGlobalStyles().buttonPrimary,
                 {
-                  backgroundColor: theme.colors.background,
-                  borderWidth: tokens.borderWidth.md,
-                  borderColor: theme.colors.muted,
+                  backgroundColor: 'black',
                   width: 140,
                 },
               ]}

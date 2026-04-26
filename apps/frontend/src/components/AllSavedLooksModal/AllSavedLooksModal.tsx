@@ -426,16 +426,13 @@ export default function AllSavedLooksModal({
             width: itemWidth,
             marginBottom: tokens.spacing.nano,
             marginHorizontal: 1,
-            backgroundColor: theme.colors.surface,
             overflow: 'hidden',
-             borderRadius: tokens.borderRadius.sm
+             borderRadius: tokens.borderRadius.switch1
           }}>
           <View
             style={{
               width: '100%',
               aspectRatio: 3 / 4,
-              backgroundColor: theme.colors.surface,
-              //  backgroundColor: 'white',
             }}>
             {imageUri ? (
               <FastImage
@@ -444,7 +441,7 @@ export default function AllSavedLooksModal({
                   priority: FastImage.priority.normal,
                   cache: FastImage.cacheControl.immutable,
                 }}
-                style={{width: '100%', height: '100%'}}
+                style={{width: '99%', height: '100%'}}
                 resizeMode={FastImage.resizeMode.cover}
               />
             ) : (
@@ -452,7 +449,6 @@ export default function AllSavedLooksModal({
                 style={{
                   width: '100%',
                   height: '100%',
-                  backgroundColor: theme.colors.surface2,
                   justifyContent: 'center',
                   alignItems: 'center',
                 }}>
@@ -463,6 +459,39 @@ export default function AllSavedLooksModal({
                 />
               </View>
             )}
+
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPressIn={() =>
+                ReactNativeHapticFeedback.trigger('impactLight', {
+                  enableVibrateFallback: true,
+                  ignoreAndroidSystemSettings: false,
+                })
+              }
+              onPress={() => handleRecreatePress(look)}
+              disabled={loading}
+              style={{
+                position: 'absolute',
+                bottom: 12,
+                left: 8,
+                right: 8,
+                backgroundColor: 'rgba(0, 0, 0, 0.77)',
+                borderRadius: tokens.borderRadius.sm,
+                // borderColor: theme.colors.input,
+                // borderWidth: tokens.borderWidth.hairline,
+                paddingVertical: 10,
+                opacity: loading ? 0.6 : 1,
+              }}>
+              <Text
+                style={{
+                  textAlign: 'center',
+                  color: '#fff',
+                  fontWeight: '500',
+                  fontSize: 12,
+                }}>
+                Recreate Style
+              </Text>
+            </TouchableOpacity>
           </View>
 
           {look.tags?.length > 0 && (
@@ -470,22 +499,16 @@ export default function AllSavedLooksModal({
               style={{
                 flexDirection: 'row',
                 flexWrap: 'wrap',
-                paddingHorizontal: 10,
-                paddingTop: 8,
               }}>
               {look.tags.slice(0, 2).map((t: string, i: number) => (
                 <View
                   key={`${t}-${i}`}
                   style={{
-                    backgroundColor: theme.colors.surface2,
-                    borderRadius: 12,
-                    paddingHorizontal: 8,
                     paddingVertical: 3,
                     margin: 3,
                   }}>
                   <Text
                     style={{
-                      color: theme.colors.muted,
                       fontSize: 11,
                     }}>
                     #{t}
@@ -497,62 +520,16 @@ export default function AllSavedLooksModal({
 
           <Text
             style={{
-              paddingHorizontal: 12,
-              marginTop: 8,
+             paddingTop: 6,
               color: theme.colors.foreground,
-              fontWeight: '400',
-              fontSize: 13,
-              // textTransform: 'uppercase',
+              fontWeight: '600',
+              fontSize: 12,
+              marginBottom: 10,
+               textTransform: 'uppercase'
             }}
             numberOfLines={1}>
             {look.name || 'Unnamed Look'}
           </Text>
-
-          <View
-            style={{
-              paddingHorizontal: 10,
-              paddingVertical: 6,
-              borderTopWidth: StyleSheet.hairlineWidth,
-              borderTopColor: theme.colors.surfaceBorder,
-              backgroundColor: theme.colors.surface,
-            }}>
-            <View
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-              }}>
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPressIn={() =>
-                  ReactNativeHapticFeedback.trigger('impactLight', {
-                    enableVibrateFallback: true,
-                    ignoreAndroidSystemSettings: false,
-                  })
-                }
-                onPress={() => handleRecreatePress(look)}
-                disabled={loading}
-                style={{
-                  flex: 1,
-                  borderWidth: tokens.borderWidth.hairline,
-                  borderColor: theme.colors.muted,
-                  borderRadius: tokens.borderRadius.sm,
-                  paddingVertical: 9,
-                  opacity: loading ? 0.6 : 1,
-                  marginRight: 10,
-                  backgroundColor: 'black'
-                }}>
-                <Text
-                  style={{
-                    textAlign: 'center',
-                    color: theme.colors.foreground,
-                    fontWeight: '500',
-                    fontSize: 12,
-                  }}>
-                  Recreate Style
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
         </View>
       );
     },
@@ -616,7 +593,7 @@ export default function AllSavedLooksModal({
           <TouchableOpacity
             style={[styles.closeIcon, {marginTop: 10}]}
             onPress={() => {
-              ReactNativeHapticFeedback.trigger('impactLight');
+              // ReactNativeHapticFeedback.trigger('impactLight');
               handleClose();
             }}
             hitSlop={{top: 12, bottom: 12, left: 12, right: 12}}>
@@ -749,8 +726,8 @@ export default function AllSavedLooksModal({
                   marginTop: 20,
                 }}>
                 {loading
-                  ? 'Recreating the vibe. Hang tight...'
-                  : 'Shopping the vibe. Hang tight...'}
+                  ? 'Recreating the style. Hang tight...'
+                  : 'Shopping the style. Hang tight...'}
               </Text>
             </Animatable.View>
           )}

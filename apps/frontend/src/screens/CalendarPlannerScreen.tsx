@@ -342,12 +342,12 @@ function SwipeableOutfitCard({
       flexDirection: 'row',
       flexWrap: 'wrap',
       marginTop: 10,
-      gap: 8,
+      gap: 4,
     },
     thumb: {
       width: 68,
       height: 68,
-      borderRadius: tokens.borderRadius.sm,
+      borderRadius: tokens.borderRadius.switch1,
       backgroundColor: theme.colors.imageBackground,
       padding: 4
     },

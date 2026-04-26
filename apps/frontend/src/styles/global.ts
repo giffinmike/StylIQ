@@ -197,6 +197,24 @@ export const createGlobalStyles = (theme: Theme) =>
             ? 16
             : 16,
     },
+      section7: {
+      // marginBottom: isTablet ? 32 : isLargePhone ? 20 : 20,
+      // paddingHorizontal: isTablet ? 38 : isLargePhone ? 16 : 16,
+      marginBottom: isTablet
+        ? 32
+        : isLargePhone
+          ? 20
+          : isRegularPhone
+            ? 20
+            : 20,
+      paddingHorizontal: isTablet
+        ? 38
+        : isLargePhone
+          ? 8
+          : isRegularPhone
+            ? 16
+            : 16,
+    },
     sectionScroll: {
       marginBottom: isTablet
         ? 36
@@ -275,8 +293,8 @@ export const createGlobalStyles = (theme: Theme) =>
     // ============================================================
     cardStyles1: {
       padding: isTablet ? 20 : isLargePhone ? 18 : isRegularPhone ? 14 : 14,
-      borderWidth: tokens.borderWidth.hairline,
-      borderColor: theme.colors.surfaceBorder,
+      // borderWidth: tokens.borderWidth.hairline,
+      // borderColor: theme.colors.surfaceBorder,
       borderRadius: tokens.borderRadius.xxxl,
       // borderRadius: tokens.borderRadius.sm,
       backgroundColor: theme.colors.surface,
@@ -355,6 +373,7 @@ export const createGlobalStyles = (theme: Theme) =>
       borderWidth: tokens.borderWidth.hairline,
       borderColor: theme.colors.surfaceBorder,
       borderRadius: tokens.borderRadius.xxxl,
+          // borderRadius: tokens.borderRadius.xl,
        backgroundColor: theme.colors.surface,
 
       // shadowColor: '#000',
@@ -531,8 +550,8 @@ export const createGlobalStyles = (theme: Theme) =>
             : 10,
     },
     title3: {
-      fontSize: font.xs,
-      fontWeight: tokens.fontWeight.medium,
+      fontSize: font.sm,
+      fontWeight: tokens.fontWeight.semiBold,
       color: theme.colors.foreground,
       marginBottom: isTablet ? 8 : isLargePhone ? 6 : isRegularPhone ? 6 : 6,
       marginTop: isTablet ? 6 : isLargePhone ? 4 : isRegularPhone ? 4 : 4,
@@ -553,15 +572,15 @@ export const createGlobalStyles = (theme: Theme) =>
       color: theme.colors.foreground,
     },
     label2: {
-      fontSize: font.sm,
+      fontSize: font.xs,
       fontWeight: tokens.fontWeight.semiBold,
       width: '25%',
-      color: theme.colors.foreground,
+      color: theme.colors.foreground2,
     },
     subLabel: {
       fontSize: font.xs,
-      // fontWeight: tokens.fontWeight.semiBold,
-      fontWeight: tokens.fontWeight.medium,
+      fontWeight: tokens.fontWeight.semiBold,
+      // fontWeight: tokens.fontWeight.medium,
       marginTop: 2,
       color: theme.colors.foreground2,
     },
@@ -654,17 +673,17 @@ export const createGlobalStyles = (theme: Theme) =>
       paddingVertical: isTablet
         ? 10
         : isLargePhone
-          ? 8
+          ? 6
           : isRegularPhone
-            ? 8
-            : 8,
-      paddingHorizontal: isTablet
-        ? 16
-        : isLargePhone
-          ? 8
-          : isRegularPhone
-            ? 8
-            : 8,
+            ? 6
+            : 6,
+      // paddingHorizontal: isTablet
+      //   ? 16
+      //   : isLargePhone
+      //     ? 8
+      //     : isRegularPhone
+      //       ? 8
+      //       : 8,
     },
     labelContainer2: {
       paddingHorizontal: isTablet
@@ -686,7 +705,7 @@ export const createGlobalStyles = (theme: Theme) =>
             : 12,
     },
     labelContainer4: {
-      backgroundColor: 'red',
+      // backgroundColor: 'red',
     },
     pillContainer: {
       flexDirection: 'row',
@@ -1003,25 +1022,25 @@ export const createGlobalStyles = (theme: Theme) =>
     image7: {
       // width: image4Size,
       // height: image4Size,
-      backgroundColor: theme.colors.surface3,
+      // backgroundColor: theme.colors.surface3,
       width: '100%',
       // height: isTablet ? 160 : isLargePhone ? 140 : 125,
-      height: isTablet ? 160 : isLargePhone ? 110 : isRegularPhone ? 115 : 105,
+      height: isTablet ? 160 : isLargePhone ? 160 : isRegularPhone ? 115 : 105,
     },
     image8: {
       // width: image4Size,
       // height: image4Size,
       // backgroundColor: theme.colors.surface,
       // borderRadius: tokens.borderRadius.lg,
-      borderRadius: tokens.borderRadius.sm,
-      borderWidth: tokens.borderWidth.hairline,
-      borderColor: theme.colors.surfaceBorder,
-      width: isTablet ? 160 : isLargePhone ? 120 : isRegularPhone ? 120 : 105,
+      borderRadius: tokens.borderRadius.switch1,
+      // borderWidth: tokens.borderWidth.hairline,
+      // borderColor: theme.colors.surfaceBorder,
+      width: isTablet ? 160 : isLargePhone ? 122 : isRegularPhone ? 122 : 105,
       // height: isTablet ? 160 : isLargePhone ? 175 : 145,
       // height: isTablet ? 160 : isLargePhone ? 140 : 125,
       // height: isTablet ? 160 : isLargePhone ? 155 : 145,
       // height: isTablet ? 160 : isLargePhone ? 120 : isRegularPhone ? 115 : 105,
-      height: isTablet ? 160 : isLargePhone ? 115 : isRegularPhone ? 115 : 105,
+      height: isTablet ? 160 : isLargePhone ? 122 : isRegularPhone ? 115 : 105,
     },
     image9: {
       width: isTablet
@@ -1052,8 +1071,8 @@ export const createGlobalStyles = (theme: Theme) =>
     },
     bgContainer1: {
       height: isTablet ? 260 : isLargePhone ? 305 : isRegularPhone ? 260 : 260,
-      borderRadius: tokens.borderRadius.lg,
-      // borderRadius: tokens.borderRadius.sm,
+      // borderRadius: tokens.borderRadius.lg,
+      borderRadius: tokens.borderRadius.switch1,
       overflow: 'hidden',
       // shadowColor: '#000',
       // shadowOpacity: 0.35,
@@ -1072,7 +1091,7 @@ export const createGlobalStyles = (theme: Theme) =>
       // width: outfitCardSize,
       // marginRight: isTablet ? 16 : isLargePhone ? 12 : 10,
       // marginRight: isTablet ? 16 : isLargePhone ? 12 : isRegularPhone ? 12 : 12,
-      marginRight: isTablet ? 16 : isLargePhone ? 10 : isRegularPhone ? 10 : 10,
+      marginRight: isTablet ? 16 : isLargePhone ? 8 : isRegularPhone ? 8 : 8,
       // alignItems: 'flex-start',
       // borderRadius: tokens.borderRadius.lg,
       borderRadius: tokens.borderRadius.sm,
@@ -1080,16 +1099,17 @@ export const createGlobalStyles = (theme: Theme) =>
 
     outfitCard2: {
       // width: isTablet ? 160 : isLargePhone ? 180 : 160,
-      width: isTablet ? 160 : isLargePhone ? 180 : isRegularPhone ? 160 : 160,
+      width: isTablet ? 160 : isLargePhone ? 160 : isRegularPhone ? 160 : 160,
       // marginRight: isTablet ? 16 : isLargePhone ? 12 : isRegularPhone ? 12 : 12,
-      marginRight: isTablet ? 16 : isLargePhone ? 10 : isRegularPhone ? 10 : 10,
+      marginRight: isTablet ? 16 : isLargePhone ? 8 : isRegularPhone ? 8 : 8,
       alignItems: 'flex-start',
-      backgroundColor: theme.colors.surface,
+      // backgroundColor: theme.colors.surface,
       overflow: 'hidden',
       // borderRadius: tokens.borderRadius.lg,
-      borderRadius: tokens.borderRadius.sm,
-      borderWidth: tokens.borderWidth.hairline,
-      borderColor: theme.colors.surfaceBorder,
+      // borderRadius: tokens.borderRadius.sm,
+       borderRadius: tokens.borderRadius.switch1,
+      // borderWidth: tokens.borderWidth.hairline,
+      // borderColor: theme.colors.surfaceBorder,
     },
 
     outfitCard3: {
@@ -1112,10 +1132,9 @@ export const createGlobalStyles = (theme: Theme) =>
       width: isTablet ? 160 : isLargePhone ? 195 : isRegularPhone ? 184 : 165,
       // marginRight: isTablet ? 16 : isLargePhone ? 12 : isRegularPhone ? 12 : 12,
       alignItems: 'flex-start',
-      backgroundColor: theme.colors.surface,
       overflow: 'hidden',
       // borderRadius: tokens.borderRadius.lg,
-      borderRadius: tokens.borderRadius.sm,
+      borderRadius: tokens.borderRadius.switch1,
       // borderWidth: tokens.borderWidth.hairline,
       // borderColor: theme.colors.surfaceBorder,
     },
@@ -1124,10 +1143,9 @@ export const createGlobalStyles = (theme: Theme) =>
       width: isTablet ? 160 : isLargePhone ? 195 : isRegularPhone ? 184 : 165,
       // marginRight: isTablet ? 16 : isLargePhone ? 12 : isRegularPhone ? 12 : 12,
       alignItems: 'flex-start',
-      backgroundColor: theme.colors.surface,
       overflow: 'hidden',
       // borderRadius: tokens.borderRadius.lg,
-      borderRadius: tokens.borderRadius.sm,
+      borderRadius: tokens.borderRadius.switch1,
       // borderWidth: tokens.borderWidth.hairline,
       // borderColor: theme.colors.surfaceBorder,
     },

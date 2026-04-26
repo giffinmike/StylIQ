@@ -102,7 +102,7 @@ export default function SavedRecommendationsModal({
       left: 0,
       right: 0,
       bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 1)',
+      backgroundColor: theme.colors.background,
     },
     panel: {
       backgroundColor: theme.colors.background,
@@ -246,7 +246,7 @@ export default function SavedRecommendationsModal({
 
       Alert.alert(
         'Remove from Saved',
-        `Are you sure you want to remove "${productTitle || 'this item'}" from your saved recommendations? You will not be able to get it back`,
+        `Are you sure you want to remove "${productTitle || 'this item'}" from your saved recommendations? You will not be able to get it back.`,
         [
           {
             text: 'Cancel',
@@ -295,15 +295,14 @@ export default function SavedRecommendationsModal({
             width: itemWidth,
             marginBottom: tokens.spacing.nano,
             marginHorizontal: 1,
-            backgroundColor: theme.colors.surface,
+            // backgroundColor: theme.colors.imageBackground,
             overflow: 'hidden',
-             borderRadius: tokens.borderRadius.sm
+             borderRadius: tokens.borderRadius.switch1
           }}>
           <View
             style={{
               width: '100%',
               aspectRatio: 3 / 4,
-              backgroundColor: theme.colors.surface,
             }}>
             {imageUri ? (
               <FastImage
@@ -312,7 +311,7 @@ export default function SavedRecommendationsModal({
                   priority: FastImage.priority.normal,
                   cache: FastImage.cacheControl.immutable,
                 }}
-                style={{width: '100%', height: '100%'}}
+                style={{width: '99%', height: '100%', backgroundColor: theme.colors.imageBackground}}
                 resizeMode={FastImage.resizeMode.cover}
               />
             ) : (
@@ -320,7 +319,6 @@ export default function SavedRecommendationsModal({
                 style={{
                   width: '100%',
                   height: '100%',
-                  backgroundColor: theme.colors.surface2,
                   justifyContent: 'center',
                   alignItems: 'center',
                 }}>
@@ -335,10 +333,10 @@ export default function SavedRecommendationsModal({
             <TouchableOpacity
               style={{
                 position: 'absolute',
-                top: 8,
+                top: 6,
                 right: 8,
-                backgroundColor: 'rgb(0, 0, 0)',
-                borderRadius: 16,
+                backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                borderRadius: 50,
                 padding: 6,
               }}
               onPress={() => confirmUnsave(product.product_id, product.title)}
@@ -351,7 +349,7 @@ export default function SavedRecommendationsModal({
                 product.product_id ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <MaterialIcons name="delete" size={18} color="red" />
+                <MaterialIcons name="delete" size={20} color="white" />
               )}
             </TouchableOpacity>
 
@@ -369,11 +367,11 @@ export default function SavedRecommendationsModal({
                 bottom: 12,
                 left: 8,
                 right: 8,
-                backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                backgroundColor: 'rgba(0, 0, 0, 0.77)',
                 borderRadius: tokens.borderRadius.sm,
+                //  borderColor: theme.colors.input,
+                // borderWidth: tokens.borderWidth.hairline,
                 paddingVertical: 10,
-                borderColor: theme.colors.foreground,
-                borderWidth: tokens.borderWidth.hairline,
               }}>
               <Text
                 style={{
@@ -387,15 +385,17 @@ export default function SavedRecommendationsModal({
             </TouchableOpacity>
           </View>
 
-          <View style={{minHeight: 102}}>
+          <View style={{minHeight: 90}}>
             <Text
               style={{
-                paddingHorizontal: 10,
-                paddingTop: 8,
+                // paddingHorizontal: 2,
+                paddingTop: 6,
                 color: theme.colors.foreground,
-                fontWeight: '700',
-                fontSize: 12,
-                lineHeight: 16,
+                fontWeight: '600',
+                fontSize: 14,
+                lineHeight: 18,
+                marginBottom: 4,
+                textTransform: 'uppercase'
               }}
                 numberOfLines={1}>
               {product.brand ?? ''}
@@ -403,9 +403,9 @@ export default function SavedRecommendationsModal({
 
             <Text
               style={{
-                paddingHorizontal: 12,
-                marginTop: 8,
-                color: theme.colors.foreground,
+                // paddingHorizontal: 2,
+                // marginTop: 8,
+                color: theme.colors.foreground2,
                 fontWeight: '400',
                 fontSize: 13,
                 lineHeight: 18,
@@ -416,14 +416,14 @@ export default function SavedRecommendationsModal({
 
             <Text
               style={{
-                paddingHorizontal: 12,
+                // paddingHorizontal: 2,
                 marginTop: 'auto',
                 paddingTop: 4,
                 marginBottom: 10,
                 color: theme.colors.primary,
-                fontWeight: '600',
-                fontSize: 14,
-                lineHeight: 20,
+                fontWeight: '800',
+                fontSize: 13,
+                lineHeight: 18,
               }}>
               {product.price_raw || (product.price ? `$${product.price}` : '')}
             </Text>
@@ -495,7 +495,7 @@ export default function SavedRecommendationsModal({
             style={styles.closeIcon}
             onPress={handleClosePress}
             hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
-            <MaterialIcons name="close" size={20} color="#000" />
+            <MaterialIcons name="close" size={20} color="black" />
           </TouchableOpacity>
 
           <View
@@ -509,7 +509,7 @@ export default function SavedRecommendationsModal({
             <Text style={styles.title}>Liked Recommended Buys</Text>
           </View>
 
-          <Animatable.View animation="fadeIn" duration={400} style={{flex: 1}}>
+          <Animatable.View animation="fadeIn" duration={400} style={{flex: 1, marginTop: 14}}>
             <FlashList
               data={filteredProducts}
               renderItem={renderItem}

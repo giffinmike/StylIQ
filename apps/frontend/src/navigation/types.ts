@@ -70,7 +70,8 @@ export type Screen =
   | 'SaveNote'
   | 'NoteDetail'
   | 'OutfitHistory'
-  | 'OutfitsByOccasion';
+  | 'OutfitsByOccasion'
+  | 'AllBrandsPicker';
 
 export type NavigateFunction = (
   screen: Screen,

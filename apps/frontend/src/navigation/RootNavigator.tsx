@@ -80,6 +80,7 @@ import SaveNoteScreen from '../screens/SaveNoteScreen';
 import NoteDetailScreen from '../screens/NoteDetailScreen';
 import OutfitHistoryScreen from '../screens/OutfitHistoryScreen';
 import OutfitsByOccasionScreen from '../screens/OutfitsByOccasionScreen';
+import AllBrandsPickerScreen from '../screens/AllBrandsPickerScreen';
 import TripsNavigator from '../screens/Trips/TripsNavigator';
 import OutfitsScreen from '../screens/Outfits/OutfitsScreen';
 
@@ -616,6 +617,8 @@ const RootNavigator = ({
         return <TryOnOverlayWrapperScreen screenParams={screenParams} />;
       case 'BudgetAndBrands':
         return <BudgetAndBrandsScreen navigate={navigate} />;
+      case 'AllBrandsPicker':
+        return <AllBrandsPickerScreen navigate={navigate} goBack={goBack} params={screenParams} />;
       case 'BlurredCardScreen':
         return <BlurredCardScreen navigate={navigate} />;
       case 'Appearance':

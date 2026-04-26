@@ -50,7 +50,7 @@ export class ScheduledOutfitNotifier {
       [due.map((d) => d.id)],
     );
 
-    console.log(`✅ Sent ${due.length} scheduled outfit notifications`);
+    // console.log(`✅ Sent ${due.length} scheduled outfit notifications`);
   }
 }
 

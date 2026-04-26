@@ -59,7 +59,7 @@ import {VoiceBus} from '../utils/VoiceUtils/VoiceBus';
 import {useShoppingStore} from '../../../../store/shoppingStore';
 
 const {width: SCREEN_WIDTH} = Dimensions.get('window');
-const CARD_WIDTH = (SCREEN_WIDTH - 13) / 2;
+const CARD_WIDTH = (SCREEN_WIDTH - 6) / 2;
 const CARD_HEIGHT = CARD_WIDTH * 1.3;
 const NUM_COLUMNS = 2;
 
@@ -1032,8 +1032,8 @@ export default function CommunityShowcaseScreen({navigate, initialPostId}: Props
     card: {
       width: CARD_WIDTH,
       height: CARD_HEIGHT,
-      marginBottom: moderateScale(tokens.spacing.sm),
-      borderRadius: tokens.borderRadius.sm,
+      marginBottom: moderateScale(tokens.spacing.md),
+      // borderRadius: tokens.borderRadius.sm,
       overflow: 'hidden',
     },
     cardImage: {
@@ -1053,9 +1053,9 @@ export default function CommunityShowcaseScreen({navigate, initialPostId}: Props
       top: 0,
       left: 0,
       right: 0,
-      bottom: 0,
-      borderBottomLeftRadius: tokens.borderRadius.sm,
-      borderBottomRightRadius: tokens.borderRadius.sm,
+      bottom: -1,
+      // borderBottomLeftRadius: tokens.borderRadius.sm,
+      // borderBottomRightRadius: tokens.borderRadius.sm,
     },
     cardContent: {
       paddingHorizontal: 6,
@@ -1673,7 +1673,7 @@ export default function CommunityShowcaseScreen({navigate, initialPostId}: Props
             style={{
               width: '100%',
               height: '100%',
-              borderRadius: tokens.borderRadius.lg,
+              // borderRadius: tokens.borderRadius.lg,
               backgroundColor: theme.colors.imageBackground,
             }}
             resizeMode={FastImage.resizeMode.contain}
@@ -1689,7 +1689,7 @@ export default function CommunityShowcaseScreen({navigate, initialPostId}: Props
             right: 0,
             bottom: 0,
             backgroundColor: 'rgba(0, 0, 0, 0.25)',
-            borderRadius: tokens.borderRadius.lg,
+            // borderRadius: tokens.borderRadius.lg,
           }}
         />
 

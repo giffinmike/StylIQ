@@ -12,7 +12,12 @@ export function useProfileProgress(userProfile: any, wardrobe: WardrobeItem[]) {
   )
     progress += 10;
   if (userProfile.height && userProfile.weight) progress += 15;
-  if (userProfile.preferred_brands?.length) progress += 10;
+  const pb = userProfile.preferred_brands;
+  const hasBrands =
+    Array.isArray(pb) ? pb.length > 0 :
+    typeof pb === 'string' ? pb.trim().length > 0 :
+    false;
+  if (hasBrands) progress += 10;
   if (userProfile.climate || userProfile.lifestyle_notes) progress += 10;
   if (userProfile.proportions && userProfile.personality_traits) progress += 15;
 

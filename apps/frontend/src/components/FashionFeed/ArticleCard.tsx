@@ -30,13 +30,12 @@ const staticStyles = StyleSheet.create({
   image: {
     width: 120,
     height: 120,
-    borderRadius: 8,
+    borderRadius: 0,
     marginTop: -10,
   },
   imagePlaceholder: {
     width: 120,
     height: 120,
-    borderRadius: 14,
     backgroundColor: 'rgba(255,255,255,0.06)',
     marginTop: -10,
   },

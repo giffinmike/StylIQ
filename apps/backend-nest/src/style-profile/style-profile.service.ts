@@ -2,7 +2,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { UpdateStyleProfileDto } from './dto/update-style-profile.dto';
 import { pool } from '../db/pool';
-import { ALLOWED_COLUMNS } from './style-profile.constants';
+import { ALLOWED_COLUMNS, TEXT_ARRAY_COLUMNS } from './style-profile.constants';
 
 @Injectable()
 export class StyleProfileService {
@@ -47,7 +47,7 @@ export class StyleProfileService {
   async updateProfile(userId: string, dto: UpdateStyleProfileDto) {
     const filteredEntries = Object.entries(dto).filter(
       ([key, val]) =>
-        val !== null && val !== undefined && ALLOWED_COLUMNS.has(key),
+        val !== undefined && ALLOWED_COLUMNS.has(key),
     );
 
     // One-way color sync: keep favorite_colors in sync with color_preferences
@@ -72,7 +72,9 @@ export class StyleProfileService {
       .map((key, i) =>
         key === 'prefs_jsonb'
           ? `prefs_jsonb = COALESCE(style_profiles.prefs_jsonb, '{}'::jsonb) || $${i + 2}::jsonb`
-          : `${key} = $${i + 2}`,
+          : TEXT_ARRAY_COLUMNS.has(key)
+            ? `${key} = $${i + 2}::text[]`
+            : `${key} = $${i + 2}`,
       )
       .join(', ');
 

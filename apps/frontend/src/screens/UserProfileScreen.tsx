@@ -705,33 +705,33 @@ export default function UserProfileScreen({navigate, route, goBack}: Props) {
                           setSelectedSharedLook(look);
                           setIsSharedLookModalVisible(true);
                         }}
-                        style={{alignItems: 'center'}}>
+                     >
                         {/* Card - single image or 2x2 grid */}
                         <View
                           style={{
-                            width: 130,
-                            height: 130,
-                            borderRadius: tokens.borderRadius.md,
-                            overflow: 'hidden',
-                            backgroundColor: '#000',
-                          }}>
+                          borderRadius: tokens.borderRadius.switch1,
+                          backgroundColor: theme.colors.imageBackground,
+                          overflow: 'hidden',
+                          marginRight: 0
+                        }}>
                           {look.image_url ? (
                             <Image
                               source={{uri: look.image_url}}
-                              style={{width: 130, height: 130, backgroundColor: '#F5F5F5'}}
+                              style={[globalStyles.image8]}
                               resizeMode="cover"
-                            />
+                              />
                           ) : null}
                         </View>
+
                         {/* Look description */}
                         <Animatable.View
                           animation="fadeIn"
                           delay={1900 + index * 100}
-                          style={{marginTop: 6, alignItems: 'center'}}>
+                          style={{marginTop: 2}}>
                           <Text
                             style={[
                               globalStyles.cardSubLabel,
-                              {textAlign: 'center'},
+                              {textAlign: 'left'},
                             ]}
                             numberOfLines={1}>
                             {look.name || 'Shared Look'}

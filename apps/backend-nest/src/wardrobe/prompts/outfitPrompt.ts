@@ -9,6 +9,7 @@ export function buildOutfitPrompt(
   styleAgent?: string,
   userStyleProfile?: any, // 👈 pass this in too
   genderDirective?: string, // Layer 2 defense-in-depth
+  env?: { climate?: string; setting?: string },
 ): string {
   const constraints = parseConstraints(userQuery);
   const constraintsLine = JSON.stringify(constraints);
@@ -131,7 +132,7 @@ ${catalogLines}
 USER REQUEST: "${userQuery || 'no explicit request'}"
 PARSED_CONSTRAINTS: ${constraintsLine}
 ${styleContextLine}
-CONTEXT_HINTS: ${JSON.stringify({ gymIntent, upscaleIntent })}
+CONTEXT_HINTS: ${JSON.stringify({ gymIntent, upscaleIntent, climate: env?.climate ?? 'unknown', setting: env?.setting ?? 'unknown' })}
 
 SELECTION RULES (strict):
 - Build 2–3 complete outfits using ONLY catalog indices.
@@ -152,6 +153,9 @@ SELECTION RULES (strict):
 INTENT GUARDRAILS:
 - If gymIntent: sneakers + athletic bottoms, avoid dress shoes/blazers unless explicitly requested.
 - If upscaleIntent: avoid hoodies/windbreakers/shorts unless clearly upscale.
+
+ENVIRONMENT PRIORITY RULE:
+If the environmental context (climate or setting) conflicts with stylist dressBias or profile formality tendencies, prioritize environmental realism over stylist bias.
 
 OUTPUT FORMAT (STRICT JSON ONLY):
 {

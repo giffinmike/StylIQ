@@ -7,7 +7,7 @@ import {CapsuleOutfit, BackupSuggestion} from '../../types/trips';
 
 const CARD_WIDTH = Dimensions.get('window').width * 0.75;
 const THUMB_SIZE = (CARD_WIDTH - 48 - 10) / 2;
-const BACKUP_KIT_IMG = 70;
+const BACKUP_KIT_IMG = 45;
 
 /** Map activity to stylized label based on occurrence count */
 function getStylizedLabel(
@@ -94,16 +94,13 @@ const OutfitCarousel = ({outfits, tripBackupKit}: Props) => {
       width: CARD_WIDTH,
       backgroundColor: theme.colors.surface,
       borderRadius: tokens.borderRadius.xl,
-      borderWidth: tokens.borderWidth.hairline,
-      borderColor: theme.colors.surfaceBorder,
+
       overflow: 'hidden',
     },
     supportCard: {
       width: CARD_WIDTH,
       backgroundColor: theme.colors.surface,
       borderRadius: tokens.borderRadius.xl,
-      borderWidth: 1,
-      borderColor: theme.colors.surfaceBorder,
       borderStyle: 'dashed',
       overflow: 'hidden',
       opacity: 0.85,
@@ -145,7 +142,7 @@ const OutfitCarousel = ({outfits, tripBackupKit}: Props) => {
       flexWrap: 'wrap',
       paddingHorizontal: 16,
       paddingBottom: 16,
-      gap: 10,
+      gap: 4,
     },
     thumbCell: {
       width: THUMB_SIZE,
@@ -153,7 +150,7 @@ const OutfitCarousel = ({outfits, tripBackupKit}: Props) => {
     thumbWrap: {
       width: THUMB_SIZE,
       height: THUMB_SIZE,
-      borderRadius: tokens.borderRadius.md,
+      borderRadius: tokens.borderRadius.switch1,
       // backgroundColor: theme.colors.surface2,
       backgroundColor: theme.colors.imageBackground,
       overflow: 'hidden',
@@ -174,8 +171,6 @@ const OutfitCarousel = ({outfits, tripBackupKit}: Props) => {
       height: 200,
       backgroundColor: theme.colors.surface,
       borderRadius: tokens.borderRadius.xl,
-      borderWidth: tokens.borderWidth.hairline,
-      borderColor: theme.colors.surfaceBorder,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -204,6 +199,8 @@ const OutfitCarousel = ({outfits, tripBackupKit}: Props) => {
       alignItems: 'flex-start',
       gap: 14,
       paddingVertical: 12,
+      borderBottomWidth: tokens.borderWidth.hairline,
+      borderBottomColor: theme.colors.muted,
     },
     backupKitDivider: {
       height: tokens.borderWidth.hairline,
@@ -212,10 +209,6 @@ const OutfitCarousel = ({outfits, tripBackupKit}: Props) => {
     backupKitImage: {
       width: BACKUP_KIT_IMG,
       height: BACKUP_KIT_IMG,
-      borderRadius: tokens.borderRadius.sm,
-      backgroundColor: theme.colors.imageBackground,
-      borderWidth: tokens.borderWidth.hairline,
-      borderColor: theme.colors.surfaceBorder,
     },
     backupKitInfo: {
       flex: 1,
@@ -312,9 +305,11 @@ const OutfitCarousel = ({outfits, tripBackupKit}: Props) => {
           </Text>
           {tripBackupKit.map((b, idx) => (
             <React.Fragment key={b.wardrobeItemId}>
-              {idx > 0 && <View style={styles.backupKitDivider} />}
+              {/* {idx > 0 && <View style={styles.backupKitDivider} />} */}
+            
               <View style={styles.backupKitItem}>
                 {b.imageUrl ? (
+                    <View style={{borderRadius: tokens.borderRadius.switch1, backgroundColor: theme.colors.imageBackground, padding: 6}}>
                   <FastImage
                     source={{
                       uri: b.imageUrl,
@@ -323,6 +318,7 @@ const OutfitCarousel = ({outfits, tripBackupKit}: Props) => {
                     style={styles.backupKitImage}
                     resizeMode={FastImage.resizeMode.contain}
                   />
+                  </View>
                 ) : (
                   <View style={styles.backupKitImage} />
                 )}

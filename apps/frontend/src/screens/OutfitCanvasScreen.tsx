@@ -453,10 +453,10 @@ export default function OutfitCanvasScreen({navigate, initialItem}: Props) {
     header: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
+      // justifyContent: 'space-between',
       paddingHorizontal: 16,
       paddingTop: insets.top > 0 ? 8 : 16,
-      paddingBottom: 6,
+      paddingBottom: 10,
       gap: 8,
       backgroundColor: theme.colors.background,
         //  backgroundColor: 'yellow',
@@ -490,7 +490,7 @@ export default function OutfitCanvasScreen({navigate, initialItem}: Props) {
       paddingVertical: 8,
       borderRadius: 20,
       backgroundColor: theme.colors.button1,
-      marginRight: 20
+      marginRight: 8
     },
     saveButtonDisabled: {
       opacity: 0.4,
@@ -512,7 +512,7 @@ export default function OutfitCanvasScreen({navigate, initialItem}: Props) {
     clearButtonText: {
       fontSize: 15,
       fontWeight: '600',
-      color: theme.colors.foreground,
+      color: theme.colors.buttonText1,
     },
     headerRight: {
       flexDirection: 'row',
@@ -520,7 +520,6 @@ export default function OutfitCanvasScreen({navigate, initialItem}: Props) {
     },
     canvasContainer: {
       flex: 1,
-      
     },
   });
 
@@ -549,7 +548,7 @@ export default function OutfitCanvasScreen({navigate, initialItem}: Props) {
               styles.saveButtonText,
               placedItems.length === 0 && styles.saveButtonTextDisabled,
             ]}>
-            Import Outfit
+            Import
           </Text>
           </TouchableOpacity>
         </View>
@@ -568,7 +567,7 @@ export default function OutfitCanvasScreen({navigate, initialItem}: Props) {
                 styles.saveButtonText,
                 placedItems.length === 0 && styles.saveButtonTextDisabled,
               ]}>
-              Save Outfit
+              Save
             </Text>
           </TouchableOpacity>
 
@@ -582,11 +581,10 @@ export default function OutfitCanvasScreen({navigate, initialItem}: Props) {
                 styles.clearButtonText,
                 placedItems.length === 0 && styles.saveButtonTextDisabled,
               ]}>
-              Clear All
+              Clear
             </Text>
           </TouchableOpacity>
 
-        
         </View>
       </View>
 
@@ -621,7 +619,7 @@ export default function OutfitCanvasScreen({navigate, initialItem}: Props) {
             width: 36,
             height: 36,
             borderRadius: 18,
-            backgroundColor: showGrid ? `${theme.colors.primary}33` : `${theme.colors.surface}CC`,
+            backgroundColor: showGrid ? `${theme.colors.background}` : `${theme.colors.muted}CC`,
             justifyContent: 'center',
             alignItems: 'center',
           }}>

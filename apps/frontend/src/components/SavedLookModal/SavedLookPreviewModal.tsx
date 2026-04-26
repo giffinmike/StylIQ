@@ -54,7 +54,7 @@ export default function SavedLookPreviewModal({visible, onClose, look}: Props) {
     },
     panel: {
       flex: 1,
-      backgroundColor: '#000', // keep black behind the image
+      backgroundColor: theme.colors.background,
       shadowColor: '#000',
       shadowOpacity: 0.5,
       shadowRadius: 24,
@@ -68,7 +68,6 @@ export default function SavedLookPreviewModal({visible, onClose, look}: Props) {
       top: 0, // sits ABOVE gesture zone
       right: 20,
       zIndex: 20,
-      backgroundColor: theme.colors.background,
       borderRadius: 50,
       borderColor: 'black',
       borderWidth: tokens.borderWidth.hairline,
@@ -231,21 +230,21 @@ export default function SavedLookPreviewModal({visible, onClose, look}: Props) {
             {
               transform: [{translateY}],
               width: '100%',
-              height: '100%', // 👈 ensures full height
+              height: '100%', 
             },
           ]}>
           {/* Close button ABOVE gesture zone */}
           <TouchableOpacity
             style={[
               styles.closeIcon,
-              {backgroundColor: theme.colors.foreground, marginTop: 14},
+              {marginTop: 14, backgroundColor: 'white'},
             ]}
             onPress={handleClose}
             hitSlop={{top: 12, bottom: 12, left: 12, right: 12}}>
             <Text
               style={{
-                color: theme.colors.background,
-                fontSize: 18,
+                color: 'black',
+                fontSize: 22,
                 fontWeight: '900',
               }}>
               ✕

@@ -21,7 +21,7 @@ import {isTablet, isLargePhone, isRegularPhone} from '../../styles/global';
 const CARD_WIDTH = isTablet
   ? 160
   : isLargePhone
-    ? 180
+    ? 160
     : isRegularPhone
       ? 160
       : 160;
@@ -78,9 +78,9 @@ const ScalePressable = ({
 };
 
 // Thumb button style constants
-const THUMB_SIZE = 30;
-const THUMB_ICON_SIZE = 18;
-const THUMB_BG_DEFAULT = '#000000';
+const THUMB_SIZE = 24;
+const THUMB_ICON_SIZE = 14;
+const THUMB_BG_DEFAULT = 'rgba(0,0,0,0.7)';
 const THUMB_BG_LIKE = '#16A34A';
 const THUMB_BG_DISLIKE = '#DC2626';
 const THUMB_ICON_COLOR = '#FFFFFF';
@@ -758,8 +758,8 @@ const DiscoverCarousel: React.FC<DiscoverCarouselProps> = ({
                   <Image
                     source={{uri: item.image_url}}
                     style={[globalStyles.image7, {backgroundColor: theme.colors.imageBackground}]}
-                    resizeMode="contain"
-                    //  resizeMode="cover"
+                    resizeMode="cover"
+                    // resizeMode="contain"
                     onError={() =>
                       console.warn('⚠️ image failed', item.image_url)
                     }
@@ -779,7 +779,7 @@ const DiscoverCarousel: React.FC<DiscoverCarouselProps> = ({
                         e.stopPropagation();
                         handleToggleSave(item);
                       }}
-                      iconName="thumb-up-off-alt"
+                      iconName="thumb-up"
                       activeIconName="thumb-up"
                       isActive={!!item.saved}
                       activeColor={THUMB_BG_LIKE}
@@ -798,12 +798,14 @@ const DiscoverCarousel: React.FC<DiscoverCarouselProps> = ({
                     />
                   </View>
                 </View>
+
                 <Text
                   style={[
                     globalStyles.cardLabel,
                     {
-                      marginHorizontal: 10,
+                      // marginHorizontal: 10,
                       marginTop: 6,
+                      // textTransform: 'uppercase'
                     },
                   ]}
                   numberOfLines={1}>
@@ -813,9 +815,8 @@ const DiscoverCarousel: React.FC<DiscoverCarouselProps> = ({
                   style={[
                     globalStyles.cardSubLabel,
                     {
-                      marginHorizontal: 10,
-                      marginBottom: 8,
-                      marginTop: 4,
+                      // marginHorizontal: 10,
+                      // marginBottom: 8,
                     },
                   ]}
                      numberOfLines={1}>

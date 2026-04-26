@@ -173,7 +173,7 @@ export default function SavedOutfitsScreen() {
 
     // 🪩 Core Outfit Card
     card: {
-      backgroundColor: 'red',
+       backgroundColor: theme.colors.imageBackground,
       borderRadius: 24,
       padding: 18,
       marginBottom: 6,
@@ -1129,12 +1129,14 @@ export default function SavedOutfitsScreen() {
                       style={{
                         width: '100%',
                         height: 300,
-                        borderRadius: 12,
+                        borderRadius: tokens.borderRadius.switch1
                       }}
                       resizeMode={FastImage.resizeMode.contain}
                     />
                   </View>
+                  
                 ) : (
+
                   <View style={{flexDirection: 'row', justifyContent: 'center', gap: 12}}>
                     {(outfit.allItems || [outfit.top, outfit.bottom, outfit.shoes].filter(Boolean)).map((i, idx) =>
                       i?.image ? (
@@ -1470,17 +1472,13 @@ export default function SavedOutfitsScreen() {
                       <View style={{
                         width: '100%',
                         height: 185,
-                        borderRadius: 12,
+                        borderRadius: tokens.borderRadius.switch1,
                         overflow: 'hidden',
                         marginTop: 6
                       }}>
                         <View style={{
                           flex: 1,
-                           backgroundColor: theme.colors.imageBackground,
-                          // padding: 2,
-                          // borderWidth: 1,
-                          // borderColor: `${theme.colors.primary}1F`,
-                          // borderRadius: 10,
+                           backgroundColor: theme.colors.imageBackground     
                         }}>
                           <FastImage
                             source={{
@@ -1491,7 +1489,7 @@ export default function SavedOutfitsScreen() {
                             style={{
                               width: '100%',
                               height: '100%',
-                              borderRadius: 8,
+                              borderRadius: tokens.borderRadius.switch1,
                             }}
                             resizeMode={FastImage.resizeMode.contain}
                           />
@@ -1512,7 +1510,7 @@ export default function SavedOutfitsScreen() {
                                 globalStyles.image1,
                                 {
                                   marginRight: 2,
-                                  borderRadius: 8,
+                                  borderRadius: tokens.borderRadius.switch1,
                                   marginBottom: 4,
                                 },
                               ]}
@@ -1525,7 +1523,7 @@ export default function SavedOutfitsScreen() {
                   </View>
 
               {/* Right column – Controls */}
-              <View style={{flex: 1, marginLeft: 30, marginTop: 4}}>
+              <View style={{flex: 1, marginLeft: 10, marginTop: 4}}>
                     
                 {/* ❤️ & ✏️ & 👕 Buttons */}
                   <View
@@ -1782,14 +1780,12 @@ export default function SavedOutfitsScreen() {
                             cancelPlannedOutfit(outfit.id);
                           }}
                           style={{
-                             marginTop: 4,
+                            marginTop: 4,
                             paddingVertical: 8.5,
                             width: 160,
                             borderRadius: 8,
                             borderColor: theme.colors.muted,
                             borderWidth: tokens.borderWidth.hairline,
-                            // backgroundColor:
-                            //   'rgb(25, 25, 25)',
                           }}>
                           <Text
                             style={{
@@ -1873,7 +1869,7 @@ export default function SavedOutfitsScreen() {
 
   // 🔲 Grid View: minimal 2-column thumbnail + name only /
   // Sized so exactly 3 rows are visible on screen
-  const GRID_GAP = 10;
+  const GRID_GAP = 0;
   const GRID_PADDING_H = 10;
   const GRID_ITEM_WIDTH = (SCREEN_WIDTH - GRID_PADDING_H * 2 - GRID_GAP) / 2;
   const GRID_VISIBLE_ROWS = 3;
@@ -1902,21 +1898,14 @@ export default function SavedOutfitsScreen() {
           onPress={() => setFullScreenOutfit(outfit)}
           style={{
             width: GRID_ITEM_WIDTH,
-            height: GRID_ROW_HEIGHT,
+            height: 335,
             marginBottom: GRID_GAP,
-            borderRadius: tokens.borderRadius.sm,
+            borderRadius: tokens.borderRadius.switch1,
             overflow: 'hidden',
-            backgroundColor: theme.colors.surface3,
-            borderWidth: StyleSheet.hairlineWidth,
-            borderColor: theme.colors.surfaceBorder,
           }}>
           {thumbUri ? (
             <View style={{
-              height: GRID_IMAGE_HEIGHT,
-              // padding: 4,
-              // borderWidth: tokens.borderWidth.hairline,
-              // borderColor: `${theme.colors.primary}1F`,
-              // borderRadius: 14,
+              height: 298,
             }}>
               <FastImage
                 source={{
@@ -1927,9 +1916,6 @@ export default function SavedOutfitsScreen() {
                 style={{
                   width: '100%',
                   height: '100%',
-                  backgroundColor: theme.colors.imageBackground,
-                  borderTopLeftRadius: 12,
-                  borderTopRightRadius: 12,
                 }}
                 resizeMode={FastImage.resizeMode.contain}
               />
@@ -1957,8 +1943,7 @@ export default function SavedOutfitsScreen() {
               fontSize: 13,
               fontWeight: '500',
               color: theme.colors.foreground,
-              paddingHorizontal: 10,
-              paddingVertical: 10,
+              paddingVertical: 6,
             }}>
             {outfit.name?.trim() || 'Unnamed Outfit'}
           </Text>
@@ -1987,6 +1972,7 @@ export default function SavedOutfitsScreen() {
         globalStyles.container,
         {backgroundColor: theme.colors.background, paddingBottom: 0},
       ]}>
+        
       {/* Hidden 2x2 grid composite for sharing */}
       {shareOutfit && (
         <View style={{position: 'absolute', left: -9999, top: -9999}}>
@@ -1996,7 +1982,7 @@ export default function SavedOutfitsScreen() {
             style={{
               width: SHARE_SIZE,
               height: SHARE_SIZE + 80,
-              backgroundColor: '#F5F5F5',
+              backgroundColor: theme.colors.imageBackground,
             }}>
               
             {/* Full outfit composite image */}
@@ -2166,13 +2152,13 @@ export default function SavedOutfitsScreen() {
               padding: 8,
               borderRadius: 20,
               backgroundColor: menuVisible
-                ? theme.colors.primary
+                ? theme.colors.foreground
                 : theme.colors.surface,
             }}>
             <MaterialIcons
               name="filter-list"
               size={24}
-              color={menuVisible ? '#fff' : theme.colors.primary}
+              color={menuVisible ? theme.colors.background : theme.colors.foreground}
             />
           </TouchableOpacity>
           <TouchableOpacity
@@ -2309,7 +2295,7 @@ export default function SavedOutfitsScreen() {
       )}
 
       {/* 🪩 Virtualized FlashList / Grid View */}
-      <View style={{flex: 1, width: '100%', marginTop:12}}>
+      <View style={{flex: 1, width: '100%', marginTop: 12}}>
         {/* Empty state - only show when user had outfits before but now has none */}
         {outfitsState === 'empty-real' && sortedOutfits.length === 0 ? (
           <View
@@ -2987,7 +2973,7 @@ export default function SavedOutfitsScreen() {
         <View
           style={{
             flex: 1,
-            backgroundColor: 'rgba(0,0,0,0.92)',
+            backgroundColor: theme.colors.background,
           }}>
           {/* Close button */}
           <TouchableOpacity
@@ -2997,9 +2983,13 @@ export default function SavedOutfitsScreen() {
               top: 60,
               right: 20,
               zIndex: 10,
-              padding: 10,
+              padding: 6,
+              backgroundColor: 'white',
+              borderRadius: 50,
+              borderColor: 'black',
+              borderWidth: theme.borderWidth.hairline
             }}>
-            <MaterialIcons name="close" size={32} color="#fff" />
+            <MaterialIcons name="close" size={22} color="black" />
           </TouchableOpacity>
 
           <ScrollView
@@ -3028,7 +3018,7 @@ export default function SavedOutfitsScreen() {
             return (
               <View style={{alignItems: 'center', width: '100%'}}>
                 {/* Outfit Title */}
-                <Text style={{color: '#fff', fontSize: 16, fontWeight: '600', textAlign: 'center', marginBottom: 16, paddingHorizontal: 32}} numberOfLines={1}>
+                <Text style={{color: theme.colors.foreground, fontSize: 16, fontWeight: '600', textAlign: 'center', marginBottom: 16, paddingHorizontal: 32}} numberOfLines={1}>
                   {fullScreenOutfit.name || 'Outfit'}
                 </Text>
 
@@ -3036,8 +3026,8 @@ export default function SavedOutfitsScreen() {
                 <View
                   style={{
                     width: screenWidth - 16,
-                    borderRadius: tokens.borderRadius.sm,
-                     backgroundColor: theme.colors.imageBackground,
+                    borderRadius: tokens.borderRadius.switch1,
+                    backgroundColor: theme.colors.imageBackground,
                     overflow: 'hidden',
                     justifyContent: 'center',
                     alignItems: 'center'
@@ -3111,33 +3101,32 @@ export default function SavedOutfitsScreen() {
 
                 {/* Individual Items Grid */}
                 <View style={{
-                  width: screenWidth - 32,
+                  width: screenWidth - 48,
                   marginTop: 24,
                 }}>
-                  <Text style={{color: '#fff', fontSize: 14, fontWeight: '600', marginBottom: 12, opacity: 0.7}}>
+                  <Text style={{color: theme.colors.foreground, fontSize: 14, fontWeight: '600', marginBottom: 12, opacity: 0.7}}>
                     Items in this outfit
                   </Text>
-                  <View style={{flexDirection: 'row', flexWrap: 'wrap', gap: 10}}>
+                  <View style={{flexDirection: 'row', flexWrap: 'wrap', gap: 4}}>
                     {allItems.map((item, idx) => (
                       <View
                         key={item.id || idx}
                         style={{
                           width: (screenWidth - 52) / 2,
-                          height: (screenWidth - 52) / 2,
-                          borderRadius: 12,
+                          height: (screenWidth - 0) / 2,
+                          borderRadius: tokens.borderRadius.switch1,
                           overflow: 'hidden',
-                          backgroundColor: theme.colors.imageBackground,
                         }}>
-                        <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', padding: 10}}>
+                        <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.imageBackground,}}>
                           <Image
                             source={{uri: item.image}}
                             style={{width: 150, height: 150}}
                             resizeMode="contain"
                           />
                         </View>
-                        <View style={{paddingHorizontal: 8, paddingVertical: 8, backgroundColor: theme.colors.surface3}}>
+                        <View style={{paddingVertical: 8}}>
                           <Text
-                            style={{color: theme.colors.foreground, fontSize: 11, textAlign: 'left', fontWeight: 'semibold'}}
+                            style={globalStyles.label}
                             numberOfLines={1}>
                             {item.name}
                           </Text>
