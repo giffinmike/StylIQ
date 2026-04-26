@@ -2373,6 +2373,15 @@ ${lockedLines}
         const tasteFiltered = scored.filter((s: any) => s.valid).map((s: any) => s.o);
         withIds.length = 0;
         withIds.push(...tasteFiltered);
+        console.log("STAGE_D_AFTER", {
+          before: scored.length,
+          after: withIds.length,
+          hardFails: scored.map((s: any) => ({
+            title: s.o?.title,
+            valid: s.valid,
+            hardFails: s.hardFails,
+          })),
+        });
         _validatorRanSlow = true;
         _numHardFailedSlow = scored.filter((s: any) => !s.valid).length;
         _numRepairedViaSwapSlow = scored.filter(
@@ -2477,6 +2486,10 @@ ${lockedLines}
           return false;
         };
         eliteOutfits = eliteOutfits.filter((o: any) => !_hasAvoided(o));
+        console.log("STAGE_F_AFTER", {
+          avoidColors: _avoid,
+          after: eliteOutfits.length,
+        });
       }
 
       // ── Style Veto: remove structurally incoherent outfits ──
