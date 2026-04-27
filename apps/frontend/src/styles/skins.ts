@@ -953,7 +953,7 @@ export const skins = {
 //     borderRadius: 16,
 //   },
 
-//   modernDark2: {
+///   modernDark2: {
 //     colors: {
 //       primary: '#BB86FC',
 //       secondary: '#03DAC6',
