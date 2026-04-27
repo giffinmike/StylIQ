@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { WardrobeService } from '../wardrobe.service';
 import { studioAuditLog } from './audit';
+import { postProcessLegacyResult } from './postProcessLegacy';
 
 // AI Outfit Studio Facade
 // ─────────────────────────────────────────────────────────────────────────────
@@ -31,11 +32,36 @@ type MutateOutfitRet = ReturnType<WardrobeService['mutateOutfit']>;
 export class AiOutfitStudioFacade {
   constructor(private readonly service: WardrobeService) {}
 
-  generateOutfits(...args: GenerateOutfitsArgs): GenerateOutfitsRet {
+  async generateOutfits(...args: GenerateOutfitsArgs): GenerateOutfitsRet {
     studioAuditLog('facade.generateOutfits', {
       sharedTarget: 'WardrobeService.generateOutfits',
     });
-    return this.service.generateOutfits(...args);
+    const result = await this.service.generateOutfits(...args);
+
+    // Controller call shape: (userId, query, topK, opts)
+    const query = typeof args[1] === 'string' ? args[1] : undefined;
+    const opts: any = args[3] ?? {};
+    const processed = postProcessLegacyResult(result, {
+      query,
+      userStyle: opts.userStyle,
+      weather: opts.weather,
+    });
+
+    if (process.env.AI_OUTFIT_STUDIO_DEBUG === '1') {
+      const arr: any[] = Array.isArray((processed as any)?.outfits)
+        ? (processed as any).outfits
+        : [];
+      const top3 = arr
+        .slice(0, 3)
+        .map((o: any) => String(o?.outfit_id ?? ''))
+        .join(',');
+      // eslint-disable-next-line no-console
+      console.log(
+        `[AI_OUTFIT_STUDIO_DEBUG] facade_return_count=${arr.length} top3=${top3}`,
+      );
+    }
+
+    return processed;
   }
 
   generateOutfitsFast(
