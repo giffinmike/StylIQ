@@ -26,6 +26,7 @@ import { GenerateOutfitsDto } from './dto/generate-outfits.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Storage } from '@google-cloud/storage';
 import { getSecret, getSecretJson, secretExists } from '../config/secrets';
+import { AiOutfitStudioFacade } from './aiOutfitStudio/aiOutfitStudio.facade';
 
 type GCPServiceAccount = {
   project_id: string;
@@ -98,6 +99,7 @@ export class WardrobeController {
   constructor(
     private readonly service: WardrobeService,
     private readonly vertex: VertexService,
+    private readonly aiOutfitStudio: AiOutfitStudioFacade,
   ) {}
 
   @Post()
@@ -194,7 +196,7 @@ export class WardrobeController {
 
     // ── LEARNING ACCEPT: pure logging, no generation ──
     if ((body as any).learning_accept === true && locked.length >= 2) {
-      return this.service.mutateOutfit(userId, {
+      return this.aiOutfitStudio.mutateOutfit(userId, {
         currentItemIds: locked,
         refinementPrompt: '',
         weather: weatherArg,
@@ -215,7 +217,7 @@ export class WardrobeController {
 
       console.log(`⚡ [SWAP] Detected swap request: slot=${swapSlot} newItem=${newItemId} kept=${keptItemIds.length}`);
 
-      const swapResult = await this.service.recomposeOutfitSlot(userId, {
+      const swapResult = await this.aiOutfitStudio.recomposeOutfitSlot(userId, {
         outfitItems: keptItemIds.map((id) => ({ id })),
         swapSlot,
         newItemId,
@@ -237,7 +239,7 @@ export class WardrobeController {
     if (isRefineCandidate) {
       console.log(`REFINE_ROUTE_ENTERED { reason: "prompt=${body.refinementPrompt} lockedCount=${locked.length}" }`);
 
-      const mutateResult = await this.service.mutateOutfit(userId, {
+      const mutateResult = await this.aiOutfitStudio.mutateOutfit(userId, {
         currentItemIds: locked,
         refinementPrompt: body.refinementPrompt!, // guarded by isRefineCandidate check
         weather: weatherArg,
@@ -262,7 +264,7 @@ export class WardrobeController {
 
       // console.log('🚀 [OUTFITS] queryWithRefinement:', queryWithRefinement);
 
-      return this.service.generateOutfitsFast(userId, queryWithRefinement, {
+      return this.aiOutfitStudio.generateOutfitsFast(userId, queryWithRefinement, {
         userStyle,
         weather: weatherArg,
         styleAgent: body.styleAgent,
@@ -272,7 +274,7 @@ export class WardrobeController {
     }
 
     console.log('🔥 SLOW PATH EXECUTED');
-    return this.service.generateOutfits(userId, body.query, body.topK || 5, {
+    return this.aiOutfitStudio.generateOutfits(userId, body.query, body.topK || 5, {
       userStyle,
       weather: weatherArg,
       weights: body.weights as
@@ -310,7 +312,7 @@ export class WardrobeController {
     const userId = req.user.userId;
     const userStyle = normalizeUserStyle(body.style_profile);
 
-    return this.service.generateOutfitsFast(userId, body.query, {
+    return this.aiOutfitStudio.generateOutfitsFast(userId, body.query, {
       userStyle,
       weather: body.weather,
       styleAgent: body.styleAgent,
